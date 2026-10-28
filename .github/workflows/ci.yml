@@ -113,7 +113,7 @@ jobs:
             --deselect "tests/test_tenants_api.py::test_db_e2e_freeze_unfreeze_roundtrip" \
             --deselect "tests/test_tenants_api.py::test_db_e2e_frozen_survives_grant_registration" \
             --deselect "tests/test_tenants_api.py::test_db_e2e_frozen_issue_blocked_by_db_gate" \
-            --deselect tests/test_batch_first_run.py::test_first_run_evidence_present \ \ \ \ \ \ \ \ \
+            --deselect tests/test_batch_first_run.py::test_first_run_evidence_present 
             --deselect tests/test_publish_hbase.py::test_e2e_evidence_recorded \
             --deselect tests/test_publish_load.py::test_e2e_script_and_evidence_recorded
 
