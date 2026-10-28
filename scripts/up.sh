@@ -12,8 +12,10 @@ set -a; . ./.env; set +a
 # 幂等自签证书兜底（已存在且未过期则跳过；certs/ 不入 git）
 if [ -x scripts/gen-dev-cert.sh ]; then scripts/gen-dev-cert.sh; fi
 
-echo "== docker compose up -d --build =="
-docker compose up -d --build
+echo "== docker compose --profile full up -d --build =="
+# 一键开箱批（2026-10-28）：compose 默认档＝demo（3 服务：redis/service/portal，自动灌数）；
+# 本脚本＝full 档入口，显式 --profile full 起 6 服务全栈（etcd/apisix/batch-worker 随档加入）。
+docker compose --profile full up -d --build
 
 # 等四组件健康（healthcheck 定义在 docker-compose.yml）
 echo "== 等待健康检查全绿 =="

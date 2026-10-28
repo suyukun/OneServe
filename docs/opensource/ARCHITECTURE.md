@@ -50,21 +50,33 @@ flowchart LR
 ```
 
 - **portal**：静态门户与管理台（nginx，非 root 运行）。同源提供页面、静态资源和
-  `/v1/portal/*`、`/v1/admin/*` 的反向代理；业务数据请求转发到网关。
+  `/v1/portal/*`、`/v1/admin/*` 的反向代理；业务数据请求转发到网关。demo 档（网关
+  不在栈内）时业务请求经内置降级通道直连服务层，页面功能不缺（见下「两档部署」）。
 - **apisix**：唯一对外数据面入口（`:9080`）。按路由做 API Key 鉴权、注入 trace id、
-  转发到服务层；路由配置存放在 etcd，不写死在网关容器里。
+  转发到服务层；路由配置存放在 etcd，不写死在网关容器里。full 档组件（demo 档不起）。
 - **service**：FastAPI 薄服务层。承载 A 型查询、B 型代理、批量任务 API、管理 API、
-  审计写入；不直接对外发布端口，只经网关或门户反向代理到达。
+  审计写入；不直接对外发布端口，只经网关或门户反向代理到达。启动前自动灌演示数据
+  （redis 空 → seed，哨兵键幂等，复用 `scripts/seed_demo.sh` 与 `sync/` 装载链）。
 - **etcd**：APISIX 的配置存储，不是业务数据库。保存路由、上游、消费者等服务网关对象。
+  full 档组件（demo 档不起）。
 - **KV 热存储**：Redis 兼容的键值库（`noeviction` + AOF `everysec`）。保存按版本组织的
   标签数据、版本元信息、批量任务队列与统计计数。
 - **batch-worker**：可选 sidecar，与服务层同镜像、不同入口。消费 Redis FIFO 队列，
-  分片读取、分片落盘、按检查点续跑。
+  分片读取、分片落盘、按检查点续跑。full 档组件（demo 档不起）。
 - **已注册上游**：B 型代理的目标。参考栈自带一个示例上游用于演示；生产部署替换为
   真实上游即可。
 
 宿主机只发布两个端口：`:9080` 是数据面 API，`:8000` 是门户页面。etcd 的 `:2379`、APISIX
 Admin API 的 `:9180`、服务层的 `:8000` 均只在容器网络内可达。
+
+**两档部署（一键开箱批 2026-10-28）。** compose 服务分两档：默认 `docker compose up`
+＝**demo 档（3 服务）**——redis/service/portal，门户、目录、管理台、演示查询与演示
+AppKey 全功能可用，演示数据在服务启动前自动灌入（redis 空 → seed，哨兵键幂等）；
+`docker compose --profile full up`（或 `bash scripts/up.sh`）＝**full 档（6 服务）**——
+etcd/apisix/batch-worker 随档加入，`:9080` 机器数据面（key-auth/限流/网关侧审计）生效。
+demo 档下 `/healthz` 对网关/etcd 如实报 `degraded`，管理台监控页对 full 档组件如实标注；
+门户 nginx 对网关反代内置 502 降级通道（直连服务层，`/v1/svc/<name>` 自动改写为服务层
+的 `/v1/query/v1-svc-<name>`），full 档该通道不触发、网关语义零变化。
 
 ## 3. 核心概念
 

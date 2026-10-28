@@ -523,14 +523,21 @@ async def components_view(redis: Any, services: dict, *, version: str,
 # 本模块只做编排与出参形状（分层同 components_view）。无网络探针的容器如实 off 标注，
 # 不造状态。无登录模式（ADR-0029）：原统一登录两容器探针行随 compose 收口移除（形态见 git 史）。
 _CONTAINER_ROWS = (   # (容器名, 角色, 探针描述, 探活协程工厂名)——顺序＝页面呈现顺序
-    ("oneserve-etcd", "配置存储（etcd）", "TCP", "etcd"),
-    ("oneserve-apisix", "网关（APISIX）", "TCP", "gateway"),
+    # 一键开箱批（2026-10-28）：etcd/apisix/batch-worker 三件为 compose full 档组件
+    # （profiles: [full]）——角色名如实标注，demo 档（默认 compose up）用户不误读。
+    ("oneserve-etcd", "配置存储（etcd）· full 档组件", "TCP", "etcd"),
+    ("oneserve-apisix", "网关（APISIX）· full 档组件", "TCP", "gateway"),
     ("oneserve-redis", "KV 缓存", "PING", "redis"),
     ("oneserve-service", "服务层（本端点宿主）", "本进程存活", "self"),
-    ("oneserve-batch-worker", "批量 worker", "无网络探针", "batch_worker"),
+    ("oneserve-batch-worker", "批量 worker · full 档组件", "无网络探针", "batch_worker"),
     ("oneserve-portal", "门户静态站", "TCP", "portal"),
     ("oneserve-hbase", "冷存储数据源（可选）", "TCP Thrift", "hbase"),
 )
+
+# demo 档降级提示（一键开箱批）：full 档组件探活 degraded 时拼进 detail——如实汇报
+# 「探不到」这一事实，同时说明 demo 档（默认 compose up）本就不起该组件（非故障），
+# full 档出现同状态则为异常需查容器。文案对两档读者都为真，不引入档位配置项。
+_FULL_PROFILE_DEGRADED_HINT = "（demo 档默认不含本组件，此状态属预期；--profile full 起全栈，full 档出现则为异常）"
 
 
 async def containers_view(redis: Any) -> dict:
@@ -568,10 +575,14 @@ async def containers_view(redis: Any) -> dict:
     }
     for container, role, probe_label, key in _CONTAINER_ROWS:
         res = by_key[key]
+        detail = res["detail"]
+        if res["status"] == "degraded" and container in (
+                "oneserve-etcd", "oneserve-apisix"):
+            detail += _FULL_PROFILE_DEGRADED_HINT   # demo 档降级如实提示（一键开箱批）
         rows.append({
             "container": container, "role": role,
             "probe": probe_targets[key] if key != "batch_worker" else "—",
-            "status": res["status"], "detail": res["detail"],
+            "status": res["status"], "detail": detail,
             "latencyMs": res.get("latencyMs"),
         })
     statuses = [r["status"] for r in rows]

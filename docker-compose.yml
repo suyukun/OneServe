@@ -14,7 +14,10 @@ x-log-rotation: &log-rotation
 
 services:
   # ---------- 配置存储：etcd（APISIX 依赖；POC 实测镜像 tag 直接沿用） ----------
+  # profiles（一键开箱批）：demo 档（默认 docker compose up）不起 etcd/apisix/batch-worker
+  # 三件网关侧组件——门户/目录/管理台/点查查询全功能可用；--profile full 起全栈（6 服务）。
   etcd:
+    profiles: ["full"]
     image: bitnamilegacy/etcd:3.5.9-debian-11-r99
     container_name: oneserve-etcd
     logging: *log-rotation
@@ -31,8 +34,9 @@ services:
     networks:
       - oneserve-net
 
-  # ---------- 网关：APISIX（task-001 POC 锁定） ----------
+  # ---------- 网关：APISIX（task-001 POC 锁定；full 档组件，demo 档不起） ----------
   apisix:
+    profiles: ["full"]
     image: apache/apisix:3.18.0-debian
     container_name: oneserve-apisix
     logging: *log-rotation
@@ -45,10 +49,10 @@ services:
       - ./configs/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
     # 9180（Admin API）不发布——仅 compose 网内可达，初始化走 service 容器内脚本
     environment:
-      # config.yaml 的 ${{APISIX_ADMIN_KEY}} 展开（APISIX 原生 env 替换）——不注入＝
-      # 展开不到起栈 Exited(1)（同 compose.prod.yml dc3ae43 修复根因）；注入式与
-      # prod/本文件 service 块同源同文，缺省报错阻断起栈。
-      - APISIX_ADMIN_KEY=${APISIX_ADMIN_KEY:?APISIX_ADMIN_KEY 未设置——cp .env.example .env 后填真值}
+      # config.yaml 的 ${{APISIX_ADMIN_KEY}} 展开（APISIX 原生 env 替换）。一键开箱批
+      # （2026-10-28）由「缺省报错阻断起栈」软化为「缺省注入 .env.example 演示占位值」：
+      # 零 .env 也能 --profile full 起全栈（演示口径）；生产必须 cp .env.example .env 改真值。
+      - APISIX_ADMIN_KEY=${APISIX_ADMIN_KEY:-CHANGE_ME_APISIX_ADMIN_KEY}
     healthcheck:
       # 镜像内无 curl/wget：用 bash /dev/tcp 发原始 HTTP 探测数据面应答（任意 URI 返回 HTTP 行即活）
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9080; printf \"GET /oneserve-healthcheck HTTP/1.0\\r\\n\\r\\n\" >&3; read -r line <&3; case \"$$line\" in HTTP*) exit 0;; *) exit 1;; esac'"]
@@ -94,6 +98,13 @@ services:
     image: oneserve/service:m0
     container_name: oneserve-service
     logging: *log-rotation
+    # 一键开箱批（2026-10-28）：起 uvicorn 前先跑 demo 档自动灌数（redis 空 → seed，
+    # 哨兵键幂等，复用 scripts/seed_demo.sh 口径＋sync 装载链；任何灌数失败只记日志
+    # 不阻断启动——`;` 顺序执行而非 &&）。无登录模式零手工步骤：起栈即有演示数据。
+    command:
+      - sh
+      - -c
+      - python -m app.demo_seed; exec uvicorn app.main:app --host 0.0.0.0 --port 8000
     depends_on:
       redis:
         condition: service_healthy
@@ -107,7 +118,7 @@ services:
       # CASDOOR_ADMIN_PASSWORD 注入）随登录拆除移除；历史形态见 git 史。
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:9092}
       - KAFKA_AUDIT_TOPIC=${KAFKA_AUDIT_TOPIC:-oneserve-audit}
-      - APISIX_APPKEY=${APISIX_APPKEY:?APISIX_APPKEY 未设置——cp .env.example .env 后填真值}  # 仅供网关初始化脚本读用
+      - APISIX_APPKEY=${APISIX_APPKEY:-oneserve-dev-appkey-001}  # 仅供网关初始化脚本读用；缺省＝.env.example 演示值（demo 档零 .env 可起）
       - SYNC_REDIS_URL=redis://oneserve-redis:6379/0  # task-003：借本容器跑 sync 加载/对账/切换脚本（scripts/load_demo_data.sh）
       - BATCH_RESULTS_DIR=/data/batch-results  # M15-3：结果交付端点读分片（与 batch-worker 同值，共用 named volume）
       - APISIX_ADMIN=http://oneserve-apisix:9180       # P0-4：网关 Admin API 通道（init_routes 同款，仅内网）
@@ -117,7 +128,7 @@ services:
       - ONESERVE_APPKEY=${ONESERVE_APPKEY:-}
       - ONESERVE_LOADTEST_DIR=/app/loadtest
       - LOADTEST_HOST=http://oneserve-apisix:9080
-      - APISIX_ADMIN_KEY=${APISIX_ADMIN_KEY:?APISIX_ADMIN_KEY 未设置——cp .env.example .env 后填真值}
+      - APISIX_ADMIN_KEY=${APISIX_ADMIN_KEY:-CHANGE_ME_APISIX_ADMIN_KEY}  # 缺省＝.env.example 演示值；生产经 .env 改真值
       # 2026-10-14：管理令牌闸第三次反转拆除（维护者 拍板，见 docs/adr/0010）——后端
       # _admin_gate 恒放行，不再校验 X-Admin-Token，本注入行注释停用（值真源
       # service/app/dev_token.py 保留）。恢复方法：恢复闸（admin_api._admin_gate
@@ -157,14 +168,12 @@ services:
       - ./configs/apisix:/init:ro                 # 网关初始化脚本（借本容器 python 调 Admin API）
       - ./sync:/sync                             # task-003 同步链路挂入；2026-10-09 B1 表结构登记需写回 schema_<表>.csv 真源改 rw（写端点经管理令牌闸保护）
       - ./config:/app/config:ro                   # 卡1：外部数据源连接配置 connections.yaml（非敏感参数；密钥走 env/密钥文件）
+      - ./scripts/seed_demo.sh:/seed/seed_demo.sh:ro   # 一键开箱批：demo 自动灌数复用仓内脚本（demo_seed.py 调用）
       - ./service:/app                            # P1-10/11+M2-3.5 合并口径：service 目录整体挂载 rw——
                                                    #  console_services 写区+upstreams.yaml 原子写（P1）+热加载 mtime 轮询（M2-3.5）
                                                    #  +registry/ 签发写回同源；task-007 口径保留：运行时区改动重启生效
       - ./loadtest:/app/loadtest                   # A窗 2026-10-19：压测页容器内触发（_perf_paths 经 ONESERVE_LOADTEST_DIR 消费；结果写回宿主 loadtest/results 同源可见）
       # 前置卡 2026-10-21：meta_writer db 模式容器内规划器（meta_snapshot.load_migrate
-      # 容器内回退路径 /app/scripts/meta_migrate.py；ro 单文件挂载，yaml 模式不加载零影响）。
-      # 本文件改动不热生效——在跑 dev 容器按既有形态继续，下次例行重建后生效。
-      - ./scripts/meta_migrate.py:/app/scripts/meta_migrate.py:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 5s
@@ -178,6 +187,7 @@ services:
   # 与 service 同镜像、仅入口不同：FIFO 消费 Redis 任务队列→分片读→分片落盘。
   # 杀进程安全（门槛稿 A4）：分片先落盘后写检查点，restart 崩溃自拉起按检查点续跑。
   batch-worker:
+    profiles: ["full"]                  # 一键开箱批：批量任务为 full 档组件（demo 档不起）
     image: oneserve/service:m0
     build: ./service                    # 与 service 同一构建（compose 复用同 tag）
     container_name: oneserve-batch-worker

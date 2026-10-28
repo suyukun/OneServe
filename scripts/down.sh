@@ -4,6 +4,8 @@ set -euo pipefail
 export PATH="$PATH:$HOME/.docker/bin"
 cd "$(dirname "$0")/.."
 
-docker compose down
+# 一键开箱批（2026-10-28）：带 --profile full 才能连 full 档组件（etcd/apisix/batch-worker）
+# 一起下线；demo 档用户裸 `docker compose down` 同样有效（默认档本就不含三件）。
+docker compose --profile full down
 echo "== 已下线（卷保留）=="
 docker volume ls --filter name=oneserve- --format '{{.Name}}'

@@ -7,9 +7,71 @@
 
 OneServe sits between your data warehouse copies (loaded into Redis as versioned KV) and external/internal callers. A thin FastAPI service exposes **type-A KV point queries** (and tag-style batch lookups) behind an **APISIX gateway** that authenticates callers by AppKey; a per-tenant **field whitelist** (auth matrix + console-issued credential registry) decides which fields each caller may see. Around that core: a portal + admin console for service publishing, grant management and credential lifecycle (sandbox trial keys, formal keys with OA ticket, rotation with overlap), an audit pipeline (JSONL / Kafka) with usage metering and reports, an optional PostgreSQL "meta database" twin of the YAML registries with migration/reconcile tooling, and a batch worker for asynchronous bulk delivery. Demo data and credentials are built in, so you can run a first end-to-end query in minutes.
 
-## Quickstart (minimal stack: redis + service, 2 terminals)
+## Quick start (one command)
 
-Prerequisites: Docker, Python 3.13+, `curl`, `jq`.
+Prerequisites: Docker (with Compose v2) — nothing else.
+
+```bash
+git clone https://github.com/suyukun/OneServe.git && cd OneServe
+docker compose up -d
+open http://localhost:8000
+```
+
+That is the whole setup. The first run builds the service image (~1-2 minutes; later starts take seconds). When the page opens, **everything below works with zero manual steps and no login** (no-login mode, [ADR-0029](docs/opensource/ADR-0029-开源版无登录模式.md)):
+
+- **Portal** at http://localhost:8000 — home KPIs, service catalog, API details, trial console (接口调试), docs, announcements.
+- **Admin console** at http://localhost:8000/admin/ — publish, appkeys, grants, tenants, monitor, load, versions, billing, upstreams: public, no login.
+- **Demo data auto-seeded** — the service container seeds Redis before boot whenever the demo sentinels are missing (idempotent: existing data is never re-seeded): 150 `usr_basic_info` records for the first query, a 2,000-user `usr_asset_tag` version pushed through the real sync chain (load → reconcile → switch), and portal announcements.
+- **Demo AppKey ready to curl** — your first query, through the portal's same-origin reverse proxy on :8000 (no extra ports needed):
+
+```bash
+curl -s -X POST http://localhost:8000/v1/query/v1-svc-usr-basic-info \
+  -H 'apikey: uat-c49d18ab72e03f55' \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"demo-partner-0001"}' | jq .
+```
+
+Expected: HTTP 200 with `found: true` and 12 whitelisted fields (`gender_cd`, `age_band`, `city_code`, ...). The same query works from the portal's **接口调试 (Trial)** page: pick `用户基本信息查询`, paste the AppKey and the key.
+
+> The `apikey` above is the **demo credential of the `partner-demo` tenant declared in [`service/auth_matrix.yaml`](service/auth_matrix.yaml)** — a committed demo value, not a production key. Machine callers always authenticate with an AppKey (checked by the service against the auth matrix / credential registry; at the gateway in the full profile).
+
+Built-in demo credentials (all committed demo values):
+
+| Tenant | AppKey | Try it with |
+|---|---|---|
+| `partner-demo` | `uat-c49d18ab72e03f55` | `v1-svc-usr-basic-info`, key `demo-partner-0001` (the curl above) |
+| `demo_bank` | `uat-7f3a9c21e5b84d06` | asset-tag services (SM3 query keys) |
+| `demo-1020` | `uat-58b0d2e7a9c14613` | `v1-svc-usr-asset-tag1020` |
+
+### Two profiles: demo (default) vs full
+
+| | `docker compose up` — demo, default | `docker compose --profile full up` (= `bash scripts/up.sh`) |
+|---|---|---|
+| Services | **3**: `redis` + `service` + `portal` | **6**: + `etcd` + `apisix` + `batch-worker` |
+| Portal + admin console | ✅ full feature set on http://localhost:8000 | ✅ same |
+| Demo data | ✅ auto-seeded | ✅ auto-seeded (same sentinels) |
+| Machine data plane :9080 (gateway AppKey plane: `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*`) | ❌ not in this profile — portal-origin queries fall back to the service layer automatically, and `/healthz` reports `gateway`/`etcd` as `degraded` honestly | ✅ APISIX key-auth + rate limit + gateway-side audit |
+| Async batch delivery worker | ❌ not in this profile | ✅ |
+
+Tear down with `docker compose down` (demo) or `docker compose --profile full down` (everything); add `-v` to also drop data volumes.
+
+## Full stack (Docker Compose `--profile full`, 6 services)
+
+```bash
+bash scripts/up.sh          # cp .env.example .env (first run) -> docker compose --profile full up -d --build -> wait healthy -> init APISIX routes
+```
+
+Brings up all 6 containers: `etcd`, `redis`, `apisix`, `service`, `batch-worker`, `portal` (the demo profile above runs the last three only — the gateway-side components are opt-in). Entrypoints after startup:
+
+| Entry | URL | Notes |
+|---|---|---|
+| Portal + admin console | http://localhost:8000 | Public, no login (ADR-0029): open the portal and you are on the home page; the admin console is directly usable |
+| Gateway (machine data plane) | http://localhost:9080 | `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*` — AppKey self-auth, no login |
+
+<details>
+<summary><b>Manual setup (without Docker)</b> — the old two-terminal quickstart, for developing against a local Redis</summary>
+
+Prerequisites: Python 3.13+, `curl`, `jq`, and a Redis.
 
 **Terminal 1 — start the minimal stack** (Redis published on `:6379`, the service on `:8000`; keep it running):
 
@@ -37,24 +99,11 @@ curl -s -X POST http://localhost:8000/v1/query/v1-svc-usr-basic-info \
   -d '{"key":"demo-partner-0001"}' | jq .
 ```
 
-Expected: HTTP 200 with `found: true` and 12 whitelisted fields (`gender_cd`, `age_band`, `city_code`, ...).
-
-> The `apikey` above is the **demo credential of the `partner-demo` tenant declared in [`service/auth_matrix.yaml`](service/auth_matrix.yaml)** — it is a committed demo value, not a production key. The request header locates the tenant and drives the field whitelist when calling the service directly. The portal and admin console are public (no human login — see `docs/opensource/ADR-0029-开源版无登录模式.md`); machine callers always authenticate with an AppKey at the gateway.
+Expected: HTTP 200 with `found: true` and 12 whitelisted fields.
 
 Also handy: `bash scripts/seed_demo_selftest.sh` runs the same flow (isolated ports, throwaway containers) as an end-to-end self-test using the built service image.
 
-## Full stack (Docker Compose, 6 services)
-
-```bash
-bash scripts/up.sh          # cp .env.example .env (first run) -> docker compose up -d --build -> wait healthy -> init APISIX routes
-```
-
-Brings up 6 containers: `etcd`, `redis`, `apisix`, `service`, `batch-worker`, `portal`. Entrypoints after startup:
-
-| Entry | URL | Notes |
-|---|---|---|
-| Portal + admin console | http://localhost:8000 | Public, no login (ADR-0029): open the portal and you are on the home page; the admin console is directly usable |
-| Gateway (machine data plane) | http://localhost:9080 | `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*` — AppKey self-auth, no login |
+</details>
 
 **Base image note (production build):** the dev compose builds `service` from [`service/Dockerfile`](service/Dockerfile) on the official `python:3.13-slim` — nothing to pre-build. The **prod** image [`Dockerfile.prod`](Dockerfile.prod) however builds on a locally pre-built hardened base:
 
@@ -78,7 +127,7 @@ docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/servic
 | Meta database twin (PostgreSQL) | `migrations/`, `scripts/meta_migrate.py`, `scripts/meta_reconcile.py` | YAML registries loaded into a meta DB; three-way reconcile + snapshot export |
 | Batch delivery | `service/app/batch_api.py`, `service/app/batch_worker.py` | Asynchronous bulk queries with quota, snapshots and result files |
 | Proxy hub (type-B passthrough) | `service/app/proxy_hub.py` | Whitelisted passthrough to registered upstreams, same auth + audit semantics |
-| Sync/load tooling + demo seed | `sync/`, `scripts/seed_demo.sh`, `scripts/load_demo_data.sh` | CSV -> Redis pipelines, mock generators, quickstart seed |
+| Sync/load tooling + demo seed | `sync/`, `scripts/seed_demo.sh`, `service/app/demo_seed.py`, `scripts/load_demo_data.sh` | CSV -> Redis pipelines, mock generators; **auto-seed on empty Redis at `docker compose up`** (sentinel-key idempotent, demo & full profiles) |
 
 ## Testing
 
