@@ -1,0 +1,79 @@
+{
+  "totalFields": 297,
+  "domains": [
+    {
+      "id": "basic",
+      "name": "基本信息域",
+      "fields": 42,
+      "services": 2,
+      "lastSyncAt": "2026-09-21T06:30:00+08:00",
+      "status": "ok",
+      "statusText": "正常",
+      "items": [
+        { "name": "标签点查", "api": "/v1/tags/query", "desc": "按 usr_id 点查授权标签字段" },
+        { "name": "基本信息批量查询", "api": "/v1/basic/query", "desc": "基本信息域字段批量取数" }
+      ]
+    },
+    {
+      "id": "behavior",
+      "name": "行为域",
+      "fields": 118,
+      "services": 2,
+      "lastSyncAt": "2026-09-21T06:30:00+08:00",
+      "status": "ok",
+      "statusText": "正常",
+      "items": [
+        { "name": "资讯行为查询", "api": "/v1/news/query", "desc": "资讯阅读/互动行为标签" },
+        { "name": "行为标签批量查询", "api": "/v1/behavior/query", "desc": "登录/活跃/点击/跳转等行为域字段" }
+      ]
+    },
+    {
+      "id": "channel",
+      "name": "渠道域",
+      "fields": 35,
+      "services": 1,
+      "lastSyncAt": "2026-09-21T06:30:00+08:00",
+      "status": "ok",
+      "statusText": "正常",
+      "items": [
+        { "name": "渠道偏好点查", "api": "/v1/channel/query", "desc": "渠道偏好与关联渠道标签" }
+      ]
+    },
+    {
+      "id": "risk",
+      "name": "风险域",
+      "fields": 27,
+      "services": 1,
+      "lastSyncAt": "2026-09-21T06:30:00+08:00",
+      "status": "ok",
+      "statusText": "正常",
+      "items": [
+        { "name": "风险管控标签查询", "api": "/v1/risk/query", "desc": "用户风险分级与管控标签" }
+      ]
+    },
+    {
+      "id": "marketing",
+      "name": "营销域",
+      "fields": 30,
+      "services": 1,
+      "lastSyncAt": "2026-09-21T06:30:00+08:00",
+      "status": "ok",
+      "statusText": "正常",
+      "items": [
+        { "name": "营销触达记录查询", "api": "/v1/marketing/query", "desc": "营销活动触达与响应标签" }
+      ]
+    },
+    {
+      "id": "subsidiary",
+      "name": "合作方域",
+      "fields": 45,
+      "services": 1,
+      "lastSyncAt": "2026-09-20T23:40:00+08:00",
+      "status": "warn",
+      "statusText": "同步延迟",
+      "items": [
+        { "name": "合作方接口代理", "api": "/v1/proxy/partner/*", "desc": "合作方接口受控代理" }
+      ]
+    }
+  ]
+}

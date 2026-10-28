@@ -1,0 +1,27 @@
+# OneServe 全量 pytest 依赖清单（固化版）
+# 用途：跑 tests/ 全量 pytest 所需的最小第三方依赖；版本＝2026-10-15 宿主实测锁定（Python 3.13.15 / macOS 26.6.2 arm64）。
+# R3 依赖卫生 2026-10-28：fastapi/starlette/redis 钉版对齐 service/requirements.lock 重出实际版
+# （redis 5.3.1 落 service 区间 >=5,<6）——本清单与 service/requirements.txt 可一条 pip 共装；
+# locust 自 service/requirements.txt 移入（压测专用，不在 pytest 收集路径）。
+# 纪律：跑全量前必核——先 pip install -r requirements-dev.txt，再逐项过 tests/evidence/环境指纹_20261015.md 的「全量前置检查清单」；
+#       任何一项缺席都可能触发「环境性假绿」（缺包 → 角色闸/JWT 断言 print+return 静默跳过，全量照样绿）。详见指纹回执 §事故复盘。
+# 依据：AST 扫描 tests/*.py + service/app/*.py 全部 import ＋ 宿主 pip freeze ＋ 全量运行 sys.modules 实测（1148 passed, 3 skipped）。
+
+pytest==9.1.1            # 测试运行器本体
+PyJWT==2.15.1            # ★今日事故主角：jwt 缺席 → _HAS_JWT=False → 角色闸/JWT 断言静默 SKIP 仍报绿（test_accounts_admin/test_auth_oidc）
+cryptography==50.0.2     # PyJWT RS256 验签后端＋测试自造 RSA 密钥（缺席同样触发 _HAS_JWT 降级）
+fastapi==0.162.0         # service/app 多数模块顶层裸 import（缺席→收集中断，响）；TestClient 层断言依赖（R3 对齐 lock）
+starlette==1.10.0        # fastapi 底座（main.py 顶层裸 import StarletteHTTPException；R3 对齐 lock）
+httpx2==2.13.1           # ★starlette TestClient 首选后端；缺席自动回退 httpx（实测 1148 绿仅带 deprecation warning）
+httpx==0.28.1            # TestClient 回退后端（httpx2 缺席时兜底；两者全缺才响亮失败）
+PyYAML==6.0.3            # yaml：20 个文件顶层裸 import（tests+service），缺席→收集中断，响
+redis==5.3.1             # main.py 顶层裸 import redis.asyncio（缺席→11 文件收集中断，响）；R3 对齐 service 区间 >=5,<6（lock 5.3.1），消除与运行清单的 ResolutionImpossible
+pydantic==2.14.1         # batch_api.py 顶层裸 import（fastapi 亦传递依赖）
+sqlglot==26.33.0         # schema_import.py 顶层裸 import（缺席→8 文件收集中断，响）
+gmssl==3.2.2             # kv_executor.sm3_hex 懒加载＋sync/gen_mock_source、access/sm3_ref 顶层裸 import（缺席→test_kv_executor/test_sm3_ref 收集 ImportError，响）
+locust==2.47.0           # 压测梯子驱动（loadtest/run_level.sh `python3 -m locust`＋testkit）；R3 自 service/
+                         # requirements.txt 移入——仅压测用不入运行时镜像，pytest 全量不 import（tests/ 零引用已核）。
+
+# —— 以下两包在 pytest 全量收集/执行路径内【不】被加载（happybase/kafka 均延迟导入或不在收集范围），
+#    为服务运行时/冒烟脚本所需，已由 service/requirements.txt 覆盖，此处不列入"跑全量最小集"：
+#    happybase==1.3.0（hbase_executor 延迟导入）、kafka-python==3.0.11（仅 tests/evidence/kafka-smoke-* 脚本直跑用）

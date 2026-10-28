@@ -1,0 +1,366 @@
+# OneServe M0 骨架（task-002）：APISIX 网关 + etcd + 薄服务层 + Redis
+# 端口约定：网关公口 9080（唯一对外）；apisix admin 9180 / service 8000 仅内网；redis 不发布宿主机端口。
+# 镜像官方源（开源批 B2）；全部 arm64 原生（task-001 POC 实证）。
+# 容器/网络/卷命名一律 oneserve- 前缀。
+name: oneserve
+
+# ── 日志滚动（蓝图 1a 批·监控最小集）：json-file 带上限，防容器日志撑爆磁盘 ──
+# 单容器 10m×3 文件封顶；全部服务统一引用锚点。compose.prod.yml 形态经 compose merge 继承本配置（两形态都生效）。
+x-log-rotation: &log-rotation
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ---------- 配置存储：etcd（APISIX 依赖；POC 实测镜像 tag 直接沿用） ----------
+  etcd:
+    image: bitnamilegacy/etcd:3.5.9-debian-11-r99
+    container_name: oneserve-etcd
+    logging: *log-rotation
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes   # M0 本机开发口径（生产必改认证）
+    volumes:
+      - oneserve-etcd-data:/bitnami/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - oneserve-net
+
+  # ---------- 网关：APISIX（task-001 POC 锁定） ----------
+  apisix:
+    image: apache/apisix:3.18.0-debian
+    container_name: oneserve-apisix
+    logging: *log-rotation
+    depends_on:
+      etcd:
+        condition: service_healthy
+    ports:
+      - "9080:9080"                     # 网关公口（合作方调用入口）
+    volumes:
+      - ./configs/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+    # 9180（Admin API）不发布——仅 compose 网内可达，初始化走 service 容器内脚本
+    environment:
+      # config.yaml 的 ${{APISIX_ADMIN_KEY}} 展开（APISIX 原生 env 替换）——不注入＝
+      # 展开不到起栈 Exited(1)（同 compose.prod.yml dc3ae43 修复根因）；注入式与
+      # prod/本文件 service 块同源同文，缺省报错阻断起栈。
+      - APISIX_ADMIN_KEY=${APISIX_ADMIN_KEY:?APISIX_ADMIN_KEY 未设置——cp .env.example .env 后填真值}
+    healthcheck:
+      # 镜像内无 curl/wget：用 bash /dev/tcp 发原始 HTTP 探测数据面应答（任意 URI 返回 HTTP 行即活）
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9080; printf \"GET /oneserve-healthcheck HTTP/1.0\\r\\n\\r\\n\" >&3; read -r line <&3; case \"$$line\" in HTTP*) exit 0;; *) exit 1;; esac'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - oneserve-net
+
+  # ---------- KV：Redis（noeviction + AOF everysec，SPEC §4.1 配置规范） ----------
+  redis:
+    image: valkey/valkey:8-alpine
+    container_name: oneserve-redis
+    logging: *log-rotation
+    command:                           # 配置进 command（最小实现；挂载配置文件留 M1）
+      - redis-server
+      - --maxmemory-policy
+      - noeviction                     # 内存满即拒写，不驱逐标签数据（不读脏口径）
+      - --appendonly
+      - "yes"                          # AOF 开
+      - --appendfsync
+      - everysec                       # 每秒刷盘（性能/安全折中）
+    volumes:
+      - oneserve-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks:
+      - oneserve-net
+    # 不发布宿主机端口（仅网内）
+
+  # ---------- 统一登录：Casdoor（OIDC IdP；2026-10-14 集成，ADR-0010 硬前提兑现起点） ----------
+  # 调研报告 Top1 落地路径第 1 步：独立 IAM 容器＋独立 DB（待确认项#1 建议独立）。
+  # 镜像官方源（开源批 B2 去加速前缀）；
+  # 官方镜像 sqlite 驱动实测不可用（panic CANTOPEN/14）→ postgres 16（仅容器网内）。
+  # 组织 oneserve/应用 oneserve-admin/测试用户 tester 经 API 幂等 init
+  # （tests/test_auth_oidc.py live 节）——init 后落库卷，重启不丢。
+  casdoor-db:
+    image: postgres:17-alpine   # 本机已有镜像直用（2026-10-14 实测镜像拉取慢；新机器拉官方同名 tag）
+    container_name: oneserve-casdoor-db
+    logging: *log-rotation
+    environment:
+      - POSTGRES_USER=casdoor
+      - POSTGRES_PASSWORD=${CASDOOR_DB_PASSWORD:?CASDOOR_DB_PASSWORD 未设置——cp .env.example .env 后填真值（凭证不进代码仓）}   # 仅网内，不发布宿主端口；真值在 .env（出库批 2026-10-20）
+      - POSTGRES_DB=casdoor
+    volumes:
+      - oneserve-casdoor-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U casdoor -d casdoor"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 5s
+    networks:
+      - oneserve-net
+  casdoor:
+    image: casbin/casdoor:latest
+    container_name: oneserve-casdoor
+    logging: *log-rotation
+    depends_on:
+      casdoor-db:
+        condition: service_healthy
+    # app.conf 模板启动期渲染（密钥出库批 2026-10-20）：beego 不展开 ${VAR}（隔离实证），
+    # 由 render_app_conf.sh 用环境值把模板渲染进 tmpfs /conf（不落仓库、不落磁盘），再 exec 原入口 /server。
+    entrypoint: ["/bin/sh", "-c", "/conf-tpl/render_app_conf.sh && exec /server"]
+    # 渲染变量注入（2026-10-20 部署地址批补全：出库批漏写服务级 environment，recreate 即
+    # 触发渲染脚本 ：? 快速失败——运行中 dev 容器系出库前旧形态故未暴露；默认值渲染产物
+    # 与出库前明文 app.conf 逐字节一致，行为不变口径不变）。
+    environment:
+      - CASDOOR_DB_PASSWORD=${CASDOOR_DB_PASSWORD:?CASDOOR_DB_PASSWORD 未设置——cp .env.example .env 后填真值}   # app.conf.template 渲染同源
+      - CASDOOR_ADMIN_PASSWORD=${CASDOOR_ADMIN_PASSWORD:?CASDOOR_ADMIN_PASSWORD 未设置——cp .env.example .env 后填真值}   # app.conf.template initAdminPassword 同源
+      - PROD_PUBLIC_ORIGIN=${PROD_PUBLIC_ORIGIN:-http://localhost:8000}   # 部署地址（origin/staticBaseUrl 渲染；缺省＝dev 本机口径）
+    volumes:
+      - ./configs/casdoor:/conf-tpl:ro       # app.conf.template＋渲染脚本（${VAR} 引用，无明文凭据）
+      - oneserve-casdoor-data:/data          # 日志持久化（DB 在下方独立卷）
+    # 渲染产物 /conf 走 tmpfs（内存盘，容器即焚）。2026-10-22 三连实证：volumes 内长定义
+    # （type: tmpfs＋size/mode）compose config 渲染正确但引擎落成宿主 bind（touch 探针
+    # 落盘实证）；/conf:tmpfs 短形态被 parse 成 bind 报错；服务级 tmpfs 键为最终采用写法。
+    # uid1000 可写靠 tmpfs 默认 1777，渲染后 chmod 600 不变（render_app_conf.sh）。
+    tmpfs:
+      # 2026-10-22 58（Kylin+docker18.09）实证：该引擎忽略 tmpfs mode（挂出 755 root），
+      # uid1000 渲染被拒；uid=1000 参数引擎认（探针可写）——Mac Desktop 与 58 双端兼容
+      # （casdoor 镜像自身 USER 1000，目录主人=运行身份，语义与 1777 等价且更收紧）。
+      - /conf:mode=1777,uid=1000
+    # 裁决#5（2026-10-16）19000 宿主映射收口→ADR-0018（2026-10-19）同源部署：
+    # Casdoor 无宿主端口、仅容器网内（service 走 OIDC_INTERNAL_BASE=
+    # oneserve-casdoor:8000；门户 nginx 白名单分流 /login,/assets,/api/login 等，
+    # 管理 API 不放行）。浏览器只见门户统一入口 :8000；origin/iss=门户入口口径
+    # （app.conf 与 PROD_PUBLIC_ORIGIN 同源派生，2026-10-20 部署地址批）。原 19000:8000 裸发宿主保持收掉。
+    healthcheck:                              # OIDC 发现端点应答即活（镜像内 wget 可用）
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    networks:
+      - oneserve-net
+
+  # ---------- W6 seed 引导（登录墙设计 B4 · ADR-0016）：bootstrap admin（幂等） ----------
+  # 一次性容器：Casdoor 就绪后跑 configs/casdoor/bootstrap_admin.py——ONESERVE
+  # _BOOTSTRAP_ADMIN_USER/PASSWORD 建平台管理员并挂 tag=admin（角色真源 Casdoor
+  # 用户 tag）；已存在即跳过（不改密码）。密码不进仓：.env 注入（.env.example 留
+  # 占位），两个变量任一未设置＝脚本按契约 no-op 退出 0。built-in admin 仅部署
+  # 通道（app.conf initAdminPassword），本服务不触碰它。复用 service 镜像的
+  # python（同 configs/apisix /init 借道口径），不新增镜像。
+  casdoor-init:
+    image: oneserve/service:m0
+    build: ./service
+    container_name: oneserve-casdoor-init
+    logging: *log-rotation
+    depends_on:
+      casdoor:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      - CASDOOR_INTERNAL_BASE=http://oneserve-casdoor:8000       # 容器网内通道（浏览器口径 issuer=19000 另算）
+      - CASDOOR_ADMIN_PASSWORD=${CASDOOR_ADMIN_PASSWORD:?CASDOOR_ADMIN_PASSWORD 未设置——cp .env.example .env 后填真值}   # built-in admin（与 app.conf.template 同源；生产必改）
+      - ONESERVE_BOOTSTRAP_ADMIN_USER=${ONESERVE_BOOTSTRAP_ADMIN_USER:-}      # 未设置＝no-op 跳过
+      - ONESERVE_BOOTSTRAP_ADMIN_PASSWORD=${ONESERVE_BOOTSTRAP_ADMIN_PASSWORD:-}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-oneserve-admin-client}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET 未设置——cp .env.example .env 后填真值}
+      - PROD_PUBLIC_ORIGIN=${PROD_PUBLIC_ORIGIN:-http://localhost:8000}   # 应用 redirectUris 派生源（与 service 授权回调严格同值；缺省＝dev 本机口径）
+    volumes:
+      - ./configs/casdoor:/init:ro                               # bootstrap 脚本只读挂入
+    command: ["python", "/init/bootstrap_admin.py"]
+    networks:
+      - oneserve-net
+
+  # ---------- 薄服务层：FastAPI（Python 3.13，task-002 定版） ----------
+  service:
+    build: ./service
+    image: oneserve/service:m0
+    container_name: oneserve-service
+    logging: *log-rotation
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://oneserve-redis:6379/0
+      - AUDIT_DIR=/data/audit
+      # 审计管线三模（2026-10-15 #76，ADR-0017）：local=现状 JSONL；kafka=仅 Kafka；dual=双写对账。
+      # Kafka 测试栈：compose.kafka.yml（独立 project），service 经宿主 9092 端口映射互达。
+      - AUDIT_PIPELINE=${AUDIT_PIPELINE:-local}
+      # task-029：登录层审计＝消费 Casdoor 原生记录（app/audit_casdoor_puller.py）。
+      # AUDIT_LOGIN_CONSUME 缺省 on；off＝完全不启拉取线程（测试/排障友好）。
+      # CASDOOR_ADMIN_PASSWORD＝built-in admin 部署通道凭证（与 casdoor-init 同源、
+      # 与 configs/casdoor/app.conf.template 的 initAdminPassword 同值）；仅拉 /api/get-records。
+      - AUDIT_LOGIN_CONSUME=${AUDIT_LOGIN_CONSUME:-on}
+      - CASDOOR_ADMIN_PASSWORD=${CASDOOR_ADMIN_PASSWORD:?CASDOOR_ADMIN_PASSWORD 未设置——cp .env.example .env 后填真值}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:9092}
+      - KAFKA_AUDIT_TOPIC=${KAFKA_AUDIT_TOPIC:-oneserve-audit}
+      - APISIX_APPKEY=${APISIX_APPKEY:?APISIX_APPKEY 未设置——cp .env.example .env 后填真值}  # 仅供网关初始化脚本读用
+      - SYNC_REDIS_URL=redis://oneserve-redis:6379/0  # task-003：借本容器跑 sync 加载/对账/切换脚本（scripts/load_demo_data.sh）
+      - BATCH_RESULTS_DIR=/data/batch-results  # M15-3：结果交付端点读分片（与 batch-worker 同值，共用 named volume）
+      - APISIX_ADMIN=http://oneserve-apisix:9180       # P0-4：网关 Admin API 通道（init_routes 同款，仅内网）
+      # A窗 2026-10-19（性能测试页容器内触发使能，走查 P4 三步法落地）：
+      #  ONESERVE_APPKEY=压测常驻凭证（sb_，.env 注入——permanent＋全已发布服务授权＋压测级配额）；
+      #  ONESERVE_LOADTEST_DIR/LOADTEST_HOST=容器内梯子根与网关目标（localhost:9080 容器内不可达）。
+      - ONESERVE_APPKEY=${ONESERVE_APPKEY:-}
+      - ONESERVE_LOADTEST_DIR=/app/loadtest
+      - LOADTEST_HOST=http://oneserve-apisix:9080
+      - APISIX_ADMIN_KEY=${APISIX_ADMIN_KEY:?APISIX_ADMIN_KEY 未设置——cp .env.example .env 后填真值}
+      # 2026-10-14：管理令牌闸第三次反转拆除（维护者 拍板，见 docs/adr/0010）——后端
+      # _admin_gate 恒放行，不再校验 X-Admin-Token，本注入行注释停用（值真源
+      # service/app/dev_token.py 保留）。恢复方法：恢复闸（admin_api._admin_gate
+      # 还原三行校验，形态见 commit bcf34f8）后取消下行注释即可。
+      # - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:-admin321}  # P0-4：/v1/admin/* 写端点管理令牌（开发占位）
+      - SB_TTL_DAYS=${SB_TTL_DAYS:-7}                  # P0-4：沙箱凭证 TTL（D8 同源：7 天起步可配）
+      # OIDC 登录闸（2026-10-14 Casdoor 集成，ADR-0010 硬前提兑现）：管理写操作族
+      # （/v1/admin/* POST/PUT/DELETE/PATCH）Bearer JWT 校验；读端点与门户不动。
+      # 缺省 on＝起栈即护（宿主机直跑单测走代码缺省 off，见 auth_oidc._cfg）。
+      - AUTH_OIDC_MODE=${AUTH_OIDC_MODE:-on}
+      - OIDC_ISSUER=${PROD_PUBLIC_ORIGIN:-http://localhost:8000}   # iss 校验口径＝部署地址派生（ADR-0018 同源；ECS 部署只设 PROD_PUBLIC_ORIGIN 一个变量）
+      - OIDC_REDIRECT_URI=${PROD_PUBLIC_ORIGIN:-http://localhost:8000}/admin/auth-callback.html   # 授权回调（须与 Casdoor 应用 redirectUris 严格一致——casdoor-init 同源派生）
+      - OIDC_INTERNAL_BASE=http://oneserve-casdoor:8000            # 容器网内 JWKS/token 通道
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-oneserve-admin-client}   # 开发占位（app oneserve-admin）
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET 未设置——cp .env.example .env 后填真值}
+      # v1.1 裁决#5 isAdmin 收口：账号管理通道改常规 seed admin 账号（与 casdoor-init
+      # 同源注入；built-in admin 后门通道停用，admin_accounts._admin_session 不再用它）
+      - ONESERVE_BOOTSTRAP_ADMIN_USER=${ONESERVE_BOOTSTRAP_ADMIN_USER:-}
+      - ONESERVE_BOOTSTRAP_ADMIN_PASSWORD=${ONESERVE_BOOTSTRAP_ADMIN_PASSWORD:-}
+      - REGISTRY_POLL_INTERVAL_S=${REGISTRY_POLL_INTERVAL_S:-30}  # M2-3.5：services.yaml 热加载轮询间隔（60s 判据＝两拍间隔）
+      # M2（架构口径 ADR-0005）：HBase＝冷存储数据源，供「页面选表→加载到 Redis」链路读取。
+      # 卡1（配置/密钥双轨，2026-09-30）：非敏感连接参数默认走 /app/config/connections.yaml
+      # （下方只读挂载，进仓可注释可校验）；密钥类永不落仓——经环境变量注入，YAML 只存
+      # 密钥文件路径引用。这里缺省注入**空串**（＝不覆盖，装配链 env > yaml > 默认在
+      # service/app/connections.py）；.env 显式设置 HBASE_HOST/HBASE_PORT 则环境变量优先
+      #（宿主机自测不经容器时指向 127.0.0.1:9090）。开发替身 oneserve-hbase 由
+      # compose.hbase.yml 提供且默认不起——不可达时端点按设计如实报 HBASE_UNAVAILABLE
+      #（fail-closed，不返回假元数据）；一键起 HBase：bash scripts/up_hbase.sh
+      - HBASE_HOST=${HBASE_HOST:-}
+      - HBASE_PORT=${HBASE_PORT:-}
+      # 服务容器 pg 直连通道（2026-10-21 前置卡·对抗复核 P0-1 根治）：五键全空缺省＝
+      # 现状零影响（META_WRITER 缺省 yaml 不走 db 通道；db 通道仅 META_DB_HOST 非空时
+      # 组装容器内 psql -h 直连，否则走宿主 docker compose exec 缺省通道）。dev 不配值
+      # ＝不启用；启用容器内通道＝prod 形态（compose.prod.yml service 块同键注释）。
+      # 注意 USER/PASSWORD 不用 ${META_DB_*:-} 展开——同名 .env 键系 metadata-db 引导
+      # 超户口径（compose.metadata.yml），误连超户风险封死，故写死空串。
+      - META_DB_HOST=
+      - META_DB_PORT=
+      - META_DB_USER=
+      - META_DB_PASSWORD=                        # 口令永不进仓；prod 绑 .env META_APP_PASSWORD
+      - META_DB_DATABASE=
+    expose:
+      - "8000"                          # 仅内网；经网关对外，不发布宿主机端口
+    volumes:
+      - oneserve-audit-data:/data/audit           # 审计 JSONL+WAL（named volume，容器重启不丢）
+      - oneserve-retention-data:/data/retention   # task-007：B 型代理留存落盘（U-10 留口）
+      - oneserve-batch-results:/data/batch-results  # M15-3：结果交付端点与 batch-worker 共用此卷（同源读分片）
+      - ./configs/apisix:/init:ro                 # 网关初始化脚本（借本容器 python 调 Admin API）
+      - ./sync:/sync                             # task-003 同步链路挂入；2026-10-09 B1 表结构登记需写回 schema_<表>.csv 真源改 rw（写端点经管理令牌闸保护）
+      - ./config:/app/config:ro                   # 卡1：外部数据源连接配置 connections.yaml（非敏感参数；密钥走 env/密钥文件）
+      - ./service:/app                            # P1-10/11+M2-3.5 合并口径：service 目录整体挂载 rw——
+                                                   #  console_services 写区+upstreams.yaml 原子写（P1）+热加载 mtime 轮询（M2-3.5）
+                                                   #  +registry/ 签发写回同源；task-007 口径保留：运行时区改动重启生效
+      - ./loadtest:/app/loadtest                   # A窗 2026-10-19：压测页容器内触发（_perf_paths 经 ONESERVE_LOADTEST_DIR 消费；结果写回宿主 loadtest/results 同源可见）
+      # 前置卡 2026-10-21：meta_writer db 模式容器内规划器（meta_snapshot.load_migrate
+      # 容器内回退路径 /app/scripts/meta_migrate.py；ro 单文件挂载，yaml 模式不加载零影响）。
+      # 本文件改动不热生效——在跑 dev 容器按既有形态继续，下次例行重建后生效。
+      - ./scripts/meta_migrate.py:/app/scripts/meta_migrate.py:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - oneserve-net
+
+  # ---------- 批量 worker：同镜像 sidecar（TASK-M15-2；B3 单 worker 并发=1，D13 同镜像纪律） ----------
+  # 与 service 同镜像、仅入口不同：FIFO 消费 Redis 任务队列→分片读→分片落盘。
+  # 杀进程安全（门槛稿 A4）：分片先落盘后写检查点，restart 崩溃自拉起按检查点续跑。
+  batch-worker:
+    image: oneserve/service:m0
+    build: ./service                    # 与 service 同一构建（compose 复用同 tag）
+    container_name: oneserve-batch-worker
+    logging: *log-rotation
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "app.batch_worker"]
+    environment:
+      - REDIS_URL=redis://oneserve-redis:6379/0
+      - BATCH_RESULTS_DIR=/data/batch-results   # 分片产物根目录（shard 落盘）
+      - BATCH_AUDIT_DIR=/data/audit/batch       # M15-5：任务级终态审计（独立子目录＝
+                                                # 与 service 同卷不同文件，WAL 单写者纪律）
+    restart: unless-stopped           # worker 崩溃→重启→recover_running 续跑（A4）
+    healthcheck:
+      # P2a：worker 探针（纯脚本容器不起 HTTP 口，取进程＋队列通道轻检最小方案）：
+      # ① app.batch_worker 进程在——扫 /proc/<pid>/cmdline（镜像无 pgrep；排除探针
+      #    自身 pid，防探针命令行自含 'app.batch_worker' 字样假阳性）；
+      # ② Redis 队列通道 TCP 可达——按 REDIS_URL 解析建连即断（FIFO 消费的前提；
+      #    redis 容器另有自身 healthcheck，这里探的是 worker→redis 的网内通路）。
+      test: ["CMD", "python", "-c", "import glob, os, socket; from urllib.parse import urlparse; me = os.getpid(); pids = [p for p in glob.glob('/proc/[0-9]*/cmdline') if int(p.split('/')[2]) != me]; assert any('app.batch_worker' in open(p, errors='ignore').read() for p in pids), 'batch_worker 进程不在'; u = urlparse(os.environ.get('REDIS_URL', 'redis://oneserve-redis:6379/0')); s = socket.create_connection((u.hostname, u.port or 6379), timeout=3); s.close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - oneserve-batch-results:/data/batch-results   # named volume（M15-3 交付端点共用此卷）
+      - oneserve-audit-data:/data/audit              # M15-5：审计卷（batch 子目录写入）
+    networks:
+      - oneserve-net
+
+
+  # ---------- 门户静态站（汇报版 MPA；构建期产物直接挂载，零运行时构建） ----------
+  # 非 root 口径（镜像生产化 1b 批·词条② 2026-10-21）：基镜像换 nginx-unprivileged
+  # （内置 USER 101），监听口随 configs/nginx/portal-nginx.conf 改 8080（>1024 免特权），
+  # 宿主映射口 8000 不变。注意：本文件改动不热生效——在跑的 dev portal 容器按既有
+  # 形态继续服务，下次例行重启后按本形态重建（本批不起停现存容器）。
+  portal:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    container_name: oneserve-portal
+    logging: *log-rotation
+    volumes:
+      - ./portal:/usr/share/nginx/html:ro   # admin/ 由 build_portal.py 构建期同步进 portal/admin（修 Docker29 嵌套挂载 bug）
+      - ./configs/nginx/portal-nginx.conf:/etc/nginx/conf.d/default.conf:ro   # v4：门户站点配置（静态＋/admin 干净 URL＋/v1/portal、/v1/ 与 /demo 反代；listen 8080/8443）
+      - ./certs/dev:/etc/nginx/certs:ro       # TLS 预留（蓝图 1a）：证书由 scripts/gen-dev-cert.sh 生成，目录不入 git；起栈前先跑该脚本
+    ports:
+      - "8000:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/index.html"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+    networks:
+      - oneserve-net
+
+networks:
+  oneserve-net:
+    name: oneserve-net
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16   # 定死网段：供 APISIX allow_admin 精确放行内网初始化流量
+
+volumes:
+  oneserve-etcd-data:
+    name: oneserve-etcd-data
+  oneserve-redis-data:
+    name: oneserve-redis-data
+  oneserve-casdoor-data:              # 2026-10-14：统一登录 Casdoor 日志区
+    name: oneserve-casdoor-data
+  oneserve-casdoor-db-data:           # 2026-10-14：Casdoor postgres 库（组织/应用/用户）
+    name: oneserve-casdoor-db-data
+  oneserve-audit-data:
+    name: oneserve-audit-data
+  oneserve-retention-data:
+    name: oneserve-retention-data
+  oneserve-batch-results:               # M15-2：批量任务分片产物（7 天清理策略归 M15-3/5）
+    name: oneserve-batch-results

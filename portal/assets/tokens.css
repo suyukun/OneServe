@@ -1,0 +1,162 @@
+/* ============================================================
+ * OneServe 门户 · 设计令牌（:root 单处定义，全站唯一取色/取距来源）
+ * 依据：门户修订包-议题二 v1.1（VI 双轨色板/防呆防花哨/必须级细节表）
+ *      ＋ 调研 B §1（13 阶中性/8-16-24 间距/24 列栅格/色板纪律）
+ * 规则：品牌红全站≤2 处；状态色只作语义不作装饰；分类色≤7 全站一份；
+ *      间距只用 8/16/24；圆角 8；阴影一档；动效≤300ms、无常驻循环。
+ * ============================================================ */
+:root {
+  /* ── 品牌双轨（VI 标准 HEX 到位后，仅替换 --brand-primary 一处） ── */
+  --brand-primary: #C8102E;      /* 浅色工作台主色（白底 5.88:1）· 全站使用≤2 处 */
+  --brand-dark-accent: #E85B6B;  /* 深色运行视图强调色（深底 6.7:1）· P-3 使用 */
+
+  /* ── 状态色（语义专用：绿=正常 红=异常 黄=警告；灯旁必配文字） ── */
+  --status-ok: #009423;
+  --status-error: #CB272D;
+  --status-warn: #D4760A;
+
+  /* ── 图表分类色（全站一份，≤7；同一实体全站同色；P-1 用于趋势线） ── */
+  --chart-1: #5070dd;
+  --chart-2: #505372;
+  --chart-3: #785db0;
+  --chart-4: #0ca8df;
+  --chart-5: #ff994d;
+  --chart-6: #3fbe95;
+  --chart-7: #fb628b;
+
+  /* ── 中性 13 阶（调研 B §1.1：中性色 13 阶管文字/背景/边框） ── */
+  --neutral-1: #ffffff;
+  --neutral-2: #fafafa;
+  --neutral-3: #f5f5f5;
+  --neutral-4: #f0f0f0;
+  --neutral-5: #d9d9d9;
+  --neutral-6: #bfbfbf;
+  --neutral-7: #8c8c8c;
+  --neutral-8: #595959;
+  --neutral-9: #434343;
+  --neutral-10: #262626;
+  --neutral-11: #1f1f1f;
+  --neutral-12: #141414;
+  --neutral-13: #000000;
+
+  /* ── 语义别名（组件只允许引用别名，不直写 HEX） ── */
+  --bg-page: var(--neutral-2);
+  --bg-card: var(--neutral-1);
+  --bg-subtle: var(--neutral-3);
+  --bg-inset: var(--neutral-4);
+  --border-strong: var(--neutral-5);   /* 卡片细边框 */
+  --border-light: var(--neutral-4);    /* 内部分隔线 */
+  --text-strong: var(--neutral-10);    /* 大数字/标题 */
+  --text-body: var(--neutral-9);       /* 正文（白底 9.7:1） */
+  --text-muted: var(--neutral-8);      /* 小字灰/来源标注（白底 7.0:1） */
+  --text-faint: var(--neutral-7);      /* 仅非信息性装饰，不得承载数据 */
+
+  /* ── 间距刻度：全站仅 8 / 16 / 24 三档 ── */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+
+  /* ── 栅格：24 列 · gutter 24 · 两档设计宽 1440/1920 · 1280 保底 ── */
+  --grid-columns: 24;
+  --grid-gutter: 24px;
+  --container-max: 1920px;
+  --container-pad: 24px;
+
+  /* ── 组件尺寸基线（议题二 v1.1） ── */
+  --topbar-height: 56px;
+  --radius: 8px;
+  --shadow-1: 0 2px 8px rgba(20, 20, 20, 0.08);   /* 阴影仅一档 */
+
+  /* ── 门面批 2026-10-08：侧栏「待完成」徽标配色（黄底 --status-warn 配深黄字） ── */
+  --warn-ink: #6b4a00;          /* 黄底徽标文字（浅色口径，对 #D4760A 底深黄可读） */
+
+  /* ── 发布台向导增补（页面视觉标准 v1 §3 扩容：仅新增令牌，不改旧值，全站零风险） ── */
+  --status-info: #2563eb;      /* 进行中/链接/中性通知（浅色口径；深色段重定义） */
+  --brand-on: #ffffff;         /* 主按钮文字色（品牌色伴生值，仅按钮/进度当前字用；深色段重定义） */
+  --bg-input: var(--bg-inset);  /* 输入框底：比卡片底深/浅一档（视觉诊断：输入框与卡片底明度太近；深色段随 bg-inset 变体） */
+  --fs-caption: 12px;          /* 角标/来源标注/表头（=--fs-small，命名对齐视觉标准 §3.2） */
+  --fs-heading: 20px;          /* 页面题（页头 H1） */
+  --fs-display: 32px;          /* KPI 大数字/向导完成态数字 */
+  --space-4: 16px;             /* 视觉标准 §3.3 新刻度新增段（旧 --space-1/2/3=8/16/24 不动） */
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* ── P1 双轨制新刻度（DESIGN v1.1 §1 D4，2026-10-16 走查批落地）：
+     --os-space-* 为新代码唯一合法间距 scale（组件内微观→页面级留白 7 档；
+     主题无关，:root 单处定义）。存量 --space-* 值不动防静默回归。 ── */
+  --os-space-1: 4px;    /* 组件内微观（图标与文字/徽标内距） */
+  --os-space-2: 8px;    /* 组件内边距（按钮/输入） */
+  --os-space-3: 12px;   /* 组件紧邻（表单行/表格单元） */
+  --os-space-4: 16px;   /* 组件常规（卡内区块/列表行） */
+  --os-space-5: 24px;   /* 区块间（卡间/表单分组） */
+  --os-space-6: 32px;   /* 大区块间（页头与内容） */
+  --os-space-7: 48px;   /* 页面级留白（完成页/空态） */
+  --radius-sm: 4px;            /* 徽标/标签/小输入 */
+  --radius-full: 999px;        /* 胶囊徽标/圆点 */
+
+  /* ── 动效：仅首载淡入与 hover 反馈；≤300ms；常驻循环动画 0 个 ── */
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-duration: 240ms;
+
+  /* ── 字号/字重 ── */
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-kpi: 36px;      /* 数字条大数字（大字≥3:1，单色） */
+  --fs-title: 16px;    /* 卡片标题 */
+  --fs-body: 13px;     /* 正文 */
+  --fs-small: 12px;    /* 辅助说明 */
+  --fs-tiny: 11px;     /* 来源标注/角标 */
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * 深色主题（P-1R · 全站 data-bs-theme="dark"，维护者 拍风格 A）
+ * 规则：沿用既有令牌名，仅重定义语义别名取值——组件层零改动即整体换深色；
+ *      品牌红切深底变体（--brand-dark-accent #E85B6B，深底约 6.7:1），使用≤2 处不变；
+ *      状态色同步提亮一档保深底对比（语义不变：绿=正常 红=异常 黄=警告）；
+ *      Tabler 变量在此一并接管（tokens 后载于 vendor，覆盖生效）。
+ * ══════════════════════════════════════════════════════════════════ */
+[data-bs-theme="dark"] {
+  /* ── 品牌双轨：深底主色切换（沿用 --brand-primary 令牌名） ── */
+  --brand-primary: var(--brand-dark-accent);
+
+  /* ── 状态色（深底提亮，语义专用不变） ── */
+  --status-ok: #3fb965;
+  --status-error: #ef6b6b;
+  --status-warn: #e2a03f;
+
+  /* ── 图表分类色：仅趋势线在用的 --chart-1 提亮，其余沿用 ── */
+  --chart-1: #7b93ec;
+
+  /* ── 语义别名重定义为深色（中性 13 阶为浅色口径保留，不自改） ── */
+  --bg-page: #12151c;          /* 深蓝底（整体调亮一档，提高层次对比） */
+  --bg-card: #1a2029;          /* 卡片面 */
+  --bg-subtle: #202836;        /* 侧导航/内嵌底 */
+  --bg-inset: #263244;         /* 骨架屏/代码块底 */
+  --border-strong: #2e3c50;    /* 卡片细边框 */
+  --border-light: #253040;     /* 内部分隔线 */
+  --text-strong: #e8ebf1;      /* 大数字/标题 */
+  --text-body: #bcc4d0;        /* 正文 */
+  --text-muted: #828d9c;       /* 小字灰/来源标注 */
+  --text-faint: #5a6472;       /* 仅非信息性装饰 */
+  --status-info: #6ea8fe;      /* 深底提亮（视觉标准 §3.1） */
+  --warn-ink: #4a3305;         /* 黄底徽标文字（深底口径，对提亮黄 #e2a03f 底深黄可读） */
+  --brand-on: #14161a;         /* 深底主按钮文字色（视觉标准 §3.1） */
+  --bg-input: var(--bg-inset);  /* 输入框底（深色随 inset 档 #263244，与卡片 #1a2029 拉开一档） */
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+  /* ── 语义色 bg/fg 变体（T2 清账补入·fields.css 敏感级徽标用） ── */
+  --info-bg: #e6f4ff;            /* 信息底（浅蓝） */
+  --info-fg: #0958d9;            /* 信息字（深蓝） */
+  --danger-bg: #fff1f0;          /* 危险底（浅红） */
+  --danger-fg: #cf1322;          /* 危险字（深红） */
+
+  /* ── Tabler 接管：主色＝品牌红深底变体；面板/边框对齐本令牌体系 ── */
+  --tblr-primary: #E85B6B;
+  --tblr-primary-rgb: 232, 91, 107;
+  --tblr-body-bg: var(--bg-page);
+  --tblr-bg-page: var(--bg-page);
+  --tblr-bg-surface: var(--bg-card);
+  --tblr-bg-surface-secondary: var(--bg-subtle);
+  --tblr-border-color: var(--border-light);
+}

@@ -1,0 +1,75 @@
+# OneServe testkit 配置——单一来源（复制为 config.toml 可本地覆盖，config.toml 不入库）。
+# 画像与口径锚定：loadtest/locustfile.py（闭环无思考时间＋键池随机取样）、
+# loadtest/run_level.sh（每档 70s＝10s 起压＋60s 全并发）、SPEC §6.1（SLA 口径）。
+
+[general]
+host = "http://localhost:9080"            # 网关地址（经网关黑盒打，不直连服务）
+env_stage = "本机M0"                       # 基线按 env.stage 隔离，只比同环境迁移前后
+note = "Docker Desktop macOS，数字不可跨环境比（SLA 试测 §6 环境局限）"
+appkey = "oneserve-dev-appkey-001"        # 演示栈占位凭证（同 loadtest 现状），不接触生产
+appkey_b = "oneserve-dev-appkey-002"      # S3 B 组（低配额）凭证——【待定：维护者 拍板后改】
+keyfile = "../sync/out/src_task003_20260920.csv"  # 相对 testkit/；CSV 首列 64 位十六进制键
+
+[s0]                                       # 冒烟：栈活性探针＋回归门
+users = 5
+secs = 30
+p99_max_ms = 500                           # 全 200 且 P99<500ms 即绿
+
+[s1]                                       # 演示爬坡（正式口径以 s4 的 70s 窗为准，面板脚注注明）
+levels = [50, 100, 300]
+step_secs = 30                             # 演示窗每档 30s＝10s 起压＋20s 全并发
+ramp_secs = 10
+
+[s2]                                       # 三通道对比（可裁）
+users_per_channel = 20                     # 三通道各 20 用户，同一批键
+secs = 60
+
+[s3]                                       # 限流演示：A 正常配额 / B 超限
+users_a = 20
+users_b = 20
+secs = 120
+quota_b = 150                              # B 组配额/窗口——【待定：默认值仅为演示假想值（B 组 20 用户 ≈235 rps，150 使其稳定超限又不空转），--quota 可调】
+quota_window_s = 1
+ratelimit_status = 429                     # 限流码（APISIX limit-count 默认 429）
+
+[s4]                                       # 回归梯子：复刻 run_ladder/run_level 口径
+warmup_users = 50
+warmup_secs = 30                           # 预热不计入统计
+levels = [100, 300, 500]                   # 800 可选：--levels 100,300,500,800
+step_secs = 70                             # 10s 起压＋60s 全并发（AC「每档持续≥60秒」）
+ramp_secs = 10
+tail_slices = 5                            # 尾部 RPS＝末 5 个时间片均值
+
+[s5]                                       # 批量场景（M15-7，AC-10 回归侧）：步进机检，非并发打点
+n_main = 2000                              # 主名单任务键数（=键池全量，覆盖未命中行与命中行）
+n_cancel = 1000                            # 取消段任务键数（running 态可观测取消时序）
+per_job_timeout_s = 120                    # 单任务轮询超时（2000 键 worker 并发=1 实测 ~1s，留大余量）
+cancel_wait_s = 60                         # 取消段等待（running 就位＋cancelled 终态合计时限）
+
+[s6]                                       # M2 端到端＋冷热加载（M2-12，收尾卡）：步进机检，非并发打点
+# 真链路专用：环境由 scripts/m212_testkit_e2e.sh 以**独立容器名** oneserve-m212-*
+# （Redis 一次性容器、零 named volume）起好后，把地址/容器名经命令行注入；绝不写共享 Redis。
+svc = "http://127.0.0.1:18014"             # 隔离 service（管理令牌闸：发现/加载端点）
+gw = "http://localhost:9080"              # 共享 APISIX：脚本在其上只加临时路由 /v1/m212/query（验后删）
+route = "/v1/tags/query"                   # 经网关真调路由（key-auth 保护）
+apikey = "oneserve-dev-appkey-001"         # 调用方凭证（演示占位；与 auth_matrix 对齐）
+admin_token = "admin321"   # X-Admin-Token（加载端点写闸）
+redis_url = "redis://127.0.0.1:16390/0"    # 隔离 Redis（仅只读计数「零写入」断言用）
+source_csv = "sync/out/src_m212_<当日>.csv" # 造数 CSV（宿主相对路径；同时作源对账真件入参）
+table = "oneserve_demo"                    # HBase 表（services.yaml demo_hbase_query 同源）
+cf = "cf"                                  # 列族
+hbase_ct = "oneserve-m212-hbase"           # HBase 容器名（失败态 docker rm 用）
+docker_bin = "/Applications/Docker.app/Contents/Resources/bin/docker"
+
+[thresholds]                               # 绿黄红判定（设计 §5.2；首版为估算，跑 2~3 轮实测后校准）
+rps_yellow_drop_pct = 10                   # RPS 降 >10% 黄
+rps_red_drop_pct = 25                      # RPS 降 >25% 红
+lat_yellow_rise_pct = 20                   # P50/P95/P99 升 >20% 黄
+lat_red_rise_pct = 50                      # 升 >50% 红
+err_red_pct = 0.1                          # 错误率 >0.1% 红
+
+[sla]                                      # SPEC §6.1：SLA 口径＝500 QPS 吞吐口径
+qps_target = 500
+p50_max_ms = 50
+p99_max_ms = 200
+latency_basis = "50 并发档实测 P50=45ms／P99≈60ms（SPEC §6.1 背书）；梯子档位为并发容量参考，不作 SLA 判定"

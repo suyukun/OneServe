@@ -1,0 +1,67 @@
+/* ============================================================
+ * OneServe 门户 · 审计查询页样式（P1-1 · assets/audit.css，新增文件）
+ * 仅引用既有令牌（tokens.css）；只定义本页私有结构类，不动全局。
+ * ============================================================ */
+
+/* 统计摘要卡数值 */
+.audit-kpi-val { font-size: 26px; font-weight: 700; color: var(--text-strong, #262626); line-height: 1.2; }
+.audit-kpi-name { font-size: 13px; color: var(--text-muted, #8c8c8c); margin-top: 2px; }
+.audit-kpi-muted { font-size: 18px; color: var(--text-muted, #8c8c8c); font-weight: 600; }
+.audit-slow-title { font-size: 14px; }
+
+/* 耗时 Top 端点列表（2026-10-15 修：长路径横滚可读，不逐字竖排） */
+.audit-slow-list { margin: 0; padding: 0 0 0 18px; font-size: 12px; }
+.audit-slow-list li { padding: 2px 0; display: flex; gap: 8px; align-items: baseline; min-width: 0; overflow-x: auto; }
+.audit-slow-ep { white-space: nowrap; flex: 0 0 auto; min-width: 0; }
+.audit-slow-nums { flex: 0 0 auto; color: var(--text-muted, #8c8c8c); white-space: nowrap; }
+
+/* 过滤条 */
+.audit-readonly-badge { font-size: 11px; }
+.audit-filter-body { display: flex; flex-direction: column; gap: var(--space-1, 8px); }
+.audit-filter-row { display: flex; gap: var(--space-1, 8px); align-items: flex-end; flex-wrap: wrap; }
+.audit-range-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.audit-range-btn { min-width: 0; height: 2rem; }   /* 与行内控件统一 2rem（2026-10-16，DESIGN §3.3 等高） */
+.audit-custom-range { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.audit-custom-range .form-control { width: 190px; }
+.audit-filter-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 170px; }
+.audit-filter-field .form-label { font-size: 12px; color: var(--text-muted, #8c8c8c); margin: 0; }
+.audit-filter-narrow { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
+.audit-filter-narrow .form-label { font-size: 12px; color: var(--text-muted, #8c8c8c); margin: 0; }
+.audit-filter-narrow .form-select { min-width: 84px; }
+/* 按钮列：包一层与字段同构容器（label 占位），按钮列 stretch 等高 input（DESIGN §3.3 铁律，2026-10-16） */
+.audit-filter-actions-col { flex: 0 0 auto; align-self: stretch; }
+/* 行内控件高度统一（2026-10-16）：form-control-sm(28) 与 form-select-sm(32) 混用，按钮 stretch 后无法与全部控件同时等高——统一到 2rem */
+.audit-filter-row .form-control { height: 2rem; }
+.audit-filter-actions { display: flex; gap: 6px; flex: 1 1 auto; align-items: stretch; }
+
+/* 反查提示条（复用 my-trace-active 形态，本页独立类名） */
+.audit-trace-active { padding: 6px 10px; border-radius: 4px; background: var(--bg-subtle, #f5f5f5);
+  font-size: 13px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.audit-trace-clear { padding: 0; font-size: 13px; }
+
+/* 台账表：容器内滚动（P0-12 窄屏口径——宽表不撑破布局） */
+.audit-table-wrap { display: block; overflow-x: auto; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.audit-table th { text-align: left; font-weight: 600; color: var(--text-muted, #8c8c8c);
+  padding: 6px 8px; border-bottom: 1px solid var(--border-light, #f0f0f0); white-space: nowrap; }
+.audit-table td { padding: 7px 8px; border-bottom: 1px solid var(--border-light, #f0f0f0);
+  vertical-align: top; }
+.audit-ts { white-space: nowrap; color: var(--text-muted, #8c8c8c); }
+.audit-caller { white-space: nowrap; }
+.audit-endpoint { word-break: break-all; }
+.audit-digest { white-space: nowrap; }
+.audit-lat-slow { color: var(--status-warn, #D4760A); font-weight: 600; }
+.audit-trace-cell { max-width: 260px; }
+.audit-trace-use { padding: 0; font-size: 12px; word-break: break-all; text-align: left; }
+
+/* 分页条 */
+.audit-pager { display: flex; gap: 10px; align-items: center; justify-content: flex-end;
+  margin-top: 10px; flex-wrap: wrap; }
+.audit-pager-text { font-size: 13px; color: var(--text-muted, #8c8c8c); }
+
+/* 窄屏（≤720px）：过滤行天然换行（flex-wrap），时间输入收窄 */
+@media (max-width: 720px) {
+  .audit-custom-range .form-control { width: 100%; }
+  .audit-custom-range { width: 100%; }
+  .audit-filter-field { flex: 1 1 130px; }
+}

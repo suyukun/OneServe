@@ -1,0 +1,17 @@
+# OneServe 门户生产镜像（镜像生产化 1a 批 2026-10-20；1b 批·词条② 非 root 化 2026-10-21）
+# dev 形态＝nginx-unprivileged 镜像 + ./portal 与 configs/nginx 两只挂载（同款非 root）；
+# prod＝静态产物与 nginx 站点配置进镜像，运行态零源码树依赖（上容器云口径）。
+# 基镜像 nginxinc/nginx-unprivileged（与 library/nginx 同源官方构建，内置 USER 101）：
+#   完全非 root 化＝master/worker 全程 uid 101；监听口 8080/8443（>1024 免特权、
+#   免 setcap——1a 批登记「完全非 root 化留 1b」的最小改口径，宿主映射口不变）。
+# 构建（context＝仓库根）：
+#   docker buildx build --platform linux/arm64 -f portal/Dockerfile.prod -t oneserve/portal:prod .
+# 注意：Dockerfile 不支持行内注释，COPY 行尾一律不写注释。
+FROM nginxinc/nginx-unprivileged:1.27-alpine
+
+# 含 build_portal.py 产物 portal/admin/
+COPY portal/ /usr/share/nginx/html/
+# v4 站点配置（静态＋干净 URL＋/v1/、/login、/api 分流反代；listen 8080/8443）
+COPY configs/nginx/portal-nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 8080 8443

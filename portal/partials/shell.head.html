@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@@TITLE@@</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/portal.css">
+<link rel="stylesheet" href="assets/trial.css"><!-- P-2 试用台（仅引用既有令牌） -->
+@@EXTRA_CSS@@
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="site-gate.js"></script>
+<script defer src="data-format.js"></script>
+<script defer src="api.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/trial.js"></script>
+@@EXTRA_JS@@
+<script defer src="assets/pages.js"></script>
+<script defer src="assets/detail.js"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js"></script>
+<script defer src="assets/vendor/tabler.min.js"></script>
+<script defer src="assets/alpine.min.js"></script>
+</head>
+<body class="os-layout">

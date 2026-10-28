@@ -1,0 +1,159 @@
+# =============================================================================
+# OneServe CI 最小集 · GitLab CI 模板
+# 口径真源：docs/design/协作与交付体系设计_v1.md（v1.1）§5 段 1b「D+N·CI 门禁」
+# =============================================================================
+# ⚠️ 标定警告：D0 后 D+N 天内先在真实 runner 上实测标定（时长／缓存／并发／特权），
+#    勿直接当生产 CI 用——本模板落位时未经任何真实 runner 验证；
+#    标定步骤与数字回填位置：docs/runbooks/CI-D0-当天就位清单.md §B。
+# 启用方式：runner 就位并标定后，在仓库根执行
+#    cp ci/gitlab-ci.yml.template .gitlab-ci.yml
+#    （GitLab 只认仓库根的 .gitlab-ci.yml；模板文件名不生效，落位本身零风险。）
+# 触发口径（设计 §5 段 1b）：MR 创建/更新 → test 段门禁；合并进 main → test＋build。
+# 密钥红线（设计 §6.3）：.env 永不进仓库；本文件不写任何口令——CI 凭据一律走
+#    平台受控变量（Settings→CI/CD→Variables，勾 masked），不落流水线 yaml 明文。
+# 覆盖范围说明：本模板＝pytest 全量＋架构对账（arch_drift_check）＋文档对账
+#    （doc_fig_check）＋镜像构建；设计 §5 段 1b 最小集另含「治理门禁＋writeScopes
+#    比对」，前者当前由本地 pre-commit（run_gates_fast.sh）承载、后者 CI 就位前走
+#    MR 手动清单（见 runbook §A8），脚本化列入遗留台账，不在本模板超前实现。
+# =============================================================================
+
+# ── stages：全流水线只有两段 ─────────────────────────────────────────────────
+# test ＝ MR 质量门禁（python 侧全量 pytest＋node 侧两项机器对账）；
+#        D+N 收口勾选「Pipelines must succeed」后，本段红灯 MR 不可合（设计 §5）。
+# build ＝ 合并 main 后的镜像构建冒烟（不 push，镜像仓库未定），
+#        验证「合并点两镜像都能构建」，tag 带 commit 短 SHA（设计 §4 制品管理行）。
+stages:
+  - test
+  - build
+
+# ── workflow：流水线何时出现（只认两种来源，防重复流水线） ───────────────────
+# ① merge_request_event＝MR 创建/更新 → 跑 test 门禁（MR 触发＝设计 §5 段 1b 口径；
+#    一卡一分支一 MR，设计 §2，门禁挂 MR 不挂个人分支）。
+# ② push 到默认分支 main＝MR 合并后 → 跑 test＋build（合并点复验＋镜像构建）。
+# 其余来源（无 MR 的裸分支推送）不建流水线——不在个人分支上空跑占用 runner。
+# 注：本模板未用 tags；runner 注册时须允许接 untagged job（或自行给三个 job 加
+#    tags: 与 runner 匹配），否则流水线会 stuck 在 pending（runbook §B4 剧本①）。
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# ── test 段 · job 1：pytest 全量（python 侧） ────────────────────────────────
+test:pytest:
+  stage: test
+  # python 镜像与 Dockerfile.prod 基线同系（python:3.13-slim；requirements-dev.txt
+  # 锁定环境＝Python 3.13.15 宿主实测）。镜像官方源，与生产 Dockerfile 同口径。
+  image: library/python:3.13-slim
+  variables:
+    # pip 默认官方 PyPI（开源批 B2；runner 网络受限时可在此覆写 PIP_INDEX_URL）。
+    # pip 缓存固定落工作区内，配合下方 cache 块跨流水线复用（装依赖大头在下载）。
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  # 缓存策略：key 挂依赖锁文件——requirements-dev.txt 不变则命中旧缓存，
+  # 一旦变更自动换 key 重下，不会出现「改了依赖还吃旧缓存」的假旧环境。
+  cache:
+    - key:
+        files:
+          - requirements-dev.txt   # 全量 pytest 依赖清单（固化版），本 job 唯一依赖入口
+      paths:
+        - .cache/pip/
+  # 同一 MR 新推送自动取消旧流水线：门禁只看最新提交，省 runner 排队；
+  # 若标定后需要保留旧跑留痕，删掉此行即可（默认为 false）。
+  interruptible: true
+  script:
+    # 打印解释器版本留痕对账：requirements-dev.txt 锁的是 3.13 系，跑偏立刻可见。
+    - python -V
+    # 装全量 pytest 依赖（版本全钉死的固化清单）。不可做按需猜装：头注事故实证
+    # 缺包不会响亮失败而是「静默 SKIP 仍报绿」（缺 PyJWT → 角色闸/JWT 断言跳过）。
+    - pip install -r requirements-dev.txt
+    # 契约产物前置再生（幂等）：与本地 run_gates.sh 同源做法——「数据/断言改动后
+    # portal/openapi/ 产物未再生」曾致两起假红，先再生成品再跑测试，断根。
+    # 只再生、不加 git diff 判定：与本地门禁同一口径，防「本地绿、CI 红」两套标准。
+    - python scripts/gen_openapi.py
+    # 建 junit 报告目录（pytest 不自建父目录）。
+    - mkdir -p ci-out
+    # 全量 pytest：本地基线 ≈ 2 分 20 秒／1224 测试（2026-10-20 口径；测试数随代码
+    # 滚动，以当日实测为准——设计 §0）。junit 报告供平台 MR 页渲染与留档对账，
+    # 回执锚＝CI job id＋commit SHA（设计 §1.2：本地终端输出不算证据）。
+    - python -m pytest tests/ -q --junitxml=ci-out/pytest-report.xml
+  # 超时首设 15m＝本地基线 ×6 余量（CI 冷缓存＋共享 runner 慢盘），标定后回调。
+  timeout: 15m
+  # 测试报告无论成败都带回来：红时有现场可查，绿时有回执可对账。
+  artifacts:
+    when: always
+    name: "pytest-report-$CI_COMMIT_SHORT_SHA"
+    expire_in: 7 days                  # 一周足够对账复盘；长期留档＝阶段三发布审计台账（设计 §4）
+    paths:
+      - ci-out/                        # junit xml（及后续追加的测试产物统一落此目录）
+    reports:
+      junit: ci-out/pytest-report.xml  # 平台 MR 小组件直接渲染通过/失败/跳过数
+
+# ── test 段 · job 2：架构对账＋文档对账（node 侧，零第三方依赖） ───────────────
+test:arch-doc-check:
+  stage: test
+  # 与本机开发同系的 Node（v24 系）。两个检查脚本只用 node 内建模块（gen_fig.mjs
+  # 头注明示「零第三方依赖」），无需 npm install，因此本 job 不装依赖、不挂缓存——
+  # 与 test 段 job 1 并行跑，python 侧环境问题不会连坐本 job。
+  image: library/node:24-slim
+  # 缓存预留位（当前无需启用）：治理门禁（stylelint，npm 依赖）后续按设计 §5 段 1b
+  # 挂入 CI 时，解开以下注释并补 npm ci（key 挂 package-lock.json，同 pip 口径）：
+  # cache:
+  #   - key:
+  #       files:
+  #         - package-lock.json
+  #     paths:
+  #       - node_modules/
+  interruptible: true
+  script:
+    # 版本留痕，对账用（本机 v24.21.0，2026-10-20）。
+    - node --version
+    # 架构对账：docs/architecture/*.c4（deployment 块）↔ docker-compose 三栈
+    # （docker-compose.yml＋compose.hbase.yml＋compose.kafka.yml）双向比对；
+    # 「碰 compose／c4 必跑」＝设计 §3.1 机器门禁口径。exit 1＝有漂移（图过期或漏画），
+    # 失败明细看本 job 日志（GitLab job trace 即留痕，job id＝回执锚）。
+    - node scripts/arch_drift_check.mjs
+    # 文档对账：figures/*.yml ↔ 系统架构说明书_v2.md 的域表/路线表逐字比对，
+    # 防声明式图形与主文档漂移。exit 1＝有差异。
+    - node scripts/doc_fig_check.mjs
+  # 两脚本秒级完成；5m 只防 runner 级挂死，标定后可收紧。
+  timeout: 5m
+
+# ── build 段：service/portal 两镜像构建冒烟（不 push） ────────────────────────
+build:images:
+  stage: build
+  # 仅默认分支（main）流水线执行＝「MR 合并后」；MR 流水线只跑 test 门禁不构建
+  # （个人分支反复推不烧构建时长）。
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  # docker CLI（含 buildx 插件）＋ dind 服务：构建需要 docker 守护，由特权容器
+  # dind 提供【待核：公司 runner 是否开 privileged；不开则改 ECS 自建 docker
+  # runner——设计 §5 段 1b「runner 落点待核」】。
+  image: library/docker:27-cli
+  services:
+    - name: library/docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: "tcp://docker:2376"  # 客户端指向 dind 服务别名（GitLab 服务发现）
+    DOCKER_TLS_CERTDIR: "/certs"      # dind 自动签 TLS 证书，客户端加密校验连接
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+  # 双镜像全层构建首设 30m；层缓存（--cache-from/to）待镜像仓库定标后再上。
+  timeout: 30m
+  script:
+    # 连通性自检：dind 起不来（特权缺失/证书问题）在这一步就暴露，不等到构建半途。
+    - docker version
+    # 每流水线一次性 builder：用完即弃，不依赖 runner 宿主残留状态。
+    - docker buildx create --use --name oneserve-builder
+    # ① service 镜像：与 Dockerfile.prod 头注口径完全一致（context＝仓库根，
+    #    走 .dockerignore 压体积；依赖层用 service/requirements.lock 全钉死）。
+    #    tag 带 commit 短 SHA＝「一提交一镜像」可追溯口径（设计 §4 制品管理行）。
+    - docker buildx build --platform linux/arm64 -f Dockerfile.prod -t "oneserve/service:$CI_COMMIT_SHORT_SHA" .
+    # ② portal 镜像：同口径（context＝仓库根——需 COPY configs/nginx 站点配置）。
+    - docker buildx build --platform linux/arm64 -f portal/Dockerfile.prod -t "oneserve/portal:$CI_COMMIT_SHORT_SHA" .
+    # ── 占位：不 push ──────────────────────────────────────────────────────────
+    # 镜像仓库未定（【待核】，设计 §4）；当前语义＝构建冒烟：
+    # 「合并点两镜像都能构建成功」本身是门禁信号，产物随 job 结束销毁、不留档。
+    # 仓库定标后：① 先加受控变量登录（走平台 masked 变量，不落本文件——设计 §6.3）：
+    #     docker login <registry-host> -u "$REGISTRY_USER" -p "$REGISTRY_TOKEN"
+    #   ② 上方两条 build 命令各追加 --push（tag 再补 registry-host/ 前缀）。
+    # 平台注：linux/arm64＝目标测试环境架构（ARM 口径）；若 runner
+    # 为 x86，跨架构构建需 qemu/binfmt 且显著变慢【待核：runner CPU 架构】。

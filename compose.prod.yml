@@ -1,0 +1,225 @@
+# OneServe 生产形态 override（阶段一 1a 批「镜像生产化」2026-10-20）
+# 用法（不碰 dev 共享栈）：
+#   起：docker compose -f docker-compose.yml -f compose.prod.yml -p oneserve-prod up -d
+#   停：docker compose -f docker-compose.yml -f compose.prod.yml -p oneserve-prod down -v
+# 与 dev（docker-compose.yml，一行不改）的差异共四类：
+#   ① 源码进镜像：service/casdoor-init/batch-worker 换 Dockerfile.prod（根 context，
+#      tag oneserve/service:prod——不覆写 dev 在用的 oneserve/service:m0）；portal 换
+#      oneserve/portal:prod（portal/Dockerfile.prod，静态产物＋nginx conf 进镜像）。
+#      service/portal 的源码 bind 挂载摘除；sync 工具链（219MB 运维通道）不进镜像，
+#      载体＝宿主挂载 ./sync（1b 批收口·词条④；物料包 update.sh 现状＝git 工作副本随包走）。
+#      apisix/casdoor 第三方基镜像配置已收编仓内 configs/（1b 批·词条①；prod 网关配置
+#      由 scripts/config_twin.py 从 config.yaml 渲染生成·词条⑤）；portal 非 root 化见
+#      portal/Dockerfile.prod（nginx-unprivileged uid 101·词条②）。
+#   ② 完全隔离（先例 compose.m26-iso.yml 同套路）：容器名 oneserve-prod-*、专属网络
+#      oneserve-prod-net（172.30.0.0/16，网关配置用 configs/apisix/config.prod.yaml）、
+#      专属卷 oneserve-prod-*、宿主口 20080（网关）/20000（门户），dev 与 m26 一律不碰。
+#   ③ 网络别名 oneserve-etcd/-redis/-apisix/-service/-casdoor/-casdoor-db：dev compose
+#      与 configs/ 里硬编码的容器名 DNS 在本栈网络内解析到 prod 容器——init_routes 上游
+#      节点名、网关统计钩子、nginx resolver、casdoor app.conf DB host 一字不改。
+# 环境变量沿用根 .env（与 dev 同源）。部署地址参数化（2026-10-20 ECS 快验批）：
+#   PROD_BIND_IP          宿主端口绑定地址，缺省 127.0.0.1（回环安全）；ECS 外部访问设 0.0.0.0。
+#   PROD_PUBLIC_ORIGIN    浏览器可达部署地址（iss/origin/回调同源派生，默认 http://localhost:8000）。
+# 两者用途详根 .env.example；不设＝与本机冒烟形态同口径。
+#   ④ 资源限额（2026-10-23 ECS 部署批）：全部服务 mem_limit/cpus——2026-10-23 保守初值，
+#      观察一周再收紧。键名选型：mem_limit/cpus＝服务级非 swarm 键（compose file v2 家族
+#      原生属性、compose-spec 沿用，见 docs.docker.com/compose/compose-file/compose-file-v2/
+#      资源节；deploy.resources.limits 系 swarm 形态、非 swarm 部署行为不一，不用）——
+#      服务器 docker-compose v2.6.0 与 v5.6.0 均认这组键。
+name: oneserve-prod
+
+services:
+  # ---------- 配置存储：etcd ----------
+  etcd:
+    container_name: oneserve-prod-etcd
+    image: bitnamilegacy/etcd:3.5.9-debian-11-r99   # 开源批 B2：镜像官方源化（原私仓收编口径退场）
+    mem_limit: "512m"
+    cpus: 0.25
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-etcd              # config.prod.yaml 的 etcd host
+
+  # ---------- 网关：APISIX ----------
+  apisix:
+    container_name: oneserve-prod-apisix
+    image: apache/apisix:3.18.0-debian
+    mem_limit: "512m"
+    cpus: 0.5
+    ports: !override
+      - "${PROD_BIND_IP:-127.0.0.1}:20080:9080"   # dev 9080 / m26 19080 均不碰；缺省回环（ECS 部署 .env 设 PROD_BIND_IP=0.0.0.0）
+    volumes: !override
+      - ./configs/apisix/config.prod.yaml:/usr/local/apisix/conf/config.yaml:ro
+    environment:
+      # config.prod.yaml 的 ${{APISIX_ADMIN_KEY}} 展开（APISIX 原生 env 替换）——不注入＝
+      # 展开不到起栈 Exited(1)（2026-10-20 ECS 快验实证）；注入式与 dev（docker-compose.yml
+      # service 块）同源同文，缺省报错阻断起栈。
+      - APISIX_ADMIN_KEY=${APISIX_ADMIN_KEY:?APISIX_ADMIN_KEY 未设置——cp .env.example .env 后填真值}
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-apisix            # 门户 nginx 反代目标 + service 的 APISIX_ADMIN
+
+  # ---------- 元数据库快照卷（卡-1b7 收口批项5 · ADR-0021；默认注释＝未启用） ----------
+  # 口径（ADR-0021 v1.1 已裁）：SNAPSHOTS_DIR＝独立可写卷；写侧（service 容器）提交后
+  # 导出四 yaml 快照到同卷；网关 init 容器只读挂同卷，启动前 init_routes 读快照注册路由。
+  # 快照落点收口在 env META_SNAPSHOT_DIR（service/app/meta_snapshot.py，缺省仓内回落）。
+  # 【启用三步】（元数据库本体在 compose.metadata.yml 隔离栈 -p oneserve-meta；卷无需跨栈共享
+  #   ——快照由 service 容器进程写出，metadata-db 容器不触快照文件）：
+  #   ① 文件尾 volumes: 节取消「oneserve-metadata-snapshots」两行注释（栈内 named volume）；
+  #   ② 下方 service 块 volumes/environment 各取消一行注释（写侧可写挂载＋落点 env）；
+  #   ③ 整块取消 apisix-init 注释（只读同卷＋借镜像 python 调 Admin API，与 dev 借道同款）。
+  # service 块追加行（写侧）：
+  #     - oneserve-metadata-snapshots:/snapshots   # 快照卷（可写：meta_writer 提交后导出）
+  #     - META_SNAPSHOT_DIR=/snapshots             # （加在 service environment 列表）
+  # apisix-init（网关初始化·快照同卷只读）：
+  # apisix-init:
+  #   image: oneserve-service:latest
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.prod
+  #   container_name: oneserve-prod-apisix-init
+  #   depends_on:
+  #     - apisix
+  #   volumes: !override
+  #     - ./configs/apisix:/init:ro                  # 网关初始化脚本（借本容器 python，同 dev 口径）
+  #     - oneserve-metadata-snapshots:/snapshots:ro  # 快照同卷只读（ADR-0021：SNAPSHOTS_DIR 独立卷）
+  #   environment:
+  #     - APISIX_ADMIN=http://oneserve-apisix:9180   # Admin API 通道（仅内网，同 dev init 借道）
+  #     - META_SNAPSHOT_DIR=/snapshots               # init_routes 读快照注册路由（读侧零切换口径）
+  #   command: ["python", "/init/init_routes.py"]
+  #   networks:
+  #     oneserve-net:
+  #       aliases:
+  #         - oneserve-apisix-init
+
+  # ---------- KV：Redis ----------
+  redis:
+    container_name: oneserve-prod-redis
+    image: redis:7-alpine
+    mem_limit: "256m"
+    cpus: 0.25
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-redis             # service 的 REDIS_URL + 网关统计钩子连接名
+
+  # ---------- 统一登录：Casdoor（独立 postgres） ----------
+  casdoor-db:
+    container_name: oneserve-prod-casdoor-db
+    image: postgres:17-alpine
+    mem_limit: "768m"
+    cpus: 0.5
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-casdoor-db        # casdoor app.conf dataSourceName host
+  casdoor:
+    container_name: oneserve-prod-casdoor
+    image: casbin/casdoor:latest
+    mem_limit: "768m"
+    cpus: 0.5
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-casdoor           # service 的 OIDC_INTERNAL_BASE + 门户同源分流
+
+  # ---------- W6 seed 引导：bootstrap admin（脚本已随 prod 镜像，去 bind） ----------
+  casdoor-init:
+    image: oneserve-service:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: oneserve-prod-casdoor-init
+    volumes: !override []              # 脚本已 COPY 进镜像 /opt/casdoor-init
+    command: ["python", "/opt/casdoor-init/bootstrap_admin.py"]
+
+  # ---------- 薄服务层：FastAPI（源码进镜像，零 bind） ----------
+  service:
+    image: oneserve-service:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: oneserve-prod-service
+    mem_limit: "1g"
+    cpus: 1.0
+    environment:
+      # 服务容器 pg 直连通道（2026-10-21 前置卡·对抗复核 P0-1 根治）：镜像内置 psql
+      # 客户端＋/app/scripts/meta_migrate.py，META_DB_HOST 非空即容器内 psql -h 直连
+      # meta 库（meta_writer db 模式；口令进程级 PGPASSWORD 透传，不进 SQL/日志）。
+      # 元数据库进本栈网络口径（四文件叠加起法，DR runbook §6 前置步1）：
+      #   docker compose -f docker-compose.yml -f compose.metadata.yml -f compose.prod.yml \
+      #     -p oneserve-prod ONESERVE_NET_NAME=oneserve-prod-net ONESERVE_NET_EXTERNAL=false up -d
+      # metadata-db 的 container_name=oneserve-metadata-db（compose.metadata.yml 定死）
+      # 在同网络内经容器名 DNS 天然可解析＝别名已确认，无需在本文件加 metadata-db 服务键
+      # （两文件渲染时无该服务，加键会生成无 image 空服务定义破坏 prod 单栈渲染）。
+      - META_DB_HOST=${META_DB_HOST:-oneserve-metadata-db}
+      - META_DB_PORT=${META_DB_PORT:-5432}
+      - META_DB_USER=meta_app                    # 三角色业务写角色（DDL 固定名；不走 .env META_DB_USER 引导超户键，误连风险封死）
+      - META_DB_PASSWORD=${META_APP_PASSWORD:-}   # 口令＝meta_app 角色口令（与 compose.metadata.yml 三角色同源 .env；永不进仓）
+      - META_DB_DATABASE=oneserve_meta           # 库名（initdb 固定；.env 同名键 META_DB_NAME 系引导口径不复用）
+      # META_WRITER 仍缺省 yaml——本块只备通道；切 db＋快照卷启用走 DR runbook §6 三步。
+    volumes: !override                 # named volumes＋sync 工具链宿主挂载；源码/配置/初始化脚本均在镜像内
+      - oneserve-audit-data:/data/audit
+      - oneserve-retention-data:/data/retention
+      - oneserve-batch-results:/data/batch-results
+      - ./sync:/sync                   # sync 工具链载体（1b 批·词条④）＝宿主挂载不进镜像（219MB 运维通道；
+                                       # 物料包 update.sh 现状＝git 工作副本随包走；与 dev 同款 rw——
+                                       # B1 表结构登记写回 schema_<表>.csv 真源需可写）
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-service           # init_routes 上游节点名硬编码 oneserve-service:8000
+
+  # ---------- 批量 worker：同镜像 sidecar ----------
+  batch-worker:
+    image: oneserve-service:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: oneserve-prod-batch-worker
+    mem_limit: "1g"
+    cpus: 0.5
+
+
+  # ---------- 门户静态站（静态产物＋nginx conf 进镜像，零 bind；1b 批非 root 化） ----------
+  # 镜像＝nginx-unprivileged 基镜像（uid 101，词条②），容器内监听 8080/8443
+  # （>1024 免特权免 setcap）；宿主映射口 20000/20443 不变，浏览器/验证口径不受影响。
+  portal:
+    image: oneserve-portal:latest
+    build:
+      context: .
+      dockerfile: portal/Dockerfile.prod
+    container_name: oneserve-prod-portal
+    mem_limit: "256m"
+    cpus: 0.25
+    ports: !override
+      - "${PROD_BIND_IP:-127.0.0.1}:20000:8080"     # dev 8000 不碰；缺省回环（ECS 部署 .env 设 PROD_BIND_IP=0.0.0.0）
+      - "${PROD_BIND_IP:-127.0.0.1}:20443:8443"    # TLS 预留（蓝图 1a）：缺省回环；证书=挂载位真值（自签起步，真域名换 CA 证书 1b 批）
+    volumes: !override                 # 静态文件与站点配置已在镜像内；TLS 证书挂载位（conf 443 块引用 /etc/nginx/certs）
+      - ./certs/dev:/etc/nginx/certs:ro
+
+volumes:
+  oneserve-etcd-data:
+    name: oneserve-prod-etcd-data
+  oneserve-redis-data:
+    name: oneserve-prod-redis-data
+  oneserve-casdoor-data:
+    name: oneserve-prod-casdoor-data
+  oneserve-casdoor-db-data:
+    name: oneserve-prod-casdoor-db-data
+  oneserve-audit-data:
+    name: oneserve-prod-audit-data
+  oneserve-retention-data:
+    name: oneserve-prod-retention-data
+  oneserve-batch-results:
+    name: oneserve-prod-batch-results
+  # oneserve-metadata-snapshots:                # 元数据快照卷（收口批项5；默认注释＝未启用，
+  #   name: oneserve-prod-metadata-snapshots    #   启用三步见 services 节「元数据库快照卷」块头注）
+
+networks:
+  oneserve-net:
+    name: oneserve-prod-net
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16        # dev 172.28 / m26 172.29 均错开

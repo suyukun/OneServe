@@ -1,0 +1,41 @@
+/* ============================================================
+ * OneServe 门户 · 字段字典页样式（P0-9 · assets/fields.css，新增文件）
+ * 仅引用既有令牌（tokens.css）；只定义本页私有结构类，不动全局。
+ * ============================================================ */
+
+/* 口径说明块 */
+.fd-about p { margin: 0 0 6px; font-size: 13px; color: var(--text-body, #434343); }
+.fd-about p:last-child { margin-bottom: 0; }
+
+/* 工具行：搜索＋两组筛选 chips（可换行） */
+.fd-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-1, 8px) var(--space-2, 16px); align-items: center; }
+.fd-toolbar .search-box { min-width: 260px; }
+
+/* 字段表：8 列，容器横向滚动兜底（窄屏 P0-12 口径预兼容） */
+.fd-table-wrap { overflow-x: auto; }
+.fd-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fd-table th { text-align: left; font-weight: 600; color: var(--text-muted, #8c8c8c);
+  padding: 6px 8px; border-bottom: 1px solid var(--border-strong, #d9d9d9); white-space: nowrap; }
+.fd-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-light, #f0f0f0);
+  vertical-align: top; }
+.fd-table .fd-num { width: 3em; color: var(--text-muted, #8c8c8c); text-align: right; white-space: nowrap; }
+/* 2026-10-15 修：字段名用 break-word 防逐字断（mono 已由全局 td.mono nowrap 覆盖） */
+.fd-table .fd-name { overflow-wrap: break-word; word-break: normal; font-size: 12.5px; }
+.fd-table .fd-type { white-space: nowrap; color: var(--text-muted, #8c8c8c); font-size: 12px; }
+.fd-table .fd-svc { font-size: 12px; }
+
+/* 授权状态徽标：绿=已对外开放（语义色只作语义）；未开放=弱化灰（非警告非错误） */
+.fd-granted { font-size: 11px; background: var(--status-ok, #009423); color: #fff; }
+.fd-not { font-size: 11px; background: var(--bg-inset, #f0f0f0); color: var(--text-muted, #8c8c8c); }
+
+/* TASK-M2-3.9：业务口径行（每字段次行，跨列铺满；弱化展示不抢主行） */
+.fd-table .fd-def-row td { border-bottom: 1px solid var(--border-light, #f0f0f0); padding-top: 0; }
+.fd-table .fd-def { font-size: 12px; color: var(--text-muted, #8c8c8c); }
+.fd-table .fd-def-label { display: inline-block; margin-right: 6px; padding: 0 6px;
+  border-radius: 3px; background: var(--bg-inset, #f0f0f0); font-size: 11px; }
+
+/* TASK-M2-3.9：敏感级徽标三档（公开=弱灰 / 内部=中性蓝 / 敏感=警示红；仅语义色） */
+.fd-sens { font-size: 11px; background: var(--bg-inset, #f0f0f0); color: var(--text-muted, #8c8c8c); }
+.fd-sens-low { background: var(--bg-inset, #f0f0f0); color: var(--text-muted, #8c8c8c); }
+.fd-sens-mid { background: var(--info-bg); color: var(--info-fg); }
+.fd-sens-high { background: var(--danger-bg); color: var(--danger-fg); }

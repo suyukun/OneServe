@@ -1,0 +1,55 @@
+# -*- coding: utf-8 -*-
+# HBase 开发容器（TASK-M2-1）：独立 override 文件，不动主 docker-compose.yml。
+# 用法（显式叠加，不随 up.sh 默认起）：
+#   docker compose -f docker-compose.yml -f compose.hbase.yml up -d hbase
+# 钉选依据：NC-M2-8——主流 hbase 镜像遴选，唯一 manifest 含 amd64+arm64
+# 者＝ openeuler/hbase:latest（M2-1 实拉复核：
+# digest sha256:9451eaec…，arm64，即 Apache HBase 2.6.5 官方发行版）。
+# 镜像坑（M2-1 实测，探针留证）：默认 entrypoint 仅 `hbase version`（即起即退），
+# 只改 command 会拼成 `hbase version bash -c ...` 容器秒退、exec 全打在死容器上。
+# 修法＝entrypoint 连同 command 一起覆盖：bash -c 起 standalone＋Thrift1 守护。
+# 内存约束：Docker VM 仅 7.748GiB → HBASE_HEAPSIZE=1024（稿内写死的限制参数）
+# ＋容器 mem_limit 2GiB 双保险（standalone 主 JVM + Thrift JVM 两进程留余量）；
+# 验完 docker compose ... down 让位内存（探针脚本自动做，HBASE_PROBE_KEEP=1 豁免）。
+# TASK-M2-3 起 hbase 容器加入 oneserve-net（M2-3 e2e：service 容器经容器网内 DNS
+# oneserve-hbase:9090 直连，HBASE_HOST/HBASE_PORT 环境变量注入，见 .env.example）。
+services:
+  hbase:
+    image: openeuler/hbase:latest
+    container_name: oneserve-hbase
+    hostname: hbase-dev
+    entrypoint: ["bash", "-c", "start-hbase.sh && hbase-daemon.sh start thrift && tail -f /dev/null"]
+    # Thrift1 API 端口（happybase 对接口径；NC-M2-1 真集群端口待答，容器自测先钉 9090）
+    ports:
+      - "9090:9090"
+    environment:
+      HBASE_HEAPSIZE: "1024"        # 门槛稿写死的内存限制参数（hbase-env.sh 取用，单位 mbyte）
+      HBASE_THRIFT_OPTS: "-Xms64m -Xmx256m"   # Thrift 守护单独压小，两 JVM 不双倍吃堆
+    mem_limit: 2g
+    healthcheck:
+      # Thrift 端口探活：/dev/tcp 连接 + Thrift 协议头写入读回（比纯 nc 更贴协议层）
+      test: ["CMD-SHELL", "echo > /dev/tcp/127.0.0.1/9090"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: "no"
+    volumes:
+      # P1-1（遗留问题1）：hbase.rootdir=file:/tmp/hbase（2026-09-28 master 日志实证），
+      # 数据原在容器可写层、重建即丢（09-23 事故）。挂具名卷持久化，行为零变化。
+      - oneserve-hbase-data:/tmp/hbase
+    networks:
+      - oneserve-net
+
+volumes:
+  oneserve-hbase-data:
+
+networks:
+  oneserve-net:
+    # 网络名/external 参数化（2026-10-20 prod 四文件叠加适配）：dev 不设两变量＝缺省渲染
+    # external oneserve-net（与参数化前逐字节一致，dev 行为零变化）；ECS 全量档四文件叠加
+    # （-f×4 -p oneserve-prod）必须在 .env 设 ONESERVE_NET_NAME=oneserve-prod-net 与
+    # ONESERVE_NET_EXTERNAL=false，否则叠加件声明覆盖 prod 专属网（干净环境报
+    # external network not found）。两变量口径详 .env.example。
+    external: ${ONESERVE_NET_EXTERNAL:-true}
+    name: ${ONESERVE_NET_NAME:-oneserve-net}

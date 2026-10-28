@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AppKey 发放 · OneServe 运营控制台</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * OneServe 运营控制台 · AppKey 发放（2026-10-08 重设计：表单极简化＋客户视角文案）
+ * 依据：docs/plans/运营版设计稿-三界面_v0.md（AppKey 发放节）＋ docs/plans/前台重造-SPEC_v0.md
+ *
+ * 【重设计走位】
+ *   ① 打开本页 → 列表读 /v1/admin/appkeys（后端不可达时降级 mock 并挂「演示数据」角标）
+ *   ② 点「签发 AppKey」→ 三项表单：授权服务（单选，来自 GET /v1/admin/publish 已发布
+ *      服务）× 备注名（可选）× 有效期（30/90/365 天，默认 30）→ 字段区默认全选可减
+ *      → 「生成 AppKey＋Secret」→ 服务端登记并即时生效
+ *   ③ Secret 弹窗大字一次性显示 → 复制 / 下载凭据 .txt → 「我已保存」后明文永久不再出现
+ *   ④ 行内「调整配额」改每秒/每日上限；「禁用 / 启用」两段式确认，操作即时生效
+ *   ⑤ 「重置密钥」两段式确认 → 新密钥立即生效，旧密钥短期共存不断调用，到期自动失效
+ *   ⑥ 「查看凭证登记」→ live 模式展示服务端登记文件原文（防预览与落盘漂移）
+ *
+ * 【安全纪律】Secret 明文只存在于弹窗 DOM 与下载的 .txt（用户主动动作），绝不写入任何
+ *   存储：内存列表、sessionStorage、导出 yaml、mock 文件全部只存 sha256 摘要；
+ *   完整 AppKey 仅签发弹窗出现一次，列表一律掩码。
+ *
+ * 【视觉】独立简化深色样式（不依赖 vendor 组件库）：
+ *   深底 #1c222b / 卡片 #242b36 / 强调 #E85B6B；零外网引用；Alpine 复用 portal 自托管副本。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css"><!-- 仅取 --font-sans/--font-mono/间距刻度等令牌 -->
+<style>
+  /* ── 独立简化深色样式（不依赖组件库；语义别名在本页 :root 重定义，不改 tokens.css） ── */
+  :root {
+    --admin-bg: #1c222b;        /* 深底 */
+    --admin-card: #242b36;      /* 卡片 */
+    --admin-inset: #1b2029;     /* 输入/代码底色 */
+    --admin-accent: #E85B6B;    /* 强调色（品牌红·只留主按钮＋关键数字） */
+    --admin-line: #35404d;      /* 分隔线/边框 */
+    --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE;
+    --admin-note: #ACB8C4;      /* 脚注灰度提一档（介于 muted 与正文，脚注墙可读性） */
+    --admin-ok: #3FBE95;
+    --admin-warn: #D89A3C;
+    --admin-danger: #E05252;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .topbar { height: var(--topbar-height, 56px); display: flex; align-items: center; gap: var(--space-2, 16px);
+            padding: 0 var(--space-3, 24px); border-bottom: 1px solid var(--admin-line); background: var(--admin-card); }
+  .brand { font-weight: 600; letter-spacing: .5px; }
+  .brand-sub { color: var(--admin-muted); font-size: var(--fs-small, 12px); }
+  .env-chip { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small, 12px);
+              color: var(--admin-text); border: 1px solid var(--admin-warn); border-radius: 999px;
+              padding: 1px 10px; line-height: 18px; }
+  .env-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--admin-warn); }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px); }
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  .hint { color: var(--admin-muted); font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-primary:disabled { background: var(--admin-inset); border-color: var(--admin-line);
+                          color: var(--admin-muted); cursor: not-allowed; }
+  .btn-sm { padding: 3px 10px; }
+  .btn-danger { border-color: var(--admin-danger); color: var(--admin-danger); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  /* 2026-10-15 修：表格 mono 数据单元格 nowrap + 容器横滚 */
+  td.mono { white-space: nowrap; }
+  .tag { display: inline-block; background: var(--admin-inset); border: 1px solid var(--admin-line);
+         border-radius: 999px; padding: 0 8px; margin: 1px 4px 1px 0; font-size: var(--fs-tiny, 11px); color: var(--admin-muted); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-active { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-disabled { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-expired { color: var(--admin-danger); border: 1px solid var(--admin-danger); }  /* 到期日当天即过期（对齐调用侧判定） */
+  .badge-demo { color: var(--admin-warn); border: 1px dashed var(--admin-warn); background: rgba(216,154,60,.08); }
+  .badge-sb { color: var(--admin-note); border: 1px dashed var(--admin-note); }   /* 沙箱凭证＝限时临时语义（虚线） */
+  .badge-ak { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .badge-overlap { color: var(--admin-warn); border: 1px dashed var(--admin-warn); }  /* 旧密钥过渡期倒计时 */
+  .crumb { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small, 12px);
+           color: var(--admin-muted); white-space: nowrap; }
+  .crumb a { color: var(--admin-text); text-decoration: none; }
+  .crumb a:hover { color: var(--admin-accent); }
+  .crumb-sep { opacity: .55; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2, 16px); }
+  label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  input[type=text], input[type=number], input[type=password], input[type=date], select {
+    width: 100%; background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--admin-accent); }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .checks label { color: var(--admin-text); font-size: var(--fs-small, 12px); cursor: pointer; }
+  .req { color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  .count-note { font-size: var(--fs-tiny, 11px); color: var(--admin-note); }
+  .footnote { margin-top: var(--space-1, 8px); font-size: var(--fs-tiny, 11px); color: var(--admin-note); }
+  .footnote summary { cursor: pointer; user-select: none; }
+  .footnote summary:hover { color: var(--admin-text); }
+  .footnote ul { margin: 6px 0 0; padding-left: 18px; }
+  .footnote li { margin: 2px 0; }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 12, 15, .72); display: flex;
+             align-items: center; justify-content: center; padding: var(--space-3, 24px); z-index: 50; }
+  /* P3 弹窗卡（2026-10-08）：面板类名 .modal → .dlg——门户壳注入的 bootstrap/tabler
+     自带 .modal{display:none;position:fixed}，同名碰撞致「遮罩现、面板隐」整页锁死
+     （复现截图 /tmp/fix-shots/02-before-rotate-confirm.png：overlay=flex / panel=none）。 */
+  .dlg { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+         max-width: 640px; width: 100%; max-height: 88vh; overflow: auto; padding: var(--space-3, 24px); }
+  .secret-big { font-family: var(--font-mono, monospace); font-size: 21px; letter-spacing: .5px; word-break: break-all;
+                background: var(--admin-inset); border: 1px dashed var(--admin-accent); border-radius: var(--radius, 8px);
+                padding: var(--space-2, 16px); margin: var(--space-1, 8px) 0; }
+  .warn-box { border: 1px solid var(--admin-warn); color: var(--admin-warn); border-radius: var(--radius, 8px);
+              padding: 8px 12px; font-size: var(--fs-small, 12px); margin-bottom: var(--space-2, 16px); }
+  .modal-actions { display: flex; gap: var(--space-1, 8px); flex-wrap: wrap; margin-top: var(--space-2, 16px); }
+  pre.yaml { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+             padding: var(--space-2, 16px); font-family: var(--font-mono, monospace); font-size: var(--fs-small, 12px);
+             overflow: auto; max-height: 420px; margin: 0; }
+  .trace-bar { display: flex; align-items: center; gap: var(--space-1, 8px); flex-wrap: wrap;
+               background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+               padding: 8px 12px; margin-bottom: var(--space-2, 16px); font-size: var(--fs-small, 12px); }
+  .trace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-ok); flex: none; }
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small, 12px); }
+  .muted { color: var(--admin-muted); }
+  .num { font-family: var(--font-mono, monospace); }
+
+  /* 配额列下的当日「已用/上限」实时值（与门户配额卡同口径；超额转警告色） */
+  .quota-usage { margin-top: 2px; font-size: var(--fs-tiny, 11px); color: var(--admin-muted);
+    white-space: nowrap; }
+  .quota-usage.is-warn { color: var(--admin-warn); }
+  .quota-usage.is-over { color: var(--admin-danger); font-weight: 600; }
+  .quota-usage-label { margin-right: 4px; }
+  .quota-flag { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px;
+    line-height: 16px; font-size: var(--fs-tiny, 11px); vertical-align: 1px; }
+  .quota-flag-full { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .quota-flag-over { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+
+  /* 签发表单的授权字段勾选区（默认全选可减） */
+  .svc-grant-fields { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--admin-line); }
+
+  /* ── 窄屏（≤720px）：宽列表格容器内滚动＋顶栏可换行，布局不撑破 ── */
+  @media (max-width: 720px) {
+    /* 本页顶栏＝门户 shell 的 .os-topbar（管理页接入门户壳后由 .topbar 改名） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    .token-row { margin-left: 0; width: 100%; }
+    .token-row input { width: 100%; }
+    table { display: block; overflow-x: auto; }   /* 宽列明细表→容器滚动，不撑破卡片 */
+    pre.yaml { max-width: 100%; }
+  }
+  /* 计量聚合中 spinner（走查 P1-3 遗留）：表格区加载态反馈 */
+  .os-spinner { display: inline-block; width: 12px; height: 12px; margin-right: 6px;
+                vertical-align: -1px; border: 2px solid var(--os-line, #35404d);
+                border-top-color: var(--os-accent, #E85B6B); border-radius: 50%;
+                animation: os-spin .8s linear infinite; }
+  @keyframes os-spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body x-data="appkeyAdmin()" x-init="boot()">
+
+<header class="topbar" id="admin-topbar">
+  <span class="brand">OneServe 运营控制台</span>
+  <span class="brand-sub">AppKey 发放 · 管理（仅管理员可见）</span>
+  <nav class="crumb" id="admin-crumb" aria-label="面包屑">
+    <a href="../portal/index.html">首页</a><span class="crumb-sep">›</span><span>运营控制台</span><span class="crumb-sep">›</span><span aria-current="page">AppKey 发放</span>
+  </nav>
+  <span class="env-chip" title="当前部署环境"><span class="dot"></span>测试环境</span>
+
+  <!-- 2026-09-23：管理令牌机制已彻底拆除（维护者 原话：完全拆掉，现在用不上，等以后再加）；本机/内网阶段授权边界＝网络层可达，写操作不再校验任何令牌。 -->
+</header>
+
+<main class="page">
+  <h1>AppKey 发放</h1>
+  <p class="hint">为外部使用方签发访问凭证（AppKey＋Secret）。签发后立即生效，配额调整、禁用、重置密钥全程留痕、可审计。</p>
+
+  <!-- ══ 通用「生效与留痕条」══ -->
+  <div class="trace-bar" id="trace-bar" x-show="lastTrace" x-cloak>
+    <span class="trace-dot"></span>
+    <span id="trace-text" x-text="lastTrace"></span>
+    <button class="btn btn-sm" id="trace-view-diff" type="button" @click="openYaml()">查看凭证登记</button>
+  </div>
+
+  <!-- ══ 列表区 ══ -->
+  <section class="card" id="appkey-list-section" aria-label="AppKey 列表">
+    <div class="card-head">
+      <h2 class="card-title">已发放 AppKey <span class="muted num" id="appkey-count" x-text="'(' + keys.length + ' 把)'"></span>
+        <span class="count-note">数据源：<span id="list-source" x-text="source === 'live' ? '基线 · 在线读取' : '演示数据 · 内置副本'"></span></span>
+      </h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="export-yaml-btn" type="button" @click="openYaml()">查看凭证登记</button>
+        <button class="btn btn-secondary" id="open-issue-btn" type="button" @click="openIssue()"
+                :disabled="gateLocked()" :title="gateLocked() ? gateBannerText() : '打开签发表单'">签发 AppKey</button>
+      </div>
+    </div>
+    <!-- AC-1 双视图（2026-10-14）：默认只显有效凭证；过期/禁用/轮换失效折叠进「历史」 -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px" role="tablist" aria-label="凭证视图">
+      <button class="btn btn-sm" id="tab-active-btn" type="button"
+              :class="listTab === 'active' ? 'btn-primary' : ''"
+              @click="listTab = 'active'">有效凭证（<span class="num" x-text="activeCount()"></span>）</button>
+      <button class="btn btn-sm" id="tab-history-btn" type="button"
+              :class="listTab === 'history' ? 'btn-primary' : ''"
+              @click="listTab = 'history'">历史（<span class="num" x-text="historyCount()"></span>）</button>
+      <span class="count-note" x-show="listTab === 'history'" x-cloak>过期 / 禁用 / 轮换失效的凭证归档于此；删除仅限「从未被调用」的凭证。</span>
+    </div>
+    <!-- 窄屏修复三卡·卡2（2026-10-15）：11 列宽表在 375px 出视口——包横向滚动容器
+         （.table-scroll 为既有模式，见 portal.css；全宽度生效，宽屏无视觉变化） -->
+    <div class="table-scroll">
+    <table id="appkey-table" aria-label="AppKey 明细表">
+      <thead><tr>
+        <th id="col-appkey">AppKey（掩码）</th>
+        <th id="col-keytype">类型</th>
+        <th id="col-caller">备注名</th>
+        <th id="col-grants">授权服务</th>
+        <th id="col-quota">配额（每秒·每日）</th>
+        <th id="col-secret-hash">Secret（仅摘要）</th>
+        <th id="col-oa">OA 批件号</th>
+        <th id="col-expires">有效期至</th>
+        <th id="col-last-used">最近使用</th>
+        <th id="col-status">状态</th>
+        <th id="col-actions">操作</th>
+      </tr></thead>
+      <tbody>
+        <template x-for="(k, i) in keys" :key="k.appkeyMasked">
+          <tr :data-testid="'row-' + i" x-show="inCurrentTab(k)">
+            <td class="mono" x-text="k.appkeyMasked"></td>
+            <td><span class="badge" :class="k.keyType === 'sandbox' ? 'badge-sb' : 'badge-ak'"
+                     x-text="k.keyType === 'sandbox' ? '测试' : '正式'"></span></td>
+            <td><div x-text="k.appName"></div><div class="muted" x-text="k.callerName"></div></td>
+            <!-- AppKey 二批 §B 授权可见性：chips（名·路由尾段）＋「+N」行内展开完整 grants（服务/路由/字段数） -->
+            <td data-testid="grants-cell">
+              <span class="muted" x-show="!hasGrants(k)">未授权</span>
+              <div x-show="hasGrants(k)">
+                <template x-for="g in grantsToShow(k)" :key="g.route + '|' + g.name">
+                  <span class="tag" :title="g.route + '（' + g.fieldCount + ' 字段）'"
+                        x-text="grantChipText(g, isGrantsOpen(k))"></span>
+                </template>
+                <button class="btn btn-sm" type="button" x-show="grantOverflow(k) > 0"
+                        :title="isGrantsOpen(k) ? '收起授权清单' : '展开完整授权清单（服务 · 路由 · 字段数）'"
+                        @click="toggleGrants(k)"
+                        x-text="isGrantsOpen(k) ? '收起' : '+' + grantOverflow(k)"></button>
+              </div>
+            </td>
+            <td class="num">
+              <span x-text="k.quotaQps"></span> · <span x-text="fmt(k.quotaDaily)"></span>
+              <!-- 当日「已用/上限」实时值（读 /v1/admin/appkeys/usage，与门户同口径） -->
+              <div class="quota-usage" data-testid="quota-usage"
+                   :class="usageOf(k).exceeded ? 'is-over' : (usageFull(k) ? 'is-warn' : '')"
+                   :title="usageHint(k)">
+                <span class="quota-usage-label">今日</span><span class="mono" x-text="usageText(k)"></span>
+                <span class="quota-flag" :class="usageOf(k).exceeded ? 'quota-flag-over' : 'quota-flag-full'"
+                      x-show="usageFlag(k)" x-cloak x-text="usageFlag(k)"></span>
+              </div>
+            </td>
+            <td class="mono" x-text="k.secretHashOnly"></td>
+            <td class="mono" x-text="k.oaTicket"></td>
+            <td class="mono" x-text="expiryText(k.expiresAt)"></td>
+            <td x-text="lastUsedText(k)"></td>
+            <td><span class="badge" :class="statusBadgeClass(k)"
+                     :title="keyStateHint(k)" x-text="statusLabel(k)"></span>
+              <span class="badge" :class="rotationBadgeClass(k)"
+                    x-show="k.rotation && k.rotation.rotated" x-cloak
+                    :title="'重置于 ' + ((k.rotation && k.rotation.rotatedAt) || '—') +
+                            '，旧密钥可用至 ' + ((k.rotation && k.rotation.overlapExpiresAt) || '—') + '（到期自动失效）'"
+                    x-text="rotationLabel(k)"></span></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-sm" type="button" data-action="rotate" @click="askRotate(i)" :disabled="gateLocked()"
+                      :title="'密钥忘了就重置——新密钥立即显示一次，旧的 ' + rotateOverlapDays + ' 天缓冲后失效（过渡期内仍可调用，到期自动失效）'">重置密钥</button>
+              <button class="btn btn-sm" type="button" data-action="quota" @click="openQuota(i)" :disabled="gateLocked()"
+                      title="调整该密钥的每秒/每日调用上限">调整配额</button>
+              <button class="btn btn-sm" type="button" data-action="renew" @click="openRenew(i)" :disabled="gateLocked()"
+                      title="续期：只能延长有效期（可选永久）；不能缩短——作废请用禁用">续期</button>
+              <button class="btn btn-sm btn-danger" type="button" data-action="delete" @click="askDelete(i)" :disabled="gateLocked()"
+                      title="删除：仅限从未被调用的凭证；有调用记录的只能禁用（审计账不断链）">删除</button>
+              <button class="btn btn-sm" type="button" data-action="toggle" :disabled="gateLocked()"
+                      :class="k.status === 'active' ? 'btn-danger' : ''"
+                      @click="askToggle(i)" x-text="k.status === 'active' ? '禁用' : '启用'"></button>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="visibleCount() === 0"><td colspan="11" class="muted">当前视图暂无凭证——调整筛选条件，或按上方表单签发新凭证。</td></tr>
+      </tbody>
+    </table>
+    </div><!-- /.table-scroll -->
+    <!-- 配额与密钥规则要点（默认收起；id 契约 caller-limit-note/quota-usage-note 保留） -->
+    <details class="footnote" id="caller-limit-note">
+      <summary>配额与密钥规则要点</summary>
+      <ul>
+        <li>密钥忘了就重置——新密钥立即显示一次，旧的 7 天缓冲后失效（过渡期内仍可继续调用）。</li>
+        <li>删除仅限「从未被调用」的凭证（登记移除不可恢复）；有调用记录的凭证只能禁用——审计账不断链。</li>
+        <li>续期只能延长有效期（可选「永久」）；不能缩短——如需作废请用禁用。</li>
+        <li>本页签发均为沙箱凭证（测试用，正式凭证另行审批），到期自动失效；正式凭证走线下 OA 审批。</li>
+        <li>超出配额（每秒/每日上限）的调用会被拒绝；配额可随时在列表中调整。</li>
+      </ul>
+      <p class="count-note" id="quota-usage-note" x-text="usageNote()"></p>
+    </details>
+  </section>
+
+  <!-- ══ 计量已迁报表专区（1b-9 迁移 · 设计稿 §5）：凭证页只管凭证——整块计量组件迁出，
+       留轻量指引卡占位（不载计量数据、不发计量请求）；专区上线后首个走查再评估移除。
+       用量聚合新址＝侧栏「报表中心」四页（用量总览/主体用量/服务用量/用量趋势）。 ══ -->
+  <section class="card" id="metering-gone-card" aria-label="计量报表去向">
+    <div class="card-head">
+      <h2 class="card-title">计量报表已迁至报表中心</h2>
+    </div>
+    <p class="count-note">按凭证的用量聚合不再嵌在本页——凭证页只管凭证。用量总览、主体用量、
+      服务用量与用量趋势请前往侧栏「报表中心」；主体用量页支持按服务明细展开。</p>
+    <p style="margin-top:8px"><a class="btn btn-sm btn-outline-secondary" href="../reports/subjects.html">前往报表中心</a></p>
+  </section>
+
+  <!-- ══ 签发表单区（三项：授权服务／备注名／有效期＋字段默认全选） ══ -->
+  <section class="card" id="issue-form-section" aria-label="签发 AppKey 表单" x-show="issueOpen" x-cloak>
+    <div class="card-head"><h2 class="card-title">签发 AppKey</h2>
+      <button class="btn btn-sm" id="issue-close-btn" type="button" @click="issueOpen = false">收起</button></div>
+    <p class="count-note" id="issue-mode-note">本页签发均为沙箱凭证；正式凭证走线下 OA 审批。</p>
+    <form id="issue-form" @submit.prevent="generate()">
+      <div class="form-grid">
+        <div>
+          <label class="f" for="svc-select">授权服务 <span class="req" x-show="publishedServices.length > 0">*</span></label>
+          <select id="svc-select" x-model="form.serviceId" @change="onServiceChange()">
+            <option value="">— 请选择 —</option>
+            <template x-for="s in publishedServices" :key="s.id">
+              <!-- AppKey 二批 §A.3：选项＝「名字（路由尾段）」——同名服务靠路由区分；完整路由见 title -->
+              <option :value="s.id" x-text="svcOptionText(s)" :title="s.routePath"></option>
+            </template>
+          </select>
+          <div class="count-note" id="svc-grant-note" x-text="svcGrantNote()" x-show="svcGrantNote()" x-cloak></div>
+        </div>
+        <div>
+          <label class="f" for="remark-input">备注名（可选）</label>
+          <input id="remark-input" type="text" x-model="form.remark" placeholder="一句话用途，如：电商标签点查">
+          <div class="count-note">不填则自动生成；用于登记与列表展示。</div>
+        </div>
+        <div>
+          <label class="f" for="validity-select">有效期</label>
+          <select id="validity-select" x-model.number="form.validityDays">
+            <option value="30">30 天</option>
+            <option value="90">90 天</option>
+            <option value="365">365 天</option>
+            <option value="permanent">永久</option>
+          </select>
+          <div class="count-note">到期后凭证自动失效；选「永久」则不再到期（可随时续期/禁用）。</div>
+        </div>
+      </div>
+      <!-- 授权字段：默认勾满该服务全部字段，可按需减少（所选字段＝该凭证可查询的数据范围）。
+           C3：选中上游代理时隐藏字段块，改显示「整路由授权」。 -->
+      <div style="margin-top:var(--space-2,16px)" id="svc-grant-section"
+           x-show="selectedService() && !isProxySelected()" x-cloak>
+        <span class="f">授权字段（默认全选，可按需减少）<span class="req">*</span></span>
+        <div class="checks" id="svc-grant-list">
+          <template x-for="f in selectedServiceFields()" :key="f">
+            <label><input type="checkbox" :checked="fieldChecked(form.serviceId, f)"
+                   @change="toggleField(form.serviceId, f, $event.target.checked)"> <span class="mono" x-text="f"></span></label>
+          </template>
+        </div>
+      </div>
+      <div style="margin-top:var(--space-2,16px)" id="svc-route-grant-section"
+           x-show="selectedService() && isProxySelected()" x-cloak>
+        <span class="f">整路由授权</span>
+        <div class="count-note" id="svc-route-grant-note">
+          该服务是上游代理，按整条 /proxy/* 路由授权，无需选择字段；签发后该凭证即可调用此代理路径。
+        </div>
+      </div>
+      <div class="err" id="issue-error" x-text="issueError"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:var(--space-1,8px)">
+        <button class="btn btn-primary" id="generate-btn" type="submit" :disabled="busy || gateLocked()"
+                x-text="busy ? '签发中…' : '生成 AppKey＋Secret'"></button>
+        <span class="count-note" id="generate-hint" x-text="generateHint()"></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ══ Secret 一次性弹窗 ══ -->
+  <div class="overlay" id="secret-modal" x-show="secretModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="secret-modal-title">
+    <div class="dlg">
+      <h2 class="card-title" id="secret-modal-title">Secret 仅此一次显示</h2>
+      <div class="warn-box">关闭后无法再次查看或找回；请经<b>安全渠道</b>交付使用方（不经 IM 转发明文）。建议立即下载凭据文件。</div>
+      <div class="f">AppKey</div>
+      <div class="mono" id="secret-appkey-value" x-text="secretModal.appkey" style="font-size:15px"></div>
+      <div class="f" style="margin-top:8px">有效期至</div>
+      <div class="mono" id="secret-expires-value" x-text="expiryText(secretModal.keyRef && secretModal.keyRef.expiresAt)"></div>
+      <div class="f" style="margin-top:8px">配额</div>
+      <!-- P3 弹窗卡（维护者 4）：签发成功可见落点补配额口径；后端实测缺省 quota_qps=50／quota_daily=10000 -->
+      <div class="mono" id="secret-quota-value" x-text="quotaText()"></div>
+      <div class="f" style="margin-top:8px" x-show="secretModal.rotate" x-cloak>旧密钥可用至（过渡期）</div>
+      <div class="mono" id="secret-overlap-value" x-show="secretModal.rotate" x-cloak
+           x-text="secretModal.overlapExpiresAt || '—'"></div>
+      <div class="f" style="margin-top:8px">Secret</div>
+      <div class="secret-big" id="secret-value" x-text="secretModal.secret"></div>
+      <div class="f">调试台 URL</div>
+      <div class="mono" id="secret-trial-url" x-text="secretModal.trialUrl" style="font-size:12px"></div>
+      <div class="f" style="margin-top:8px">可调服务（本次授权）</div>
+      <div class="mono" id="secret-grants-value" x-text="grantsText()" style="font-size:12px"></div>
+      <div class="modal-actions">
+        <button class="btn" id="copy-secret-btn" type="button" @click="copySecret()"
+                x-text="secretModal.copied ? '已复制' : '复制 Secret'"></button>
+        <button class="btn" id="download-cred-btn" type="button" @click="downloadCredential()">下载凭据文件（.txt）</button>
+        <button class="btn btn-secondary" id="secret-saved-btn" type="button" @click="confirmSaved()">我已保存，关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 两段式确认弹窗（禁用/启用/重置密钥）══ -->
+  <div class="overlay" id="confirm-modal" x-show="confirmModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+    <div class="dlg">
+      <h2 class="card-title" id="confirm-modal-title" x-text="confirmModal.title"></h2>
+      <p class="muted" id="confirm-modal-detail" x-text="confirmModal.detail"></p>
+      <p class="err" x-show="confirmModal.stage === 2">第二段确认：勾选下方确认开关后，才会真正执行（危险操作两段式）。</p>
+      <div class="switch-row" x-show="confirmModal.stage === 2">
+        <input type="checkbox" id="confirm-auth-switch" x-model="confirmModal.armed" @change="confirmModal.hint = ''">
+        <label for="confirm-auth-switch" id="confirm-auth-label" x-text="confirmModal.armLabel"></label>
+      </div>
+      <p class="err" id="confirm-hint" x-show="confirmModal.hint" x-text="confirmModal.hint"></p>
+      <div class="modal-actions">
+        <button class="btn" id="confirm-step-btn" type="button" @click="confirmStep()"
+                x-text="confirmModal.stage === 1 ? '继续（进入二次确认）' : '确认执行'"></button>
+        <button class="btn" id="confirm-cancel-btn" type="button" @click="closeConfirm()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 调整配额弹窗 ══ -->
+  <div class="overlay" id="quota-modal" x-show="quotaModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="quota-modal-title">
+    <div class="dlg">
+      <h2 class="card-title" id="quota-modal-title">调整配额</h2>
+      <p class="muted mono" x-text="quotaModal.target && keys[quotaModal.index] ? keys[quotaModal.index].appkeyMasked : ''"></p>
+      <div class="form-grid">
+        <div><label class="f" for="quota-edit-qps">每秒调用上限</label>
+          <input id="quota-edit-qps" type="number" min="1" max="1000" x-model.number="quotaModal.qps"></div>
+        <div><label class="f" for="quota-edit-daily">每日调用上限</label>
+          <input id="quota-edit-daily" type="number" min="1" step="100" x-model.number="quotaModal.daily"></div>
+      </div>
+      <p class="err" id="quota-modal-err" x-show="quotaModal.err" x-text="quotaModal.err"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="quota-save-btn" type="button" @click="saveQuota()">保存</button>
+        <button class="btn" id="quota-cancel-btn" type="button" @click="quotaModal.open = false">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 续期弹窗（AC-3，两段式确认：选目标 → 勾选确认开关 → 执行）══ -->
+  <div class="overlay" id="renew-modal" x-show="renewModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="renew-modal-title">
+    <div class="dlg">
+      <h2 class="card-title" id="renew-modal-title">续期 AppKey</h2>
+      <p class="muted mono" x-text="keys[renewModal.index] ? keys[renewModal.index].appkeyMasked : ''"></p>
+      <p class="muted" x-show="renewModal.stage === 1">续期只能延长有效期（不能缩短）；如需作废请用「禁用」。可选改为永久。</p>
+      <div class="form-grid" x-show="renewModal.stage === 1">
+        <div><label class="f" for="renew-mode-select">有效期改为</label>
+          <select id="renew-mode-select" x-model="renewModal.mode">
+            <option value="date">延长至固定日期</option>
+            <option value="permanent">永久（不再到期）</option>
+          </select></div>
+        <div x-show="renewModal.mode === 'date'">
+          <label class="f" for="renew-date-input">延长至</label>
+          <input id="renew-date-input" type="date" x-model="renewModal.date"></div>
+      </div>
+      <p class="muted" x-show="renewModal.stage === 2" x-cloak>
+        第二段确认：将把有效期改为 <b class="mono" x-text="renewTargetText()"></b>（立即生效）。</p>
+      <div class="switch-row" x-show="renewModal.stage === 2" x-cloak>
+        <input type="checkbox" id="renew-auth-switch" x-model="renewModal.armed" @change="renewModal.hint = ''">
+        <label for="renew-auth-switch" id="renew-auth-label" x-text="renewArmedLabel()"></label>
+      </div>
+      <p class="err" id="renew-modal-err" x-show="renewModal.err" x-text="renewModal.err"></p>
+      <p class="err" x-show="renewModal.hint" x-text="renewModal.hint"></p>
+      <div class="modal-actions">
+        <button class="btn" id="renew-step-btn" type="button" @click="saveRenew()"
+                x-text="renewModal.stage === 1 ? '继续（进入二次确认）' : '确认执行'"></button>
+        <button class="btn" id="renew-cancel-btn" type="button" @click="closeRenew()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 凭证登记（只读）弹窗 ══ -->
+  <div class="overlay" id="yaml-modal" x-show="yamlModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="yaml-modal-title">
+    <div class="dlg" style="max-width:760px">
+      <h2 class="card-title" id="yaml-modal-title" x-text="source === 'live' ? '凭证登记（只读）' : '凭证登记（演示内容）'"></h2>
+      <p class="muted">全部已签发凭证的登记记录：AppKey 掩码、Secret 摘要与授权范围。Secret 明文永不落盘，仅在签发时显示一次。</p>
+      <pre class="yaml mono" id="yaml-code" x-text="yamlModal.text"></pre>
+      <div class="modal-actions">
+        <button class="btn" id="yaml-copy-btn" type="button" @click="copyYaml()" x-text="yamlModal.copied ? '已复制' : '复制'"></button>
+        <button class="btn" id="yaml-download-btn" type="button" @click="downloadYaml()">下载登记文件</button>
+        <button class="btn" id="yaml-close-btn" type="button" @click="yamlModal.open = false">关闭</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="admin-gate.js"></script><!-- 无闸 shim（管理令牌机制已拆；保留同名方法避免绑定报错） -->
+<script src="appkeys.js"></script><!-- 业务脚本必须先于 alpine 加载：本仓 alpine 构建在自身执行后 queueMicrotask 即 start()，晚放的组件注册会报 not defined。 -->
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs 自托管副本（同 portal）· SHA256 见 portal/assets/alpine.min.js.sha256 -->
+</body>
+</html>

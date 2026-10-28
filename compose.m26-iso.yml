@@ -1,0 +1,106 @@
+# -*- coding: utf-8 -*-
+# TASK-M2-6 端到端验收专用「完全自包含」override（验收脚本 scripts/m26_e2e_acceptance.sh 使用）。
+#
+# 为什么另起一份（而不是复用共享栈或只改端口）：
+#   · 容器名在 Docker 内全局唯一，临时栈与共享栈同名会被 compose 直接拒绝；
+#   · 容器网络若共用 oneserve-net，临时栈的 service 会把 http://oneserve-apisix:9180
+#     解析到**共享栈**的网关（静默串栈，本机实测会发生）；
+#   故三样一起隔离：专属网络 oneserve-m26-net ＋ 专属容器名 oneserve-m26-* ＋
+#   专属卷 oneserve-m26-*；宿主端口全部改高位（19080 网关／19000 服务／26379 Redis／
+#   29090 HBase Thrift），共享栈的 9080／8000／9090 一律不动。
+#
+# 两处「网络别名」是必要的，不是抄近路：
+#   ① init_routes.static_resources() 把上游节点名硬编码为 oneserve-service:8000
+#      （单一渲染入口，本卡不改代码），别名让该名在**本栈网络内**解析到本栈 service；
+#   ② 网关统计钩子 serverless-pre-function 里硬编码连接 oneserve-redis:6379，
+#      别名让它在**本栈网络内**写本栈 Redis（否则只报错、零写入）。
+#   别名只存在于 oneserve-m26-net，不覆盖任何宿主端口，也不影响共享栈。
+#
+# 纪律（AGENTS.md「共享演示栈归属」）：oneserve 项目名由 main 检出独占；
+# 本文件只服务 oneserve-m26 项目名。验收脚本收尾用 down --remove-orphans，
+# **绝不 down -v**；卷按 oneserve-m26- 前缀逐个精确删除。
+#
+# 环境变量（验收脚本注入；缺省即报错，避免误用默认值起错栈）：
+#   M26_APISIX_CONFIG  指向本栈 etcd 的网关配置副本（脚本生成）
+#   M26_SERVICE_DIR    service 目录副本（运行期写 services.yaml 用，不碰仓库真文件）
+#   M26_AUDIT_DIR / M26_RETENTION_DIR / M26_BATCH_DIR  宿主持久化目录
+name: oneserve-m26
+
+services:
+  etcd:
+    container_name: oneserve-m26-etcd
+  apisix:
+    container_name: oneserve-m26-apisix
+    ports: !override
+      - "127.0.0.1:19080:9080"
+    volumes: !override
+      - ${M26_APISIX_CONFIG:?须注入 M26_APISIX_CONFIG（etcd=oneserve-m26-etcd 的配置副本）}:/usr/local/apisix/conf/config.yaml:ro
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-apisix         # 门户 nginx 反代目标名（本栈网络内解析，不碰共享栈）
+  redis:
+    container_name: oneserve-m26-redis
+    ports: !override
+      - "127.0.0.1:26379:6379"          # 仅供宿主侧既有 CLI（reconcile_drift 等）真跑；写的是本栈 Redis
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-redis              # 网关统计钩子连接名（本栈网络内解析，不碰共享栈）
+  service:
+    image: oneserve/service:m26-e2e     # 独立 tag：不覆写共享栈所用的 oneserve/service:m0
+    container_name: oneserve-m26-service
+    ports: !override
+      - "127.0.0.1:19000:8000"          # 仅本机验收直连探活/管理端点；业务链路仍走 19080 网关
+    environment:
+      # 容器网内 DNS：全部指向本栈容器名（不解析到共享栈）
+      REDIS_URL: redis://oneserve-m26-redis:6379/0
+      SYNC_REDIS_URL: redis://oneserve-m26-redis:6379/0
+      APISIX_ADMIN: http://oneserve-m26-apisix:9180
+      HBASE_HOST: oneserve-m26-hbase
+      HBASE_PORT: "9090"
+      SCHEMA_CSV: /sync/schema_usr_label_wide_297.csv   # TODO(卡2): 297 宽表字典换源为表级 schema 元数据（装载副产品）；CSV 缓删至卡2 交接（卡5 2026-09-30）
+      REGISTRY_POLL_INTERVAL_S: "5"     # 热加载看门间隔压到 5s（验收要求 ≤60s 内可调）
+    volumes: !override
+      - ${M26_SERVICE_DIR:?须注入 M26_SERVICE_DIR（service 目录副本）}:/app:rw
+      - ${M26_AUDIT_DIR:?须注入 M26_AUDIT_DIR}:/data/audit
+      - ${M26_RETENTION_DIR:?须注入 M26_RETENTION_DIR}:/data/retention
+      - ${M26_BATCH_DIR:?须注入 M26_BATCH_DIR}:/data/batch-results
+      - ./configs/apisix:/init:ro
+      - ./sync:/sync:ro
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-service          # init_routes 上游节点名（本栈网络内解析，不碰共享栈）
+  portal:                               # 演示/操作手册的 UI 入口（publish.html 加载到 Redis）
+    container_name: oneserve-m26-portal
+    ports: !override
+      - "127.0.0.1:18000:8080"          # 容器内口随 1b 批·词条②非 root 化改 8080（unprivileged 免特权口）
+  hbase:                                # 定义由 compose.hbase.yml 提供；此处只改容器名/端口
+    container_name: oneserve-m26-hbase
+    ports: !override
+      - "127.0.0.1:29090:9090"          # 宿主造数/对账经 127.0.0.1:29090
+    networks:
+      oneserve-net:
+        aliases:
+          - oneserve-hbase              # 路径依赖默认名时的兜底（本栈网络内解析）
+
+volumes:
+  oneserve-etcd-data:
+    name: oneserve-m26-etcd-data
+  oneserve-redis-data:
+    name: oneserve-m26-redis-data
+  oneserve-audit-data:
+    name: oneserve-m26-audit-data
+  oneserve-retention-data:
+    name: oneserve-m26-retention-data
+  oneserve-batch-results:
+    name: oneserve-m26-batch-results
+
+networks:
+  oneserve-net:
+    name: oneserve-m26-net             # 覆盖 compose.hbase.yml 的 external: oneserve-net
+    external: false
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16         # 与共享栈 172.28.0.0/16 错开

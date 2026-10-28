@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>授权管理 selftest（运行中…）</title>
+<!-- OneServe 运营版 1b-8 自测页（设计稿 §7-5 新建；沿 selftest 断言页惯例不经导航暴露）：
+     断言 grants.js 纯函数（window.G8）＋ grants.html 关键区块 id／交互不变式——
+     审批单号为空＝提交禁用；沙箱行编辑按钮禁用（整卡只读横幅在位）；
+     整路由代理行无字段勾选区；变更/停用两段确认与变更预览；零外网引用。
+     打开方式：http.server（推荐，mock 可达）或 file:// 直开（无外网断言自动跳过）。 -->
+<link rel="stylesheet" href="../assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: #171B21; color: #E6E9EE; padding: 24px; font-size: 13px; }
+  h1 { font-size: 16px; margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 920px; }
+  th, td { border: 1px solid #2C333D; padding: 8px; text-align: left; font-size: 12px; }
+  th { color: #98A2AE; font-weight: 500; }
+  .pass { color: #3FBE95; font-weight: 600; }
+  .fail { color: #E05252; font-weight: 600; }
+  .skip { color: #D89A3C; font-weight: 600; }
+  #summary { margin: 16px 0; font-size: 14px; }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: var(--font-mono, monospace); }
+</style>
+</head>
+<body>
+<h1>OneServe 运营版 1b-8 · 授权管理 断言页</h1>
+<div id="summary">运行中…</div>
+<div id="results"></div>
+
+<!-- DOM 探针：以 grants.html 同套 id 挂载 Alpine 组件（隐藏），断言列表/详情/向导/两段确认交互 -->
+<div id="dom-probe" style="display:none" x-data="grantsAdmin()" x-init="boot()">
+  <section id="tenant-list-section">
+    <input id="tenant-search" type="text" x-model="search">
+    <select id="tenant-status-filter" x-model="statusFilter">
+      <option value="all">全部状态</option>
+      <option value="active">在册</option>
+    </select>
+    <table id="tenant-list"><tbody id="probe-tenants-tbody">
+      <template x-for="t in filteredTenants()" :key="t.tenant">
+        <tr :data-testid="'tenant-row-' + t.tenant">
+          <td x-text="t.tenant"></td>
+          <td><span :class="G8.statusBadgeClass(t.status)" x-text="G8.statusLabel(t.status)"></span></td>
+          <td><span :class="G8.typeBadgeClass(t.tenantType)" x-text="G8.typeLabel(t.tenantType)"></span></td>
+          <td class="num" x-text="t.activeKeys"></td>
+          <td class="num" x-text="t.grantsCount"></td>
+          <td><button id="open-detail-btn" type="button" @click="openDetail(t.tenant)"
+                      x-text="t.readonly ? '查看（只读）' : '查看详情'"></button></td>
+        </tr>
+      </template>
+    </tbody></table>
+  </section>
+  <section id="grant-detail-section" x-show="view === 'detail'">
+    <div id="tenant-card">
+      <span id="probe-card-tenant" x-text="detail ? detail.tenant : ''"></span>
+      <span :class="detail && G8.typeBadgeClass(detail.tenantType)" x-text="detail ? G8.typeLabel(detail.tenantType) : ''"></span>
+    </div>
+    <button id="open-add-grant" type="button" @click="openWizard()" x-show="detail && !detail.readonly">新增授权</button>
+    <div id="sandbox-banner" x-show="detail && detail.readonly">沙箱租户为平台演示模板：授权只读。</div>
+    <span id="probe-banner-show" x-text="(detail && detail.readonly) ? 'show' : 'hide'"></span>
+    <span id="probe-detail-tenant" x-text="detail ? detail.tenant : ''"></span>
+    <span id="probe-readonly" x-text="detail && detail.readonly ? 'ro' : 'rw'"></span>
+    <table id="grant-matrix"><tbody id="probe-grants-tbody">
+      <template x-for="(g, i) in (detail ? detail.grants : [])" :key="g.service">
+        <tr :data-testid="'grant-row-' + i" :data-kind="g.kind">
+          <td><span x-text="g.serviceName"></span>
+              <span :class="isProxyRow(g) ? 'badge-proxy' : 'badge-svc'" x-text="g.kindLabel"></span></td>
+          <td data-testid="fields-cell">
+            <div x-show="editIndex === i && !isProxyRow(g)" id="edit-fields">
+              <template x-for="f in editAvailable(g)" :key="f">
+                <label><input type="checkbox" :value="f" x-model="editModel.fields[f]"> <span x-text="f"></span></label>
+              </template>
+            </div>
+            <div x-show="isProxyRow(g)" id="proxy-no-fields-note">整条路由开放（无字段勾选）</div>
+            <div x-show="editIndex !== i && !isProxyRow(g)">
+              <template x-for="f in g.fields" :key="f"><span class="tag" x-text="f"></span></template>
+            </div>
+          </td>
+          <td><span class="mono" x-text="oaText(g)"></span>
+              <input id="edit-oa-ticket" type="text" x-model="editModel.oaTicket" x-show="editIndex === i"></td>
+          <td><span x-text="effText(g)"></span></td>
+          <td><span :class="rowStatusClass(g)" x-text="rowStatusText(g)"></span></td>
+          <td>
+            <button type="button" data-action="edit" :disabled="rowReadonly(g)" @click="startEdit(i)"
+                    x-show="editIndex !== i">编辑</button>
+            <button type="button" data-action="save-edit" x-show="editIndex === i" @click="askSaveEdit()">保存</button>
+            <button type="button" data-action="cancel-edit" x-show="editIndex === i" @click="cancelEdit()">取消</button>
+            <button type="button" data-action="disable" :disabled="rowReadonly(g) || g.status !== 'active'"
+                    @click="askDisable(i)" x-show="editIndex !== i">停用</button>
+            <button type="button" data-action="enable" :disabled="rowReadonly(g) || g.status === 'active'"
+                    @click="askEnable(i)" x-show="editIndex !== i">启用</button>
+          </td>
+        </tr>
+      </template>
+    </tbody></table>
+    <p class="err" id="edit-error" x-text="editError"></p>
+    <table id="cred-summary"><tbody id="probe-cred-tbody">
+      <template x-for="c in (detail ? detail.credentials : [])" :key="c.appkeyMasked">
+        <tr><td class="mono" x-text="c.appkeyMasked"></td><td x-text="c.keyType"></td><td x-text="c.status"></td>
+            <td><template x-for="s in c.services" :key="s"><span class="tag" x-text="s"></span></template></td></tr>
+      </template>
+    </tbody></table>
+    <span id="probe-view" x-text="view"></span>
+    <button id="back-to-list" type="button" @click="backToList()">返回</button>
+  </section>
+
+  <!-- 向导探针（同 grants.html 同套 id） -->
+  <div id="wizard-modal" x-show="wizard.open">
+    <nav class="steps" id="wizard-steps">
+      <span class="step-dot" id="step-ind-1" :class="wizard.step === 1 ? 'on' : ''"></span>
+      <span class="step-dot" id="step-ind-2" :class="wizard.step === 2 ? 'on' : ''"></span>
+      <span class="step-dot" id="step-ind-3" :class="wizard.step === 3 ? 'on' : ''"></span>
+    </nav>
+    <div id="wizard-step-1" x-show="wizard.step === 1">
+      <input id="wizard-tenant" type="text" :value="detail ? detail.tenant : ''" disabled>
+      <select id="wizard-service-select" x-model="wizard.service">
+        <option value="">请选择…</option>
+        <template x-for="s in (detail ? detail.availableServices : [])" :key="s.id">
+          <option :value="s.id" x-text="s.name + '（' + s.kindLabel + '）'"></option>
+        </template>
+      </select>
+      <p class="err" id="wizard-step-1-error" x-text="wizardErr()"></p>
+    </div>
+    <div id="wizard-step-2" x-show="wizard.step === 2" x-cloak>
+      <div id="wizard-fields" class="checks" x-show="wizardSvc() && wizardSvc().kind !== 'proxy'">
+        <template x-for="f in (wizardSvc() ? wizardSvc().fields : [])" :key="f">
+          <label><input type="checkbox" :value="f" x-model="wizard.fields[f]"> <span x-text="f"></span></label>
+        </template>
+      </div>
+      <p id="wizard-proxy-note" x-show="wizardSvc() && wizardSvc().kind === 'proxy'" x-cloak>整路由授权</p>
+      <p class="err" id="wizard-step-2-error" x-text="wizardErr()"></p>
+    </div>
+    <div id="wizard-step-3" x-show="wizard.step === 3" x-cloak>
+      <input id="wizard-oa-ticket" type="text" x-model="wizard.oaTicket">
+      <p class="err" id="wizard-ticket-hint" x-text="ticketHintLive()"></p>
+      <input id="wizard-effective-from" type="date" x-model="wizard.effectiveFrom">
+      <input id="wizard-effective-to" type="date" x-model="wizard.effectiveTo">
+      <div id="wizard-diff" x-text="wizardDiffText()"></div>
+    </div>
+    <p class="err" id="wizard-error" x-text="wizard.err"></p>
+    <button id="wizard-prev" type="button" @click="wizardPrev()" x-show="wizard.step > 1">上一步</button>
+    <button id="wizard-next" type="button" @click="wizardTouchedNext()" x-show="wizard.step < 3">下一步</button>
+    <button id="wizard-submit" type="button" :disabled="wizardSubmitDisabled()" @click="submitWizard()"
+            x-show="wizard.step === 3">提交登记</button>
+    <button id="wizard-cancel" type="button" @click="closeWizard()">取消</button>
+    <span id="probe-wizard-step" x-text="wizard.step"></span>
+    <span id="probe-submit-disabled" x-text="wizardSubmitDisabled() ? 'yes' : 'no'"></span>
+  </div>
+
+  <!-- 确认弹窗探针（两段式＋变更预览） -->
+  <div id="confirm-modal" x-show="confirmModal.open">
+    <h2 id="confirm-modal-title" x-text="confirmModal.title"></h2>
+    <p id="confirm-modal-detail" x-text="confirmModal.detail"></p>
+    <div id="confirm-diff">
+      <div class="diff-add" x-text="confirmModal.diff && confirmModal.diff.addedFields.length ? '+ ' + confirmModal.diff.addedFields.join('、') : ''"></div>
+      <div class="diff-del" x-text="confirmModal.diff && confirmModal.diff.removedFields.length ? '− ' + confirmModal.diff.removedFields.join('、') : ''"></div>
+    </div>
+    <div class="switch-row" x-show="confirmModal.stage === 2">
+      <input type="checkbox" id="confirm-switch" x-model="confirmModal.armed">
+      <label for="confirm-switch" id="confirm-switch-label">我确认执行</label>
+    </div>
+    <span id="probe-confirm-stage" x-text="confirmModal.stage"></span>
+    <span id="probe-confirm-kind" x-text="confirmModal.kind"></span>
+    <button id="confirm-step-btn" type="button" @click="confirmStep()" x-text="confirmModal.stage === 1 ? '继续' : '确认执行'"></button>
+    <button id="confirm-cancel-btn" type="button" @click="closeConfirm()">取消</button>
+    <p class="err" id="confirm-hint" x-text="confirmModal.hint"></p>
+  </div>
+
+  <div id="trace-bar"><span id="trace-text" x-text="lastTrace"></span></div>
+  <span id="probe-source" x-text="source"></span>
+  <span id="probe-count" x-text="tenants.length"></span>
+  <span id="probe-canwrite" x-text="canWrite() ? 'w' : 'r'"></span>
+  <span id="probe-filtered-count" x-text="filteredTenants().length"></span>
+  <span id="probe-modal-open" x-text="confirmModal.open ? 'open' : 'closed'"></span>
+  <span id="probe-edit-index" x-text="editIndex"></span>
+  <span id="probe-wizard-open" x-text="wizard.open ? 'open' : 'closed'"></span>
+</div>
+
+<!-- W2 进墙标注：本页属登录墙内页面——off 态跑测或预注入 token（localStorage oneserve-oidc-token） -->
+<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载 -->
+<script src="admin-gate.js"></script><!-- 登录闸共享模块（grants.js 组件依赖它） -->
+<script src="grants.js"></script><!-- 先业务脚本后 Alpine（本仓 alpine 构建微任务即启动） -->
+<script src="../assets/alpine.min.js"></script>
+<script src="selftest-grants.js"></script>
+</body>
+</html>

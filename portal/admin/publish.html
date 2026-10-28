@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>服务发布 · OneServe</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<style>
+  * { box-sizing: border-box; }
+  [x-cloak] { display: none !important; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-body);
+         font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.6; }
+  .page { max-width: 720px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+  .page-head h1 { font-size: var(--fs-heading); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .page-head .hint { color: var(--text-body); margin: 0; }
+  .muted { color: var(--text-muted); }
+  .mono { font-family: var(--font-mono); }
+
+  /* ── Stepper（视觉标准 §六：三态；五段） ── */
+  .stepper { display: flex; align-items: center; gap: 12px; margin: var(--space-5) 0; }
+  .step { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+  .step:last-child { flex: 0 0 auto; }
+  .step-dot { width: 28px; height: 28px; border-radius: var(--radius-full); display: inline-flex;
+              align-items: center; justify-content: center; font-size: var(--fs-body); font-weight: 600;
+              border: 1px solid var(--border-strong); color: var(--text-muted); background: transparent; }
+  .step-name { font-size: var(--fs-caption); color: var(--text-muted); }
+  .step.is-done .step-dot { background: var(--status-ok); border-color: var(--status-ok); color: var(--bg-card); }
+  .step.is-current .step-dot { background: var(--brand-primary); border-color: var(--brand-primary);
+                               color: var(--brand-on);
+                               box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 25%, transparent); }
+  .step.is-current .step-name { color: var(--text-strong); font-weight: 600; }
+  .step-line { flex: 1 1 auto; height: 2px; background: var(--border-strong); min-width: 12px; }
+  .step-line.is-reached { background: var(--brand-primary); }
+  @media (max-width: 720px) {
+    .step .step-name { display: none; }
+    .step.is-current .step-name { display: inline; }
+    .step.is-current .step-name::before { content: attr(data-count) " "; }
+  }
+
+  .wizard-col { max-width: 720px; margin: 0 auto; }
+  .card { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius);
+          padding: var(--space-5); margin-bottom: var(--space-5); }
+  .card-title { font-size: var(--fs-title); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .card-sub { color: var(--text-body); font-size: var(--fs-caption); margin: 0 0 var(--space-4); }
+
+  .btn { border: 1px solid var(--border-strong); background: var(--bg-subtle); color: var(--text-strong);
+         border-radius: var(--radius); height: 36px; padding: 4px 16px; font-size: var(--fs-body);
+         font-family: inherit; cursor: pointer;
+         transition: border-color var(--motion-duration) var(--motion-ease); }
+  .btn:hover:not(:disabled) { border-color: var(--brand-primary); }
+  .btn:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+  .btn:disabled { opacity: .38; cursor: not-allowed; }
+  .btn-primary { background: var(--brand-primary); border-color: var(--brand-primary);
+                 color: var(--brand-on); font-weight: 600; }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn-danger { background: transparent; border-color: var(--status-error); color: var(--status-error); }
+  .btn-danger:hover:not(:disabled) { border-color: var(--status-error);
+               background: color-mix(in srgb, var(--status-error) 10%, transparent); }
+  .btn-sm { height: 28px; padding: 4px 12px; font-size: var(--fs-caption); }
+  .btn-lg { height: 40px; min-width: 120px; }
+  .wizard-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: var(--space-5); }
+
+  /* ── ① 已装载表卡片 ── */
+  .table-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); }
+  .table-card { text-align: left; background: var(--bg-card); border: 1px solid var(--border-strong);
+                border-radius: var(--radius); padding: 16px; cursor: pointer; color: var(--text-body);
+                font-family: inherit; }
+  .table-card:hover { border-color: var(--brand-primary); }
+  .table-card.is-on { border-color: var(--brand-primary); }
+  .table-card .tc-name { font-size: var(--fs-title); font-weight: 600; color: var(--text-strong); }
+  .table-card .tc-sub { color: var(--text-muted); font-size: var(--fs-caption); margin-top: 4px; }
+
+  /* ── ② 版本行 ── */
+  .ver-row { display: flex; align-items: center; gap: 12px; padding: 12px 0;
+             border-bottom: 1px solid var(--border-light); min-height: 40px; }
+  .ver-row:last-child { border-bottom: none; }
+  .ver-row.is-on { background: color-mix(in srgb, var(--brand-primary) 6%, transparent);
+                   border-radius: var(--radius); padding-left: 8px; padding-right: 8px; }
+  .ver-cell { color: var(--text-body); font-size: var(--fs-caption); }
+  .ver-main { font-family: var(--font-mono); color: var(--text-strong); font-size: var(--fs-body); }
+
+  /* ── ④ 字段行 ── */
+  .field-row { display: flex; align-items: center; gap: 12px; padding: 12px 0;
+               border-bottom: 1px solid var(--border-light); min-height: 40px; }
+  .field-row:last-child { border-bottom: none; }
+  .field-cn { color: var(--text-body); }
+  .field-type { color: var(--text-muted); font-size: var(--fs-caption); }
+  .field-name { color: var(--text-muted); font-size: var(--fs-caption); }
+  input[type="checkbox"] { accent-color: var(--brand-primary); width: 16px; height: 16px; }
+  input[type="radio"] { accent-color: var(--brand-primary); width: 16px; height: 16px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-full);
+           padding: 2px 8px; font-size: var(--fs-caption); flex: none; }
+  .badge .dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; flex: none; }
+  .badge-ok { color: var(--status-ok); background: color-mix(in srgb, var(--status-ok) 12%, transparent); }
+  .badge-error { color: var(--status-error); background: color-mix(in srgb, var(--status-error) 12%, transparent); }
+  .badge-info { color: var(--status-info); background: color-mix(in srgb, var(--status-info) 12%, transparent); }
+  .badge-muted { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 12%, transparent); }
+
+  label.f { display: block; font-size: var(--fs-body); color: var(--text-body); font-weight: 600; margin-bottom: 8px; }
+  input[type="text"] { width: 100%; background: var(--bg-input);
+         border: 1px solid var(--border-strong); color: var(--text-strong); border-radius: var(--radius);
+         height: 36px; padding: 0 12px; font-size: var(--fs-body); font-family: inherit; }
+  input:focus { outline: none; border-color: var(--brand-primary);
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 25%, transparent); }
+  input.is-error { border-color: var(--status-error); }
+  input.is-error:focus { border-color: var(--status-error);
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-error) 25%, transparent); }
+  .help { font-size: var(--fs-caption); color: var(--text-body); margin: 4px 0 0; }
+  .err-text { font-size: var(--fs-caption); color: var(--status-error); margin: 4px 0 0; }
+  .ok-text { font-size: var(--fs-caption); color: var(--status-ok); margin: 4px 0 0; }
+  .form-row { margin-bottom: var(--space-4); }
+  /* P3：③步示例键行（只读输入框＋复制按钮）——键值经 input.value 承载（可全选复制） */
+  .key-example { display: flex; gap: 8px; margin: 6px 0 0; align-items: center; }
+  .key-example input { flex: 1 1 auto; min-width: 0; font-size: var(--fs-caption); }
+
+  .result { display: flex; gap: 8px; align-items: flex-start; border-radius: var(--radius);
+            padding: 12px 16px; font-size: var(--fs-body); color: var(--text-strong); }
+  .result-ok { border: 1px solid var(--status-ok);
+               background: color-mix(in srgb, var(--status-ok) 8%, transparent); }
+  .result-bad { border: 1px solid var(--status-error);
+                background: color-mix(in srgb, var(--status-error) 8%, transparent); }
+  .result-info { border: 1px solid var(--status-info);
+                 background: color-mix(in srgb, var(--status-info) 8%, transparent); }
+  .result .mark { font-weight: 600; flex: none; }
+
+  .version-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 0;
+                 border-top: 1px solid var(--border-light); margin-top: var(--space-4); font-size: var(--fs-body); }
+  details.advanced { border: 1px solid var(--border-light); border-radius: var(--radius);
+                     background: var(--bg-subtle); padding: 12px 16px; margin-top: var(--space-4); }
+  details.advanced summary { cursor: pointer; color: var(--text-muted); font-size: var(--fs-caption); }
+  details.advanced .adv-body { padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── 完成页 ── */
+  .done-wrap { text-align: center; padding: var(--space-7) 0; }
+  .done-mark { font-size: 48px; line-height: 1; color: var(--status-ok); }
+  .done-name { font-size: var(--fs-display); color: var(--text-strong); font-weight: 600; margin: 16px 0 4px; }
+  .done-route { font-family: var(--font-mono); color: var(--text-body); word-break: break-all; }
+  .row-flash { outline: 2px solid var(--brand-primary); outline-offset: -2px; border-radius: var(--radius-sm); }
+  /* 卡3 视觉挂账：curl 块与卡片底拉对比（tokens 明示 --bg-inset＝代码块底；浅色 #f0f0f0/深色 #263244） */
+  pre.curl { background: var(--bg-inset); border: 1px solid var(--border-light); border-radius: var(--radius);
+             padding: 16px; font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--text-body);
+             text-align: left; white-space: pre-wrap; word-break: break-all; margin: var(--space-4) 0 0; }
+  .t10 { text-align: left; margin-top: var(--space-5); border: 1px solid var(--border-light);
+         border-radius: var(--radius); padding: var(--space-4) var(--space-5); }
+  .t10 h3 { margin: 0 0 var(--space-3); font-size: var(--fs-subheading); color: var(--text-strong); }
+  .t10 ol { margin: 0; padding-left: 20px; }
+  .t10 li { margin-bottom: var(--space-3); font-size: var(--fs-caption); color: var(--text-body); }
+  .t10 .cmd { font-family: var(--font-mono); background: var(--bg-subtle); border: 1px solid var(--border-light);
+              border-radius: var(--radius-sm); padding: 6px 10px; display: block; margin-top: 6px;
+              font-size: var(--fs-caption); word-break: break-all; }
+  .t10 a { color: var(--status-info); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: var(--fs-caption); color: var(--text-body); font-weight: 600; text-align: left;
+       padding: 8px 0; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  td { font-size: var(--fs-body); padding: 12px 12px 12px 0; border-bottom: 1px solid var(--border-light);
+       vertical-align: top; }
+  tbody tr:hover td { background: var(--bg-subtle); }
+  .empty-tip { text-align: center; color: var(--text-muted); padding: var(--space-6) 0; }
+  .empty-ico { width: 24px; height: 24px; color: var(--text-muted); }
+  .empty-guide { margin-top: 4px; }
+  .empty-guide a { color: var(--status-info); }
+
+  .overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg-page) 72%, transparent);
+             display: flex; align-items: center; justify-content: center; padding: var(--space-5); z-index: 50; }
+  .modal { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius);
+           max-width: 520px; width: 100%; padding: var(--space-5); }
+  .switch-line { display: flex; align-items: center; gap: 8px; font-size: var(--fs-body); }
+
+  @media (max-width: 720px) {
+    .page { padding: var(--space-4) var(--space-4); }
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="../site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="../site-gate.js?v=266daaf925e8"></script>
+<script defer src="../data-format.js?v=266daaf925e8"></script>
+<script defer src="../api.js?v=266daaf925e8"></script>
+<script defer src="../assets/app.js?v=266daaf925e8"></script>
+<script defer src="../assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="../assets/pages.js?v=266daaf925e8"></script>
+<script defer src="../assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+
+</head>
+<body class="os-layout" x-data="publishWizard()" x-init="boot()">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="../index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="../catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="../trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="../my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="../apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="../docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="../errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link is-active" aria-current="page" href="publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="../reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="../grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 （admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="crumb" id="admin-crumb" aria-label="面包屑"><span>管理</span><span class="crumb-sep">›</span><span aria-current="page">服务发布</span></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="../docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<div class="os-container">
+  <div class="wizard-col">
+  <header class="page-head" id="page-head">
+    <h1 id="page-title">服务发布</h1>
+    <p class="hint" id="page-hint">把已装载进入Redis缓存的数据表发布成对外可调用的查询服务。</p>
+    <p style="margin: 8px 0 0;"><a class="btn btn-sm" id="view-published-link" href="published.html">查看已发布服务 →</a></p>
+  </header>
+
+  <!-- ══ Stepper：五步（① 选已装载表 → ② 选版本 → ③ 定服务 → ④ 选字段 → ⑤ 发布） ══ -->
+  <nav class="stepper" id="wizard-stepper" aria-label="发布步骤">
+    <template x-for="(s, i) in stepNames" :key="i">
+      <div class="step" :id="'step-nav-' + (i + 1)"
+           :class="step > (i + 1) ? 'is-done' : (step === (i + 1) && !done ? 'is-current' : '')">
+        <span class="step-dot" :id="'step-dot-' + (i + 1)"
+              x-text="step > (i + 1) ? '✓' : (i + 1)"></span>
+        <span class="step-name" :data-count="(i + 1) + '/5'" x-text="s"></span>
+        <span class="step-line" :class="(i + 1) < step ? 'is-reached' : ''"
+              x-show="i < stepNames.length - 1"></span>
+      </div>
+    </template>
+  </nav>
+
+    <!-- ══ ① 选已装载表（源＝/v1/admin/load/assets；只列已装载表，未装载不出现） ══ -->
+    <section class="card" id="step-1" x-show="step === 1 && !done" aria-label="选已装载表">
+      <h2 class="card-title">选择已装载的表</h2>
+      <p class="card-sub">只列出已完成数据装载（流程①）的表；未装载的表请先去「数据装载」。</p>
+
+      <div class="result result-bad" id="assets-error" x-show="assetsError" x-cloak role="alert" style="margin-bottom: var(--space-4);">
+        <span class="mark" aria-hidden="true">!</span>
+        <span>
+          <strong x-text="assetsError && assetsError.title"></strong><br>
+          <span x-text="assetsError && assetsError.message"></span>
+          <button class="btn btn-sm" id="assets-retry-btn" type="button" style="margin-left: 8px;"
+                  @click="loadAssets()" :disabled="assetsBusy"
+                  x-text="assetsBusy ? '正在读取…' : '重试'"></button>
+        </span>
+      </div>
+      <p class="muted" id="assets-loading" x-show="assetsBusy && !assetsError" x-cloak>正在读取已装载资产…</p>
+
+      <div class="empty-tip" id="assets-empty" x-show="!assetsBusy && !assetsError && assetsTables.length === 0" x-cloak>
+        <svg class="empty-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 12h8M8 16h5"/></svg>
+        <div>还没有已装载的数据表</div>
+        <div class="empty-guide" id="assets-empty-guide">先去 <a id="go-load-page" href="load.html">数据装载</a> 把 HBase 真表装载成「表:版本」，再回来发布服务</div>
+      </div>
+
+      <div class="table-cards" id="table-cards">
+        <template x-for="t in assetsTables" :key="t.table">
+          <button type="button" class="table-card" :id="'table-card-' + t.table"
+                  :class="pickedTable === t.table ? 'is-on' : ''" @click="pickTable(t)"
+                  :aria-pressed="pickedTable === t.table">
+            <div class="tc-name" x-text="t.tableCnName || t.table"></div>
+            <div class="tc-sub mono" x-text="t.table"></div>
+            <div class="tc-sub" x-text="t.versions.length + ' 个已装载版本' + (liveVersionOf(t) ? '，线上 ' + liveVersionOf(t) : '')"></div>
+          </button>
+        </template>
+      </div>
+
+      <div class="wizard-actions">
+        <button class="btn btn-secondary btn-lg" id="next-1" type="button"
+                :disabled="!pickedTable" @click="gotoStep(2)">下一步</button>
+      </div>
+    </section>
+
+    <!-- ══ ② 选版本（默认线上版；非线上版＝提示＋设为线上〔sync 三闸按表隔离〕） ══ -->
+    <section class="card" id="step-2" x-show="step === 2 && !done" aria-label="选版本">
+      <h2 class="card-title">选择数据版本</h2>
+      <p class="card-sub">服务运行时读「线上版本」；选非线上版本发布后，调用方仍读线上版本，直到切换。</p>
+
+      <template x-for="v in versionsOfPicked()" :key="v.version">
+        <label class="ver-row" :class="pickedVersion === v.version ? 'is-on' : ''"
+               :for="'ver-' + v.version">
+          <input type="radio" name="ver" :id="'ver-' + v.version" :value="v.version"
+                 :checked="pickedVersion === v.version" @change="pickVersion(v.version)">
+          <span class="ver-main" x-text="v.version"></span>
+          <span class="badge" :class="v.live ? 'badge-ok' : 'badge-muted'">
+            <span class="dot" x-show="v.live"></span><span x-text="v.live ? '线上' : '未上线'"></span>
+          </span>
+          <span class="ver-cell" x-text="v.rows + ' 行 · ' + v.tagCols + ' 个字段'"></span>
+          <span class="ver-cell" x-text="'对账' + (v.reconPass ? '通过' : '未过')"></span>
+          <span class="ver-cell" x-text="v.dataAsOf ? ('数据日 ' + v.dataAsOf) : ''"></span>
+          <span class="ver-cell" x-show="!v.live && isLatestOfPicked(v)">尚未设为线上</span>
+        </label>
+      </template>
+
+      <div class="version-row" id="live-switch-row" x-show="pickedVersion && !isVersionLive()">
+        <span>调用方仍读线上版本：<span class="mono" x-text="liveVersionOfPicked() || '（无）'"></span></span>
+        <button class="btn btn-sm" id="switch-btn" type="button" @click="switchNow()"
+                :disabled="switchBusy"
+                x-text="switchBusy ? '正在切换…' : '把 ' + pickedVersion + ' 设为线上'"></button>
+        <span class="muted" style="font-size: var(--fs-caption);">切换走对账三闸（按表隔离）；也可发布后再切</span>
+      </div>
+      <div class="result result-ok" id="switched-note" x-show="switched" x-cloak style="margin-top: var(--space-4);">
+        <span class="mark" aria-hidden="true">✓</span><span>已切换：调用方现在读取 <span class="mono" x-text="pickedVersion"></span></span>
+      </div>
+      <p class="err-text" id="switch-error" x-show="switchError" x-cloak x-text="switchError"></p>
+
+      <details class="advanced" id="advanced-details">
+        <summary>高级</summary>
+        <div class="adv-body">
+          <div class="switch-line" x-show="liveVersionOfPicked()">
+            <button class="btn btn-sm" id="rollback-btn" type="button" @click="rollbackNow()"
+                    :disabled="rollbackBusy" x-text="rollbackBusy ? '正在切回…' : '切回上一版'"></button>
+            <span class="muted" style="font-size: var(--fs-caption);">把该表线上数据切回上一个版本（按表隔离）</span>
+          </div>
+        </div>
+      </details>
+
+      <div class="wizard-actions">
+        <button class="btn btn-lg" id="prev-2" type="button" @click="gotoStep(1)">上一步</button>
+        <button class="btn btn-secondary btn-lg" id="next-2" type="button"
+                :disabled="!pickedVersion" @click="gotoStep(3)">下一步</button>
+      </div>
+    </section>
+
+    <!-- ══ ③ 定服务（名称/地址；slug 机检常量同源生成物） ══ -->
+    <section class="card" id="step-3" x-show="step === 3 && !done" aria-label="定服务">
+      <h2 class="card-title">定义服务</h2>
+      <p class="card-sub">服务名：中文业务名，如「用户资产标签查询」。访问地址：小写英文与连字符，如 /v1/svc/usr-asset-tag。</p>
+
+      <div class="form-row">
+        <label class="f" for="svc-name-input">服务名称</label>
+        <input type="text" id="svc-name-input" x-model="svcName" maxlength="60" @input="validateRoute()">
+      </div>
+      <div class="form-row">
+        <label class="f" for="route-input">访问地址</label>
+        <!-- P3（2026-10-08 UX B3-3）：实时校验三态——空＝灰提示、违规＝红字给原因、合法＝绿勾；
+             规则源 service/app/route_naming.py（常量经生成物同源，判定序 R1→R3→R4→R7
+             与后端 route_violation 一致）。前端只提前提示，发布仍以后端机检为准。 -->
+        <input type="text" id="route-input" class="mono" x-model="route" @input="onRouteInput()"
+               :class="routeError ? 'is-error' : ''" :aria-invalid="routeError ? 'true' : 'false'">
+        <p class="err-text" id="route-error" x-show="routeError" x-cloak x-text="routeError" role="alert"></p>
+        <p class="ok-text" id="route-ok" x-show="route && !routeError" x-cloak>✓ 地址格式正确</p>
+        <p class="help" id="route-help" x-show="!route && !routeError">以 /v1/svc/ 开头，可修改</p>
+      </div>
+      <div class="form-row" id="key-type-row">
+        <!-- P3 二批（2026-10-08 维护者 六条⑤）：键说明＝一句话＋示例；安全口径折叠块整块删除，
+             本页不再出现决策记录编号字样。示例键＝usr_basic_info 已装载版本实测存在的行键（可复制）。 -->
+        <p class="help" id="key-type-line" style="margin: 0 0 4px;">
+          入参 key＝用户唯一标识（64 位十六进制，由数据提供方提供）。字段名：key。示例：a87ae39b27b7f83c2328e8bf4850a36bf1380032c252a1b2120d0d65f03d10d4
+        </p>
+        <div class="key-example" x-show="keyExample()" x-cloak>
+          <input type="text" id="key-example-input" class="mono" readonly :value="keyExample()"
+                 aria-label="示例查询键（只读，可全选复制）" @focus="$event.target.select()">
+          <button class="btn btn-sm" id="key-example-copy" type="button" @click="copyKeyExample()"
+                  x-text="keyCopied ? '已复制' : '复制示例键'"></button>
+        </div>
+      </div>
+
+      <div class="wizard-actions">
+        <button class="btn btn-lg" id="prev-3" type="button" @click="gotoStep(2)">上一步</button>
+        <button class="btn btn-secondary btn-lg" id="next-3" type="button"
+                :disabled="!nameRouteOk()" @click="gotoStep(4)">下一步</button>
+      </div>
+    </section>
+
+    <!-- ══ ④ 勾出参字段（源＝/v1/admin/load/schema；投影白名单 ⊆ 表 schema） ══ -->
+    <section class="card" id="step-4" x-show="step === 4 && !done" aria-label="勾出参字段">
+      <h2 class="card-title">选择出参字段</h2>
+
+      <div class="result result-bad" id="schema-error" x-show="schemaError" x-cloak role="alert">
+        <span class="mark" aria-hidden="true">!</span>
+        <span>
+          <strong x-text="schemaError"></strong><br>
+          <!-- P3（2026-10-08）：指引只在元数据缺失类错误亮（schemaNeedReload）；装载页同表同日
+               严格幂等不覆盖，补元数据须换一个版本日期重灌，不说「重跑装载」误导原地重灌。 -->
+          <span x-show="schemaNeedReload" x-cloak>请到 <a href="load.html" style="color: var(--status-info);">数据装载</a> 页换一个版本日期重灌该表（同表同日不覆盖），新装载的版本即可发布。</span>
+        </span>
+      </div>
+      <p class="muted" id="schema-loading" x-show="schemaBusy" x-cloak>正在读取字段元数据…</p>
+
+      <div id="field-list" x-show="schemaFields.length > 0">
+        <div class="field-row" style="border-bottom: 1px solid var(--border-strong);">
+          <input type="checkbox" id="select-all-check" @change="toggleAllFields($event)" :checked="allFieldsChecked()">
+          <label for="select-all-check" style="font-weight: 600; color: var(--text-strong);">全选字段</label>
+          <span class="muted" style="font-size: var(--fs-caption); margin-left: auto;"
+                id="checked-count" x-text="'已选 ' + checkedCount() + ' / ' + schemaFields.length + ' 个字段'"></span>
+        </div>
+        <template x-for="f in schemaFields" :key="f.name">
+          <div class="field-row" :title="f.desc || ''">
+            <input type="checkbox" :id="'field-check-' + f.name" x-model="fieldChecks[f.name]"
+                   :aria-label="'勾选字段 ' + (f.cnName || f.name)">
+            <span class="field-cn" x-text="f.cnName"></span>
+            <span class="field-name mono" x-text="f.name"></span>
+            <span class="field-type" style="margin-left: auto;"
+                  x-text="f.type === 'unknown' ? '类型待补' : f.type"></span>
+          </div>
+        </template>
+      </div>
+
+      <div class="wizard-actions">
+        <button class="btn btn-lg" id="prev-4" type="button" @click="gotoStep(3)">上一步</button>
+        <button class="btn btn-secondary btn-lg" id="next-4" type="button"
+                :disabled="checkedCount() === 0" @click="gotoStep(5)">下一步</button>
+      </div>
+    </section>
+
+    <!-- ══ ⑤ 发布（确认摘要＋提交；覆盖更新语义契约就位，机制待卡4） ══ -->
+    <section class="card" id="step-5" x-show="step === 5 && !done" aria-label="发布">
+      <h2 class="card-title">确认并发布</h2>
+      <p class="card-sub">同地址再发布＝更新该服务（覆盖更新，不产生第二条目）。</p>
+
+      <dl class="kv" style="display: grid; grid-template-columns: 96px 1fr; row-gap: 6px; margin: 0 0 var(--space-4);">
+        <dt class="muted">数据表</dt><dd class="mono" style="margin:0;" x-text="pickedTable"></dd>
+        <dt class="muted">数据版本</dt><dd class="mono" style="margin:0;"
+            x-text="pickedVersion + (isVersionLive() ? '' : '（未上线：调用方仍读 ' + (liveVersionOfPicked() || '无') + '）')"></dd>
+        <dt class="muted">服务名称</dt><dd style="margin:0;" x-text="svcName"></dd>
+        <dt class="muted">访问地址</dt><dd class="mono" style="margin:0;" x-text="route"></dd>
+        <dt class="muted">出参字段</dt><dd style="margin:0;" x-text="checkedCount() + ' 个（投影白名单）'"></dd>
+      </dl>
+
+      <p class="err-text" id="publish-error" x-show="publishError" x-cloak x-text="publishError" role="alert"></p>
+
+      <div class="wizard-actions">
+        <button class="btn btn-lg" id="prev-5" type="button" @click="gotoStep(4)">上一步</button>
+        <button class="btn btn-primary btn-lg" id="publish-btn" type="button"
+                :disabled="!canPublish()" @click="publishNow()"
+                x-text="publishBusy ? '正在发布…' : '发布'"></button>
+      </div>
+    </section>
+
+    <!-- ══ 完成页（curl 带 apikey 头＋T10 授权引导：先登记后签发） ══ -->
+    <section class="card" id="step-done" x-show="done" x-cloak aria-label="发布完成">
+      <div class="done-wrap">
+        <div class="done-mark" id="done-mark" aria-hidden="true">✓</div>
+        <div class="done-name" id="done-name" x-text="publishedName"></div>
+        <!-- 修四（2026-10-08）：覆盖更新提示——「更新 vs 新增」二选一（updated＝更新既有服务、
+             地址原样保留；created＝新增服务）。「服务已上线」静态文案仅作 Alpine 前兜底。 -->
+        <p class="muted" id="done-line" x-text="doneLineText()">服务已上线，可被调用。</p>
+        <p class="done-route" id="done-route" x-text="publishedRoute"></p>
+        <p class="muted" id="done-data-version" style="font-size: var(--fs-caption);"
+           x-text="'数据版本：' + publishedDataVersion + (publishedAction === 'updated' ? '（本次为更新发布）' : '')"></p>
+        <pre class="curl" id="curl-block" x-text="curlSample()"></pre>
+
+        <div class="t10" id="auth-guide" aria-label="授权配置引导">
+          <h3>让调用方用起来（授权配置三步）</h3>
+          <ol>
+            <li><b>① 授权登记（先做）</b>：授权是唯一访问控制层。给租户登记本服务的字段授权（须 OA 批件号）：
+              <code class="cmd">python3 scripts/auth_admin.py register --tenant &lt;租户&gt; --service <span x-text="publishedServiceId || '&lt;服务ID&gt;'"></span> --fields &lt;字段清单&gt; --oa-ticket &lt;OA单号&gt; --endpoint <span x-text="publishedRoute || '&lt;地址&gt;'"></span></code>
+            </li>
+            <li><b>② 签发调用凭证（后做）</b>：去 <a id="go-credentials" href="appkeys.html">AppKey 发放页</a> 为该租户签发正式凭证（须 OA 批件号）。
+              <b>顺序不能反</b>：凭证的授权范围是签发时的快照——先签发后登记不会回补（403 SERVICE_NOT_GRANTED），租户未登记先签发会被拒（409），只能轮换重来。
+            </li>
+            <li><b>③ 未登记授权的调用方将被 403 拒绝</b>：可在 <a id="go-grants" href="../grants.html">授权全景</a> 核对租户×服务×字段登记。</li>
+          </ol>
+        </div>
+
+        <div class="wizard-actions" style="justify-content: center;">
+          <button class="btn btn-secondary btn-lg" id="done-finish-btn" type="button" @click="finishWizard()">完成</button>
+          <button class="btn btn-lg" id="view-services-btn" type="button" @click="viewServices()">查看已发布服务 →</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+<script defer src="admin-gate.js?v=266daaf925e8"></script>
+<script defer src="route-naming.js?v=266daaf925e8"></script>
+<script defer src="publish-hbase-adapter.js?v=266daaf925e8"></script>
+<script defer src="publish.js?v=266daaf925e8"></script>
+<script defer src="../assets/alpine.min.js?v=266daaf925e8"></script>
+</body>
+</html>

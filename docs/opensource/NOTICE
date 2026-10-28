@@ -1,0 +1,278 @@
+# NOTICE
+
+**OneServe**
+Copyright 2026-present OneServe contributors
+
+本文件依 Apache License, Version 2.0 第 4(d) 条随本项目一并分发，用于声明项目归属、
+列示随附的第三方组件及其许可，并说明使用边界。本项目整体以 Apache-2.0 授权（见同目录
+`LICENSE`）。
+
+> 状态：**定稿（Final）·2026-10-28**。第三方依赖许可列已按锁定版本逐包机检复核：
+> `pip-licenses 5.5.5`（`--from meta`，读取各包 `METADATA` 的 `License` /
+> `License-Expression` 字段），复核命令与环境见 2.4。少数包元数据仅泛称或携带许可全文的，
+> 按 2.2 / 2.3 表内注明的人工映射口径记录。本文件中任何与锁定版本清单冲突之处，
+> **以 `service/requirements.lock` 锁定的实际版本为准**。
+
+---
+
+## 1. 项目归属
+
+OneServe 是一个**统一数据服务平台**：把数据表按「服务」发布成可调用的查询 API，
+面向标签类点查（KV 热存储）与外部数据源代理转发两类访问形态，并提供管理面用于
+数据源登记、字段选摘、发布与审计。
+
+- 项目名称：OneServe
+- 版权归属：Copyright 2026-present OneServe contributors
+- 许可：Apache License, Version 2.0
+- 代码来源：本项目代码为原创实现；随附第三方组件均为独立作品，版权归各自作者所有
+
+---
+
+## 2. 第三方 Python 依赖
+
+### 2.1 直接依赖（11 条，实测 `service/requirements.txt` 2026-10-28 版）
+
+版本区间为开发口径；运行与分发以锁文件 `service/requirements.lock` 的实际版本为准。
+许可列为 2.2 机检结果（锁定版本），非人工初查。
+
+| 包 | 版本区间 | 用途 | 许可（机检） |
+|---|---|---|---|
+| `fastapi` | >=0.115,<1 | 服务层 Web 框架 | MIT |
+| `uvicorn` | >=0.30,<1 | ASGI 服务器 | BSD-3-Clause |
+| `redis` | >=5,<6 | KV 客户端（RESP 协议，兼容 Valkey） | MIT |
+| `pyyaml` | >=6,<7 | YAML 配置解析 | MIT |
+| `gmssl` | >=3.2,<4 | SM3 等摘要算法 | BSD（原误记 MIT，机检更正，见 2.2） |
+| `happybase` | >=1.2,<2 | HBase Thrift 客户端（可选冷存储） | MIT |
+| `sqlglot` | >=25,<27 | SQL/DDL 解析 | MIT |
+| `pyjwt` | >=2.8,<3 | JWT 校验（OIDC 路径） | MIT |
+| `cryptography` | >=42 | JWT 签名后端 / 加密原语 | Apache-2.0 OR BSD-3-Clause（双许可，见 2.2） |
+| `bcrypt` | >=4,<5 | 本地账号口令哈希 | Apache-2.0 |
+| `kafka-python` | >=3.0,<4 | 审计管线 Kafka 客户端（可选） | Apache-2.0 |
+
+**locust 去向（R3 依赖卫生，2026-10-28）**：`locust` 已自运行时清单移除
+（`service/app` 零 import），压测工具链改经 `requirements-dev.txt` 提供
+（2.3 表内 `locust==2.47.0`，MIT）；压测页在运行时未装 locust 的形态下由端点自带
+503 兜底，不引入运行时依赖。
+
+### 2.2 运行时依赖闭包（31 包，逐包机检）
+
+下表为 `service/requirements.lock`（2026-10-28 R3 重出）全部 31 个包的逐包机检结果，
+包名与版本照抄 pip-licenses 输出，排序与其 `--order name` 一致：
+
+| 包 | 锁定版本 | 许可（机检） | 备注 |
+|---|---|---|---|
+| `PyJWT` | 2.15.1 | MIT | |
+| `PyYAML` | 6.0.3 | MIT | |
+| `annotated-doc` | 0.0.5 | MIT | |
+| `annotated-types` | 0.8.0 | MIT | |
+| `anyio` | 4.15.1 | MIT | |
+| `bcrypt` | 4.3.0 | Apache-2.0 | |
+| `cffi` | 2.1.1 | MIT-0 | 双许可口径：MIT 无归属条款变体（元数据 `License-Expression: MIT-0`） |
+| `click` | 8.5.0 | BSD-3-Clause | |
+| `cryptography` | 50.0.2 | Apache-2.0 OR BSD-3-Clause | 双许可口径：OR 任选其一（`License-Expression`；随包携 LICENSE.APACHE 与 LICENSE.BSD 两文本） |
+| `fastapi` | 0.162.0 | MIT | |
+| `gmssl` | 3.2.2 | BSD | **错分类更正**（原记 MIT）。元数据仅泛称 `License: BSD`，未标注条款数，且该包 wheel/sdist 均未随附许可文本——条款数不可机检，按泛称记录，逐文件许可以上游文本为准 |
+| `h11` | 0.16.0 | MIT | |
+| `happybase` | 1.3.0 | MIT | |
+| `idna` | 3.20 | BSD-3-Clause | |
+| `ijson` | 3.6.0 | BSD-3-Clause AND ISC | 双许可口径：两部分并存（`License-Expression`；ISC 为 libyajl 派生部分） |
+| `importlib_resources` | 7.1.0 | Apache-2.0 | **错分类更正**（原记 MIT） |
+| `kafka-python` | 3.0.12 | Apache-2.0 | |
+| `opentelemetry-api` | 1.45.1 | Apache-2.0 | |
+| `ply` | 3.11 | BSD | 元数据仅泛称 `License: BSD`；**人工映射 BSD-3 系**——上游 sdist `README.md` 及 `ply/lex.py`、`ply/yacc.py` 文件头携三条款 BSD 全文（2026-10-28 取证） |
+| `pycparser` | 3.12 | BSD-3-Clause | |
+| `pycryptodomex` | 3.24.1 | BSD, Public Domain | 混合许可：机检值原样记录；随包 `LICENSE.rst` 载明部分源码公有领域、其余为二条款 BSD |
+| `pydantic` | 2.14.1 | MIT | |
+| `pydantic_core` | 2.50.1 | MIT | |
+| `redis` | 5.3.1 | MIT | |
+| `six` | 1.17.0 | MIT | |
+| `sqlglot` | 26.33.0 | MIT | 元数据 `License` 字段为 MIT 全文（非 SPDX 标识），按 MIT 记录（classifier 亦为 MIT License） |
+| `starlette` | 1.10.0 | BSD-3-Clause | |
+| `thriftpy2` | 0.7.1 | MIT | 同上：`License` 字段为 MIT 全文，按 MIT 记录 |
+| `typing-inspection` | 0.4.4 | MIT | |
+| `typing_extensions` | 4.16.0 | PSF-2.0 | |
+| `uvicorn` | 0.54.0 | BSD-3-Clause | |
+
+按许可归并（机检值，31 包）：MIT 15＋BSD-3-Clause 5＋BSD（泛称）2＋Apache-2.0 4＋
+MIT-0 1＋Apache-2.0 OR BSD-3-Clause 1＋BSD-3-Clause AND ISC 1＋BSD, Public Domain 1＋
+PSF-2.0 1＝**31，与 lock 条数一致**。
+
+本次机检相对上一版（65 包人工初查）的处置：
+
+- **错分类更正 ×2**：`gmssl` MIT→BSD；`importlib_resources` MIT→Apache-2.0；
+- **双许可 / 特殊口径 ×4**：`cffi`＝MIT-0（无归属变体）；`cryptography`＝
+  Apache-2.0 OR BSD-3-Clause；`ijson`＝BSD-3-Clause AND ISC；`greenlet`＝
+  MIT AND PSF-2.0（greenlet 不在运行时闭包，在 2.3 dev-only 表）；
+- **泛称映射**：`ply`（`License: BSD`）人工映射 BSD-3 系，理由见表内备注；`gmssl`
+  同为泛称但无可核文本，仅按泛称记录；
+- 上一版按 65 包口径归类的 locust 及其 Flask/gevent 族传递依赖均已不在运行时闭包，
+  移入 2.3。
+
+初查说明（不构成法律意见）：上述许可均为宽松型或弱著佐权型，与 Apache-2.0 出口在
+通行解读下兼容；**机检未见 GPL / AGPL 类强传染许可**。部分包在文件级另有不同许可
+声明，逐文件许可以各包自带 `LICENSE` 文件为准。
+
+### 2.3 dev 闭包增补（dev-only 39 包，逐包机检）
+
+口径：`service/requirements.txt` 与 `requirements-dev.txt` **单命令共装**（R3 验证过的
+形态）实装 70 包，减去运行时闭包 31 包（2.2），差集 39 包即 dev-only——全部为测试与
+压测工具链（pytest 本体、starlette TestClient 栈、locust 及其依赖），**不进入运行时
+镜像与分发物**。逐包机检结果（排序同 pip-licenses `--order name`）：
+
+| 包 | 锁定版本 | 许可（机检） | 备注 |
+|---|---|---|---|
+| `ConfigArgParse` | 1.9.0 | MIT | locust 依赖 |
+| `Flask` | 3.1.3 | BSD-3-Clause | locust Web UI |
+| `Flask-Login` | 0.6.3 | MIT | locust 依赖 |
+| `Jinja2` | 3.1.6 | BSD-3-Clause | **泛称人工映射**：元数据仅 classifier「BSD License」；随包 `LICENSE.txt` 为 Pallets 三条款 BSD 全文（2026-10-28 取证） |
+| `MarkupSafe` | 3.0.4 | BSD-3-Clause | |
+| `Pygments` | 2.21.0 | BSD-2-Clause | |
+| `Werkzeug` | 3.1.9 | BSD-3-Clause | |
+| `bidict` | 0.24.1 | MPL-2.0 | python-socketio 依赖（弱著佐权） |
+| `blinker` | 1.9.0 | MIT | 元数据仅 classifier「MIT License」，随包 `LICENSE.txt` MIT 全文佐证 |
+| `brotli` | 1.2.1 | MIT | |
+| `certifi` | 2026.10.23 | MPL-2.0 | requests 依赖（弱著佐权） |
+| `charset-normalizer` | 3.5.2 | MIT | |
+| `flask-cors` | 6.0.5 | MIT | |
+| `gevent` | 26.9.0 | MIT | locust 依赖 |
+| `geventhttpclient` | 2.6.1 | MIT | locust 依赖 |
+| `greenlet` | 3.5.6 | MIT AND PSF-2.0 | 双许可口径：两部分并存（`License-Expression`；随包 LICENSE 与 LICENSE.PSF 两文本） |
+| `httpcore` | 1.0.9 | BSD-3-Clause | httpx 底座 |
+| `httpcore2` | 2.13.1 | BSD-3-Clause | httpx2 底座 |
+| `httpx` | 0.28.1 | BSD-3-Clause | TestClient 回退后端 |
+| `httpx2` | 2.13.1 | BSD-3-Clause | TestClient 首选后端 |
+| `iniconfig` | 2.3.1 | MIT | pytest 依赖 |
+| `itsdangerous` | 2.2.0 | BSD-3-Clause | **泛称人工映射**：元数据仅 classifier「BSD License」；随包 `LICENSE.txt` 为 Pallets 三条款 BSD 全文 |
+| `locust` | 2.47.0 | MIT | 压测驱动（R3 自运行时移入 dev） |
+| `msgpack` | 1.2.4 | Apache-2.0 | locust 依赖 |
+| `packaging` | 26.3 | Apache-2.0 OR BSD-2-Clause | 双许可 OR 任选（pytest 依赖） |
+| `pluggy` | 1.7.0 | MIT | pytest 依赖 |
+| `psutil` | 7.2.2 | BSD-3-Clause | locust 依赖 |
+| `pytest` | 9.1.1 | MIT | 测试运行器本体 |
+| `python-engineio` | 4.15.0 | MIT | locust 依赖 |
+| `python-socketio` | 5.17.0 | MIT | locust 依赖 |
+| `pyzmq` | 27.2.0 | BSD-3-Clause | locust 依赖 |
+| `requests` | 2.34.2 | Apache-2.0 | locust 依赖 |
+| `simple-websocket` | 1.1.0 | MIT | 元数据仅 classifier「MIT License」，随包 `LICENSE` MIT 全文佐证 |
+| `truststore` | 0.10.5 | MIT | locust 依赖 |
+| `urllib3` | 2.8.0 | MIT | requests 依赖 |
+| `websocket-client` | 1.9.2 | Apache-2.0 | locust 依赖 |
+| `wsproto` | 1.3.2 | MIT | locust 依赖 |
+| `zope.event` | 6.2 | ZPL-2.1 | gevent 依赖 |
+| `zope.interface` | 8.7 | ZPL-2.1 | gevent 依赖 |
+
+按许可归并（39 包）：MIT 18＋BSD-3-Clause 9＋BSD-3-Clause（泛称人工映射）2＋
+Apache-2.0 3＋MPL-2.0 2＋ZPL-2.1 2＋BSD-2-Clause 1＋MIT AND PSF-2.0 1＋
+Apache-2.0 OR BSD-2-Clause 1＝**39＝70−31**。全部为宽松或弱著佐权许可，**无
+GPL / AGPL 类强传染许可**；因不随运行时分发，仅此处披露，不进入分发物清单。
+
+### 2.4 机检复核记录（可复现）
+
+- 工具：`pip-licenses 5.5.5`（`--from meta`：读 `License` / `License-Expression` 字段；
+  classifier 视角交叉核对用 `--from classifier`）；
+- 环境：Python 3.13.15 / pip 26.2.1 / macOS arm64，2026-10-28 实测；
+- 命令（runtime 闭包 31 包）：
+
+```
+python3 -m venv /tmp/os-rt-venv
+/tmp/os-rt-venv/bin/pip install -r service/requirements.lock
+python3 -m piplicenses --python /tmp/os-rt-venv/bin/python --from meta --format json --order name
+```
+
+- 命令（dev 共装 70 包；dev-only＝70−31＝39）：
+
+```
+python3 -m venv /tmp/os-dev-venv
+/tmp/os-dev-venv/bin/pip install -r service/requirements.txt -r requirements-dev.txt
+python3 -m piplicenses --python /tmp/os-dev-venv/bin/python --from meta --format json --order name
+```
+
+维护纪律：
+
+1. 任一依赖清单（`service/requirements.txt`、`requirements-dev.txt`）变更并重出 lock 后，
+   必须重跑上述命令并同步 2.1–2.3 的数字、表格与归并；
+2. 泛称 / 全文型元数据的映射对象（gmssl、ply、Jinja2、itsdangerous、blinker、
+   simple-websocket、sqlglot、thriftpy2）升级版本时，须复核随包或上游许可文本是否
+   变化，映射理由随版本失效的应回退为泛称记录。
+
+---
+
+## 3. 容器镜像与许可
+
+下表只列**上游镜像名与 tag**，不涉及任何镜像加速地址或私有仓库地址。
+
+| 上游镜像 | 用途 | 许可（初查） |
+|---|---|---|
+| `python:3.13-slim` | 服务层运行时基础镜像 | PSF-2.0（Python 软件基金会许可） |
+| `nginxinc/nginx-unprivileged:1.27-alpine` | 门户静态资源与反向代理 | BSD-2-Clause（nginx）；镜像内 Alpine、busybox、musl 等系统组件另按其自身许可（含 GPL-2.0 的 busybox），以该镜像内声明为准 |
+| `postgres:17-alpine` | 元数据库（可选） | PostgreSQL License |
+| `apache/apisix:3.18.0-debian` | API 网关 | Apache-2.0 |
+| `etcd` 3.5.x | 网关配置存储 | Apache-2.0 |
+| `valkey/valkey:8-alpine` | KV 热存储（ADR-0028 已实施，2026-10-28） | Valkey：BSD-3-Clause（Linux 基金会托管）。原 `redis:7-alpine` 已自 compose 移除，其 ≥7.4 的 RSALv2 / SSPLv1（非 OSI 批准）风险随替换消除，背景见第 5 节 |
+| `casbin/casdoor` | 可选的统一登录组件（使用内置本地账号时不启用） | Apache-2.0 |
+| `apache/kafka:3.9.0` | 审计管线（可选） | Apache-2.0 |
+| HBase（可选冷存储实现） | 可选冷存储 | Apache-2.0 |
+| 本项目自建镜像（服务层、门户） | 本项目构建产物 | Apache-2.0 |
+
+镜像内各操作系统组件（发行版基础包、系统库）的许可由该发行版自身声明，本项目不对其
+做二次声明。若你分发本项目的容器镜像，请一并保留上游镜像的许可与声明文件。
+
+---
+
+## 4. 随仓库分发的第三方代码
+
+若发布快照包含 `testkit/`（压测与验收辅助工具），其 `testkit/lib/` 内以 vendored 方式随附
+以下包，用于免安装体验与稳定输出：
+
+| 包 | 版本 | 许可 |
+|---|---|---|
+| `rich` | 15.0.0 | MIT |
+| `pygments` | 2.21.0 | BSD-2-Clause |
+| `markdown-it-py` | 4.2.0 | MIT |
+| `mdurl` | 0.1.2 | MIT |
+
+这些文件保留其原始许可文件，未作修改；其版权归各自作者所有。
+
+---
+
+## 5. KV 镜像 Redis→Valkey 替换（已实施）
+
+本节原为「拟替换」占位：`docker-compose` 曾用 `redis:7-alpine` 浮动 tag，上游自 7.4 起
+改用 RSALv2 / SSPLv1 双许可（非 OSI 批准），落在该 tag 上会与本项目 Apache-2.0 的
+分发声明冲突。
+
+**2026-10-28 已实施**（ADR-0028 状态「已批准·已实施」）：compose 的 KV 服务行已改为
+`valkey/valkey:8-alpine`（BSD-3-Clause，Linux 基金会托管），seed 自测通过；第 3 节
+镜像表已按现网状态记载。决策背景、影响与回退方案见
+`docs/opensource/ADR-0028-Valkey替换.md`。
+
+同时，`bitnamilegacy` 命名空间下的 etcd 镜像已停止更新，拟同批换用 etcd 官方镜像；
+该项结论待施工时按多架构可用性实测确定，本文件不对具体 tag 作预先声明。
+
+---
+
+## 6. 免责声明（AS-IS）
+
+本项目按「现状」提供，不附带任何明示或默示的担保，包括但不限于对适销性、特定用途
+适用性及不侵权的担保。在任何情况下，版权持有人或贡献者均不对因本软件或本软件的使用
+或其他交易所产生的任何索赔、损害或其他责任承担责任，无论其源于合同、侵权或其他
+事由。完整条款以 `LICENSE` 所载 Apache License, Version 2.0 第 7、8 条为准。
+
+本项目为通用数据服务平台软件，**不承诺**满足任何特定行业、监管或合规要求；部署方
+须自行完成与其使用场景相适应的安全评估、数据合规评估与运行保障设计。
+
+---
+
+## 7. 使用边界
+
+- 本项目**不内置**任何真实业务数据。示例与自检脚本生成的数据均为合成数据，仅用于
+  功能演示，不代表任何真实主体。
+- 本项目**不提供**数据本身的授权。你通过本软件访问的数据，其权属与使用条件由数据
+  提供方决定。
+
+---
+
+## 8. 贡献
+
+贡献条款见 `CONTRIBUTING.md`。除你另行明示外，你有意提交并纳入本项目的任何贡献，
+均按 Apache License, Version 2.0 授权，且不附加任何额外条款。

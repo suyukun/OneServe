@@ -1,0 +1,15 @@
+# OneServe 门户 vendor 本地托管清单（P-1R）· 格式同 sha256sum -c（路径相对本目录）
+# 制品来源＝npm 官方 dist（包名@版本逐件对应，逐字节未改动）；目标环境无互联网，全部门页只引用本目录
+# 自检：cd portal/assets/vendor && shasum -a 256 -c SHA256SUMS
+6aa5677e9cfc2620405bf97a98074ba43ff06a411cb35c5337acfb56d124c273  tabler.min.css
+d4c4c2768f166c308391e0cea44db593056f12b84a4eeef46d55e35ca46d6e60  tabler.min.js
+d85327d99c7a3ee1f9b5d0500d1370acea3ad2db39c163c2f51f232baedbdede  bootstrap.min.css
+e4fd49181388c48ec5040bd3fe66f57c29c8e67fcd8502b3354b96ec7ab47cc7  bootstrap.bundle.min.js
+a5d6387a32ca3baec4d02336b5b3edab50c9dd518355576a011ea3dd9c1d884e  bootstrap-icons.min.css
+6c75710364a1ca5604267716f6d28997b26319fdb078cf11e0b42ab66ff2ea61  fonts/bootstrap-icons.woff2
+55974cf42cc160e6cf9099cd3ed8cdedfaa9779919fcee7e2272c85f6ca30e27  echarts.common.min.js
+# 版本对应：@tabler/core@1.5.1（tabler.min.css/js）；bootstrap@5.3.8（bootstrap.min.css + bootstrap.bundle.min.js）；
+#          bootstrap-icons@1.13.1（bootstrap-icons.min.css + fonts/bootstrap-icons.woff2，css 内相对引用 fonts/ 保持原结构）
+#          echarts@5.6.0（echarts.common.min.js · 议题二 v1.1 定案：无构建链固定引 common 版）——P-3 驾驶舱图表底座；
+#          来源 npm 官方 dist 逐字节未改动，双源（jsdelivr/unpkg）下载＋registry 哈希三方一致后入库；
+#          体积口径按 gzip 计：664311B（raw 649KB）/ gzip 219165B（214KB），全站 vendor gzip 合计仍在 ≤500KB 图表预算内

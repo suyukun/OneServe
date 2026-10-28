@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>月账单 · OneServe 报表中心</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * OneServe 报表中心组第五页 · 月账单（管理功能群一期 C 节·账单页＋CSV；
+ * 设计 docs/design/管理功能群一期设计_v1.md v1.1 §3 已拍板，按 §0 共用口径施工）
+ *
+ * 【走位】两级一流：月账列表 → 账期详情：
+ *   ① 列表：指标卡四张（最近账期状态/应收合计/欠费账期数/已确认账期数）＋主表
+ *     （行＝账期；状态徽标四态 draft/reconciled/confirmed/written_off；三硬前置
+ *     留痕三列 ✓✗＋核查时间；应收合计〔空价目试运行恒 0 如实显示〕；欠费徽标；
+ *     OA 单号；确认时间；操作：详情/确认〔reconciled〕/导出 CSV）
+ *   ② 详情：头部账期卡（状态/三前置/OA 单号/金额合计/欠费/双快照口径说明一行）
+ *     ＋bill_line 四键行×双快照两列组（用量快照：调用量/成功量/失败量/平均耗时/
+ *     事件条数；单价快照：计价徽标/成交单价/金额/价目 ID）＋汇总行＋动作
+ *   ③ 确认对话框：必填 OA 单号（格式提醒，纯登记不校真伪，零系统集成，ADR-0024
+ *     决定第 6 条）；补录单号（confirmed 行）同弹层复用
+ *   ④ 出账引导卡（§3.1 拍板②：页面只读＋确认，出账＝机器任务走 CLI/编排）：
+ *     CLI 命令展示＋复制（--period 预填上一自然月）＋刷新查看结果
+ *
+ * 【口径】读/导出＝viewer 地板，确认/补录＝admin（ROUTE_MIN_ROLE 域7 扩注）；
+ *   页面调用方掩码（明细级 CSV 调用方列带完整凭证编号＝财务对账唯一键，拍板④
+ *   分层——完整串不落页面仅落交付物＋bill_export 审计留痕）；确认后底数冻结
+ *   （ADR-0024 决定第 4 条）；欠费只算不限（决定第 8 条，标记动作走 CLI）。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css"><!-- 仅取令牌（间距/字号/字体/圆角） -->
+<style>
+  /* ── 独立简化深色样式（同 admin/grants 页惯例；不依赖组件库） ── */
+  :root {
+    --admin-bg: #1c222b; --admin-card: #242b36; --admin-inset: #1b2029;
+    --admin-accent: #E85B6B; --admin-line: #35404d; --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE; --admin-note: #ACB8C4;
+    --admin-ok: #3FBE95; --admin-warn: #D89A3C; --admin-danger: #E05252; --admin-info: #7FA6C9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px); }
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  .hint { color: var(--admin-muted); font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-primary:disabled, .btn:disabled { background: var(--admin-inset); border-color: var(--admin-line);
+                          color: var(--admin-muted); cursor: not-allowed; opacity: .4; }
+  .btn-sm { padding: 3px 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-ok { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-info { color: var(--admin-info); border: 1px solid var(--admin-info); }
+  .badge-warn { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-danger { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+  .badge-muted { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .sep-l { border-left: 2px solid var(--admin-line); }   /* 双快照两组列的分隔（评审②） */
+  .muted { color: var(--admin-muted); }
+  .num { font-family: var(--font-mono, monospace); }
+  .toolbar { display: flex; gap: var(--space-1, 8px); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2, 16px); }
+  .toolbar select { background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+             gap: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .metric { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+            padding: var(--space-2, 16px); }
+  .metric .k { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); margin-bottom: 4px; }
+  .metric .v { font-size: var(--fs-title, 16px); font-weight: 600; }
+  .gate-ok { color: var(--admin-ok); }
+  .gate-bad { color: var(--admin-danger); }
+  .caller-cell .sub { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); }
+  .footnote { margin-top: var(--space-1, 8px); font-size: var(--fs-tiny, 11px); color: var(--admin-note); }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 12, 15, .72); display: flex;
+             align-items: center; justify-content: center; padding: var(--space-3, 24px); z-index: 50; }
+  .dlg { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+         max-width: 480px; width: 100%; padding: var(--space-3, 24px); }
+  .dlg input[type=text] { width: 100%; background: var(--admin-inset); border: 1px solid var(--admin-line);
+    color: var(--admin-text); border-radius: var(--radius, 8px); padding: 7px 10px;
+    font-size: var(--fs-small, 12px); font-family: inherit; }
+  .dlg input[type=text]:focus { outline: none; border-color: var(--admin-accent); }
+  .dlg label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  .req { color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  .modal-actions { display: flex; gap: var(--space-1, 8px); justify-content: flex-end; margin-top: var(--space-2, 16px); }
+  .banner { border: 1px dashed var(--admin-warn); color: var(--admin-warn); border-radius: var(--radius, 8px);
+            padding: 8px 12px; font-size: var(--fs-small, 12px); margin-bottom: var(--space-2, 16px); }
+  .empty { color: var(--admin-muted); padding: var(--space-3, 24px); text-align: center; }
+  .cli-card code { display: block; background: var(--admin-inset); border: 1px solid var(--admin-line);
+                   border-radius: var(--radius, 8px); padding: 8px 12px; margin: var(--space-1, 8px) 0;
+                   font-size: var(--fs-small, 12px); overflow-x: auto; }
+  .back-link { color: var(--admin-muted); font-size: var(--fs-small, 12px); cursor: pointer;
+               background: none; border: none; padding: 0; }
+  .back-link:hover { color: var(--admin-accent); }
+  .period-card { display: flex; gap: var(--space-3, 24px); flex-wrap: wrap; align-items: baseline; }
+  .period-card .kv { min-width: 150px; }
+  .period-card .k { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); }
+  .period-card .v { font-size: var(--fs-small, 12px); }
+  .pager { display: flex; gap: var(--space-1, 8px); align-items: center; margin-top: var(--space-2, 16px);
+           font-size: var(--fs-small, 12px); color: var(--admin-muted); flex-wrap: wrap; }
+  @media (max-width: 720px) {
+    /* 接壳契约（P0-12 防回归）：顶栏 .os-topbar 换行——收口批接线时补齐（同 tenants/grants 页口径） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body x-data="billingAdmin()" x-init="boot()">
+
+<main class="page">
+  <h1>月账单</h1>
+  <p class="hint">账期四态（草稿→已对账→已确认→已核销）＋三硬前置留痕＋双快照明细＋CSV 导出；读/导出全角色，确认/补录仅管理员。出账＝机器任务走命令行（页面不触发出账），确认＝人的决策点。</p>
+
+  <!-- ══ 降级/空态横幅（文案随端点下行，§3.8） ══ -->
+  <div class="banner" id="state-banner" x-show="stateMessage" x-cloak x-text="stateMessage"></div>
+
+  <!-- ══ 列表视图 ══ -->
+  <section aria-label="月账列表" x-show="view === 'list'">
+    <!-- 指标卡四张（§3.2） -->
+    <div class="metrics" id="billing-metrics" x-show="summary" x-cloak>
+      <div class="metric"><div class="k">最近账期状态</div>
+        <div class="v"><span x-text="summary ? (summary.latestPeriod + ' · ' + summary.latestStatusLabel) : '—'"></span></div></div>
+      <div class="metric"><div class="k">应收合计（Σ amount_due）</div>
+        <div class="v num" x-text="summary ? summary.amountDue + ' 元' : '—'"></div>
+        <div class="muted" style="font-size:var(--fs-tiny,11px)">空价目试运行恒 0（未计价行不计应收）</div></div>
+      <div class="metric"><div class="k">欠费账期数</div>
+        <div class="v num" x-text="summary ? summary.overdueCount : '—'"></div></div>
+      <div class="metric"><div class="k">已确认账期数</div>
+        <div class="v num" x-text="summary ? summary.confirmedCount : '—'"></div></div>
+    </div>
+
+    <!-- 出账引导卡（§3.1 拍板②：列表空或存在未出账期时显示） -->
+    <div class="card cli-card" id="cli-guide-card" x-show="showCliGuide" x-cloak>
+      <div class="card-head">
+        <h2 class="card-title">出账引导（命令行）</h2>
+        <div>
+          <button class="btn btn-sm" type="button" id="copy-cli-btn" @click="copyCli()">复制命令</button>
+          <button class="btn btn-sm" type="button" id="refresh-btn" @click="loadList()">刷新查看结果</button>
+        </div>
+      </div>
+      <p class="muted" style="font-size:var(--fs-small,12px);margin:0">
+        出账＝机器门禁任务（三硬前置逐条拦门：T+3 账期关闭／计费面对账清零／覆盖齐零，任一不过拒并人话报因）；页面只读＋确认，不触发出账（拍板②）。</p>
+      <code class="mono" id="cli-command" x-text="cliCommand"></code>
+      <p class="footnote">退出码：0 成功／1 环境／2 拒绝；确认后账单底数冻结（修正走调整单，ADR-0024 决定第 4 条）。</p>
+    </div>
+
+    <!-- 主表：行＝账期（三硬前置留痕三列 ✓✗＋核查时间） -->
+    <div class="card" style="padding:0">
+      <div class="card-head" style="padding:var(--space-2,16px) var(--space-2,16px) 0">
+        <h2 class="card-title">月账列表 <span class="muted num" x-text="'(' + total + ' 期)'"></span></h2>
+        <div class="toolbar" style="margin:0">
+          <label class="muted" style="font-size:var(--fs-small,12px)">每页</label>
+          <select id="page-size-select" aria-label="每页行数" x-model.number="pageSize" @change="loadList()">
+            <option value="20">20</option><option value="50">50</option><option value="100">100</option>
+          </select>
+        </div>
+      </div>
+      <table id="billing-list" aria-label="账期一览">
+        <thead><tr>
+          <th>账期</th><th>状态</th><th>①T+3 关闭</th><th>②对账清零</th><th>③覆盖齐零</th>
+          <th>应收合计</th><th>欠费</th><th>OA 单号</th><th>确认时间</th><th>操作</th>
+        </tr></thead>
+        <tbody>
+          <template x-for="it in items" :key="it.period">
+            <tr :data-testid="'period-row-' + it.period">
+              <td class="mono" x-text="it.period"></td>
+              <td><span class="badge" :class="statusClass(it.status)" :title="statusTip(it.status)"
+                         x-text="statusLabel(it.status)"></span></td>
+              <td><span :class="it.gates.t3Closed ? 'gate-ok' : 'gate-bad'" x-text="it.gates.t3Closed ? '✓' : '✗'"></span></td>
+              <td><span :class="it.gates.reconcileClean ? 'gate-ok' : 'gate-bad'" x-text="it.gates.reconcileClean ? '✓' : '✗'"></span></td>
+              <td><span :class="it.gates.lagZero ? 'gate-ok' : 'gate-bad'" x-text="it.gates.lagZero ? '✓' : '✗'"
+                        :title="'核查时间：' + (it.gates.checkedAt || '—')"></span></td>
+              <td class="num sep-l" x-text="it.amountDue + ' 元'"></td>
+              <td><span class="badge badge-danger" x-show="it.overdue"
+                        title="欠费只算不限：平台不做停服/降配/限流（ADR-0024 决定第 8 条）；标记动作走 CLI">欠费</span>
+                  <span class="muted" x-show="!it.overdue">—</span></td>
+              <td class="mono" x-text="it.oaTicket || '—'"></td>
+              <td class="mono" style="font-size:var(--fs-tiny,11px)" :title="it.confirmedAt || ''"
+                  x-text="fmtTime(it.confirmedAt) || '—'"></td>
+              <td style="white-space:nowrap">
+                <button class="btn btn-sm" type="button" @click="openDetail(it.period)">详情</button>
+                <button class="btn btn-sm" type="button" x-show="it.status === 'reconciled'"
+                        @click="openDialog(it.period, 'confirm')">确认</button>
+                <button class="btn btn-sm" type="button" @click="exportCsv(it.period)">导出 CSV</button>
+              </td>
+            </tr>
+          </template>
+          <tr x-show="!busy && items.length === 0"><td colspan="10" class="empty"
+              x-text="stateMessage || '暂无账期（出账走命令行，见上方引导卡；三硬前置未过会拒并说明原因）'"></td></tr>
+        </tbody>
+      </table>
+      <div class="pager" style="padding:0 var(--space-2,16px) var(--space-2,16px)" x-show="total > 0">
+        <button class="btn btn-sm" type="button" :disabled="page <= 1" @click="page--; loadList()">上一页</button>
+        <span class="num" x-text="'第 ' + page + ' 页 / 共 ' + Math.max(1, Math.ceil(total / pageSize)) + ' 页（' + total + ' 期）'"></span>
+        <button class="btn btn-sm" type="button" :disabled="page >= Math.ceil(total / pageSize)" @click="page++; loadList()">下一页</button>
+      </div>
+      <p class="footnote" style="padding:0 var(--space-2,16px) var(--space-2,16px)">
+        确认后账单底数冻结：账单行与该月用量不再可改，修正走调整单追加留痕（ADR-0024 决定第 4 条）；各状态释义悬停徽标可见。</p>
+    </div>
+  </section>
+
+  <!-- ══ 详情视图（点账期进入） ══ -->
+  <section aria-label="账期详情" x-show="view === 'detail'" x-cloak>
+    <div class="card" id="period-head-card" x-show="detail">
+      <div class="card-head">
+        <h2 class="card-title">账期 <span class="mono" x-text="detail ? detail.period.period : ''"></span></h2>
+        <button class="btn back-link" type="button" id="back-to-list" @click="view = 'list'; loadList()">← 返回月账列表</button>
+      </div>
+      <div class="period-card" x-show="detail">
+        <div class="kv"><div class="k">状态</div><div class="v"><span class="badge" :class="detail && statusClass(detail.period.status)"
+          x-text="detail ? statusLabel(detail.period.status) : ''"></span></div></div>
+        <div class="kv"><div class="k">三硬前置（①②③）</div><div class="v" x-show="detail">
+          <span :class="detail?.period.gates.t3Closed ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.t3Closed ? '✓' : '✗'"></span>
+          <span :class="detail?.period.gates.reconcileClean ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.reconcileClean ? '✓' : '✗'"></span>
+          <span :class="detail?.period.gates.lagZero ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.lagZero ? '✓' : '✗'"></span>
+          <span class="muted" style="font-size:var(--fs-tiny,11px)" :title="detail.period.gates.checkedAt || ''"
+                x-text="'（核查 ' + (detail ? fmtTime(detail.period.gates.checkedAt) : '') + '）'"></span>
+        </div></div>
+        <div class="kv"><div class="k">OA 单号</div><div class="v mono" x-text="detail ? (detail.period.oaTicket || '—') : ''"></div></div>
+        <div class="kv"><div class="k">金额合计（应收）</div><div class="v num" x-text="detail ? detail.period.amountDue + ' 元' : ''"></div></div>
+        <div class="kv"><div class="k">欠费</div><div class="v">
+          <span class="badge badge-danger" x-show="detail && detail.period.overdue"
+                title="欠费只算不限：平台不做停服/降配/限流（ADR-0024 决定第 8 条）；标记动作走 CLI">欠费</span>
+          <span class="muted" x-show="detail && !detail.period.overdue">—</span></div></div>
+        <div class="kv"><div class="k">操作</div><div class="v">
+          <button class="btn btn-sm" type="button" x-show="detail && detail.period.status === 'reconciled'"
+                  @click="openDialog(detail.period.period, 'confirm')">确认</button>
+          <button class="btn btn-sm" type="button" x-show="detail && detail.period.status === 'confirmed'"
+                  @click="openDialog(detail.period.period, 'register')">补录单号</button>
+          <button class="btn btn-sm" type="button" @click="exportCsv(detail.period.period)" x-show="detail">账期级 CSV</button>
+          <button class="btn btn-sm" type="button" @click="exportLines(detail.period.period)" x-show="detail">明细级 CSV</button>
+        </div></div>
+      </div>
+      <p class="footnote" x-text="detail ? detail.caliber : ''"></p>
+    </div>
+
+    <!-- 主表：bill_line 四键×双快照两列组（分页） -->
+    <div class="card" style="padding:0">
+      <div class="card-head" style="padding:var(--space-2,16px) var(--space-2,16px) 0">
+        <h2 class="card-title">账单明细 <span class="muted num" x-text="detail ? '(' + detail.total + ' 行)' : ''"></span></h2>
+      </div>
+      <table id="bill-lines" aria-label="账单行明细">
+        <thead><tr>
+          <th>租户</th><th>调用方</th><th>服务</th>
+          <th>调用量</th><th>成功量</th><th>失败量</th><th>平均耗时(ms)</th><th>事件条数</th>
+          <th class="sep-l">计价</th><th>成交单价</th><th>金额</th><th>价目 ID</th>
+        </tr></thead>
+        <tbody>
+          <template x-for="ln in detail ? detail.items : []" :key="ln.tenantId + '|' + ln.caller + '|' + ln.endpoint">
+            <tr>
+              <td><span class="mono" x-text="ln.tenantId"></span>
+                  <div class="muted" style="font-size:var(--fs-tiny,11px)" x-text="ln.tenantDisplayName || '—'" x-show="ln.tenantDisplayName"></div></td>
+              <td class="caller-cell"><span x-text="ln.callerName || '未登记'"></span>
+                  <div class="sub mono" x-text="ln.caller"></div></td>
+              <td class="mono" x-text="ln.endpoint"></td>
+              <td class="num" x-text="ln.usageSnapshot.calls"></td>
+              <td class="num" x-text="ln.usageSnapshot.success"></td>
+              <td class="num" x-text="ln.usageSnapshot.fail"></td>
+              <td class="num" x-text="ln.usageSnapshot.avgLatencyMs === null ? '—' : ln.usageSnapshot.avgLatencyMs"></td>
+              <td class="num" x-text="ln.usageSnapshot.sourceEventCount"></td>
+              <td class="sep-l"><span class="badge badge-ok" x-show="ln.priceSnapshot.priced">已计价</span>
+                  <span class="badge badge-muted" x-show="!ln.priceSnapshot.priced"
+                        title="未计价＝空价目试运行：金额 0 元且不计应收（ADR-0024 决定第 9 条），与真 0 元价区分">未计价</span></td>
+              <td class="num" x-text="ln.priceSnapshot.unitPrice === null ? '—' : ln.priceSnapshot.unitPrice"></td>
+              <td class="num" x-text="ln.priceSnapshot.amount"></td>
+              <td class="mono" x-text="ln.priceSnapshot.priceItemId || '—'"></td>
+            </tr>
+          </template>
+          <tr x-show="detail && detail.items.length === 0"><td colspan="12" class="empty">该账期无账单行。</td></tr>
+          <tr x-show="detail && detail.items.length > 0" style="background:var(--admin-inset)">
+            <td colspan="4" class="muted">汇总</td>
+            <td class="num" x-text="detail ? detail.summary.successSum : ''"></td>
+            <td colspan="3"></td>
+            <td class="muted">未计价 <span class="num" x-text="detail ? detail.summary.unpricedCount : ''"></span> 行</td>
+            <td class="muted">Σ金额</td>
+            <td class="num" x-text="detail ? detail.summary.amountSum : ''"></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pager" style="padding:0 var(--space-2,16px) var(--space-2,16px)" x-show="detail && detail.total > detail.items.length || (detail && detail.page > 1)">
+        <button class="btn btn-sm" type="button" :disabled="detailPage <= 1" @click="detailPage--; loadDetail(detail.period.period)">上一页</button>
+        <span class="num" x-text="detail ? ('第 ' + detail.page + ' 页 / 共 ' + Math.max(1, Math.ceil(detail.total / detail.pageSize)) + ' 页') : ''"></span>
+        <button class="btn btn-sm" type="button" :disabled="detail && detail.page >= Math.ceil(detail.total / detail.pageSize)"
+                @click="detailPage++; loadDetail(detail.period.period)">下一页</button>
+      </div>
+      <p class="footnote" style="padding:0 var(--space-2,16px) var(--space-2,16px)">
+        页面调用方为掩码；明细级 CSV 带完整凭证编号（拍板④，导出入 bill_export 留痕）。</p>
+    </div>
+  </section>
+
+  <!-- ══ 确认/补录对话框（必填 OA 单号，格式提醒纯登记——零系统集成） ══ -->
+  <div class="overlay" id="confirm-dialog" x-show="dialog.open" x-cloak @keydown.escape.window="dialog.open = false">
+    <div class="dlg" role="dialog" aria-modal="true" aria-label="确认账期">
+      <h2 class="card-title" x-text="dialog.mode === 'confirm' ? '确认账期（reconciled → confirmed）' : '补录 OA 单号（仅已确认账期）'"></h2>
+      <p class="muted" style="font-size:var(--fs-small,12px);color:var(--admin-note)">
+        账期 <span class="mono" x-text="dialog.period"></span>。审批已在 OA 完成，此处仅登记结果（ADR-0003）；
+        平台不做任何 OA 系统对接，单号纯手工登记<span class="req">必填</span>，格式提醒：<span class="mono">字母数字-_，4~64 位</span>（仅提醒不校真伪）。</p>
+      <label class="f" for="oa-ticket-input">OA 单号 <span class="req">*</span></label>
+      <input id="oa-ticket-input" type="text" x-model="dialog.ticket" placeholder="如 DEMO-2026-09-001"
+             @keydown.enter="submitDialog()">
+      <p class="err" id="dialog-error" x-text="dialog.error"></p>
+      <p class="footnote" x-show="dialog.mode === 'confirm'">确认后账单底数冻结：账单行与该月用量不再可改，修正走调整单追加留痕（ADR-0024 决定第 4 条）；此后 --rebill/改账永久拒绝。</p>
+      <div class="modal-actions">
+        <button class="btn" type="button" @click="dialog.open = false">取消</button>
+        <button class="btn btn-primary" type="button" id="confirm-submit-btn" :disabled="dialog.busy || !dialog.ticket.trim()"
+                x-text="dialog.mode === 'confirm' ? '确认冻结' : '登记单号'" @click="submitDialog()"></button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="admin-gate.js"></script><!-- 登录态注入 Authorization；401 自动跳登录 -->
+<script>
+function billingAdmin() {
+  return {
+    view: 'list', busy: false, stateMessage: '',
+    items: [], total: 0, page: 1, pageSize: 50, summary: null,
+    detail: null, detailPage: 1,
+    dialog: { open: false, mode: 'confirm', period: '', ticket: '', error: '', busy: false },
+
+    get cliCommand() { return 'python3 scripts/billing_run.py --period ' + this.prevPeriod(); },
+    get showCliGuide() {
+      if (this.view !== 'list') return false;
+      if (!this.total) return true;                       // 列表空（§3.2）
+      return this.items.some(function (it) { return it.status === 'draft'; });   // 存在未出账期
+    },
+
+    prevPeriod() {
+      var d = new Date(); var y = d.getFullYear(); var m = d.getMonth();  // 上自然月
+      if (m === 0) { y -= 1; m = 12; }
+      return y + '-' + String(m).padStart(2, '0');
+    },
+    statusLabel(s) { return ({ draft: '草稿', reconciled: '已对账', confirmed: '已确认', written_off: '已核销' })[s] || s; },
+    statusTip(s) {
+      return ({ draft: '草稿＝未过对账自检（当前链路落库即 reconciled，draft 保留给人工流程）',
+                reconciled: '已对账＝三硬前置全过，待确认',
+                confirmed: '已确认＝账单底数冻结，修正走调整单（ADR-0024 决定第 4 条）',
+                written_off: '已核销（核销触发动作二期候选，0004 口径）' })[s] || '';
+    },
+    statusClass(s) { return ({ draft: 'badge-warn', reconciled: 'badge-info', confirmed: 'badge-ok', written_off: 'badge-muted' })[s] || 'badge-muted'; },
+    fmtTime(v) {
+      if (!v) return '';
+      const d = new Date(v);
+      if (isNaN(d)) return String(v);
+      const p = function (n) { return String(n).padStart(2, '0'); };
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    },
+
+    async boot() {
+      await this.loadList();
+      const p = new URLSearchParams(location.search).get('period');   // 深链：billing.html?period=YYYY-MM 直达详情（侧栏/列表外链入口）
+      if (p && /^\d{4}-\d{2}$/.test(p)) await this.openDetail(p);
+    },
+
+    async _get(url) {
+      const res = await fetch(url, { headers: (window.adminHeaders ? adminHeaders() : {}) });
+      let body = null;
+      try { body = await res.json(); } catch (e) { body = null; }
+      if (!res.ok) {
+        const msg = body && body.message ? body.message : ('请求失败（HTTP ' + res.status + '）');
+        const err = new Error(msg); err.status = res.status; err.body = body; throw err;
+      }
+      return body;
+    },
+
+    async loadList() {
+      this.busy = true; this.stateMessage = '';
+      try {
+        const d = await this._get('/v1/admin/billing/periods?page=' + this.page + '&page_size=' + this.pageSize);
+        this.items = d.items || []; this.total = d.total || 0;
+        this.summary = d.summary || null;
+        if (d.status === 'empty' && d.message) this.stateMessage = d.message;
+      } catch (e) {
+        this.items = []; this.total = 0; this.summary = null;
+        this.stateMessage = e.status === 503 ? '账单库（pg）暂不可达：账单真源在 pg usage schema（无 yaml 回落）——稍后重试或联系平台值班。' : e.message;
+      } finally { this.busy = false; }
+    },
+
+    async loadDetail(period) {
+      this.busy = true; this.stateMessage = '';
+      try {
+        this.detail = await this._get('/v1/admin/billing/periods/' + period + '?page=' + this.detailPage + '&page_size=20');
+        if (!this.detail.items.length && this.detail.total && this.detailPage > 1) {
+          this.detailPage = 1; await this.loadDetail(period);
+        }
+      } catch (e) {
+        this.stateMessage = e.message; this.view = 'list';
+      } finally { this.busy = false; }
+    },
+
+    async openDetail(period) { this.detailPage = 1; this.view = 'detail'; await this.loadDetail(period); },
+
+    openDialog(period, mode) {
+      this.dialog = { open: true, mode: mode, period: period, ticket: '', error: '', busy: false };
+      setTimeout(function () { const el = document.getElementById('oa-ticket-input'); if (el) el.focus(); }, 50);
+    },
+
+    ticketFormatOk(t) { return /^[A-Za-z0-9][A-Za-z0-9_-]{3,63}$/.test(t); },
+
+    async submitDialog() {
+      const t = this.dialog.ticket.trim();
+      if (!t) { this.dialog.error = 'OA 单号必填（确认结果与单号一并登记留痕）。'; return; }
+      if (!this.ticketFormatOk(t)) { this.dialog.error = '单号格式提醒：字母数字-_，4~64 位（纯登记不校真伪，可按贵司编号规则调整）。'; return; }
+      this.dialog.busy = true; this.dialog.error = '';
+      const path = this.dialog.mode === 'confirm' ? 'confirm' : 'register-oa';
+      try {
+        const res = await fetch('/v1/admin/billing/periods/' + this.dialog.period + '/' + path, {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, window.adminHeaders ? adminHeaders() : {}),
+          body: JSON.stringify({ oa_ticket: t })
+        });
+        const body = await res.json().catch(function () { return null; });
+        if (!res.ok) { this.dialog.error = (body && body.message) || ('请求失败（HTTP ' + res.status + '）'); this.dialog.busy = false; return; }
+        this.dialog.open = false;
+        if (this.view === 'detail' && this.detail) await this.loadDetail(this.dialog.period);
+        else await this.loadList();
+      } catch (e) { this.dialog.error = e.message || '网络异常'; this.dialog.busy = false; }
+    },
+
+    async _download(url) {
+      const res = await fetch(url, { headers: (window.adminHeaders ? adminHeaders() : {}) });
+      if (!res.ok) {
+        const body = await res.json().catch(function () { return null; });
+        this.stateMessage = (body && body.message) || ('导出失败（HTTP ' + res.status + '）');
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = url.split('/').pop() + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+    },
+    exportCsv(period) { return this._download('/v1/admin/billing/periods/' + period + '/export'); },
+    exportLines(period) { return this._download('/v1/admin/billing/periods/' + period + '/export-lines'); },
+
+    copyCli() {
+      const cmd = this.cliCommand;
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(cmd); }
+      else {
+        const ta = document.createElement('textarea'); ta.value = cmd;
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      }
+    }
+  };
+}
+</script>
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs 自托管副本（同 grants 页；业务脚本必须先于 alpine 加载——本仓 alpine 构建在自身执行后 queueMicrotask 即 start()，晚放会 not defined） -->
+</body>
+</html>

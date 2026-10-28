@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P0-3 试用台断言页（自验工具，非门户页面）</title>
+<style>
+  body { background: #1c222b; color: #E6E9EE; font: 13px/1.6 ui-monospace, Menlo, monospace; padding: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 960px; }
+  th, td { border: 1px solid #35404d; padding: 4px 8px; text-align: left; font-size: 12px; }
+  th { background: #242b36; }
+  .pass { color: #3FBE95; }
+  .fail { color: #E05252; font-weight: 600; }
+</style>
+</head>
+<body>
+<h3>P0-3 试用台 DOM 断言（SPEC §5 P0-3）· iframe 实渲染 trial.html → 实时取回断言</h3>
+<table id="rt"><thead><tr><th>#</th><th>断言</th><th>实际</th><th>期望</th><th>结果</th></tr></thead><tbody></tbody></table>
+<iframe id="pt" src="trial.html" style="width:1100px;height:760px;margin-top:12px;border:1px solid var(--border-strong)"></iframe>
+<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
+     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
+<script src="site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<script src="assets/selftest-p03.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+lib/            # pip --target 本地依赖（rich），不入库
+config.toml     # 本机私有配置覆盖（config.example.toml 为入库模板）
+reports/        # 运行产物（样例报告如需入库由维护者显式 add）

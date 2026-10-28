@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- OneServe 登录跳转壳（ADR-0018，2026-10-19）——原品牌密码表单退役：本页改为
+     授权码流引导页（后端 /v1/admin/auth/config 下发带一次性 state 的授权地址 →
+     整页跳转 Casdoor 同源登录页 :8000/login；Casdoor 登录后带 code 回
+     /admin/auth-callback.html 换 token 并按回址返回）。
+     回退口径：git 还原本文件即回密码表单（site/admin-gate 的 LOGIN_PAGE 指向不变）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · OneServe 统一数据服务平台</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文（与门户壳同款） */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<style>
+  /* 与统一登录页同语言的极简过渡页（品牌红 #C8102E / 石墨 #1F2430，本地零外链） */
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         background: #F7F8FA; color: #1F2430; padding: 1rem;
+         font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .card { background: #fff; border: 1px solid #E6E8EC; border-radius: 18px; position: relative;
+          box-shadow: 0 32px 64px -32px rgba(31,36,48,.24), 0 12px 28px -18px rgba(31,36,48,.12);
+          padding: 2.4rem 2.6rem 2.2rem; text-align: center; max-width: 380px; width: 100%; }
+  .card::before { content: ""; position: absolute; top: 0; left: 50%; width: 44px; height: 3px;
+                  margin-left: -22px; border-radius: 0 0 3px 3px; background: #C8102E; }
+  .logo { font-size: 1.75rem; font-weight: 700; letter-spacing: .02em; margin: .2rem 0 .55rem; }
+  .logo .dot { color: #C8102E; }
+  .sub { color: #5A6270; font-size: .78rem; letter-spacing: .35em; text-indent: .35em; margin-bottom: 1.5rem; }
+  .msg { color: #5A6270; font-size: .9rem; margin: .4rem 0; }
+  .msg a { color: #C8102E; text-decoration: none; font-weight: 600; }
+  .msg a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">OneServe<span class="dot">.</span></div>
+  <div class="sub">统一数据服务平台</div>
+  <p class="msg" id="msg">正在进入统一登录……</p>
+  <p class="msg" id="retry" style="display:none">没有自动跳转？<a href="#" id="manual">手动继续</a></p>
+</div>
+<script>
+(function () {
+  'use strict';
+  /* 授权地址由后端下发（含一次性 state＋签名 cookie，#34 login-CSRF 口径）；
+   * 本页零表单零口令——登录交互全部在统一登录页（Casdoor 同源白标页）完成。 */
+  function go() {
+    fetch('/v1/admin/auth/config', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.loginUrl) { location.replace(j.loginUrl); return; }
+        document.getElementById('msg').textContent =
+          '登录服务未启用（mode=' + ((j && j.mode) || '?') + '）';
+      })
+      .catch(function () {
+        document.getElementById('msg').textContent = '登录服务不可达，请稍后重试。';
+        document.getElementById('retry').style.display = '';
+      });
+  }
+  document.getElementById('manual').addEventListener('click', function (e) { e.preventDefault(); go(); });
+  setTimeout(function () { document.getElementById('retry').style.display = ''; }, 3000);
+  go();
+})();
+</script>
+</body>
+</html>

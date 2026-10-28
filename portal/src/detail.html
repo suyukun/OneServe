@@ -1,0 +1,194 @@
+<!-- ══ API 详情页（P0-2 · SPEC A3）：数据由构建期 sidecar 驱动（portal/openapi/），
+     每服务一个静态壳 portal/openapi/<service_id>.html（build_portal.py 生成）；
+     在线调试不在本页做（跳试用台），多语言示例为 P2。══ -->
+<div class="os-container reveal" x-data="detailPage" x-cloak>
+
+  <template x-if="svc">
+    <div>
+      <div class="page-header d-print-none os-page-header">
+        <div class="page-pretitle" x-text="svc.domain.name + ' · ' + svc.archetype_label"></div>
+        <h1 class="page-title" x-text="svc.name"></h1>
+        <p class="section-sub" x-text="svc.summary"></p>
+        <div class="os-page-actions">
+          <a class="os-chip is-link" :href="trialUrl()" rel="noopener">
+            <i class="bi bi-play-circle" aria-hidden="true"></i>在线调试（前往试用台）
+          </a>
+        </div>
+      </div>
+
+      <!-- ① 标识：方法＋URL／认证／限流／版本 -->
+      <section class="card detail-card" id="detail-identification" aria-label="服务标识">
+        <div class="card-head"><h2 class="card-title">基本信息</h2><span class="spacer"></span>
+          <span class="status is-ok"><span class="dot"></span><span x-text="'契约版本 ' + svc.contract_version"></span></span>
+        </div>
+        <div class="table-scroll">
+        <table class="detail-table">
+          <tbody>
+            <tr><th scope="row">服务标识</th><td><code x-text="svc.service_id"></code></td></tr>
+            <tr><th scope="row">接口地址</th><td><code class="detail-endpoint"><span class="detail-method" x-text="svc.methods.join(' / ')"></span><span x-text="' ' + svc.endpoint"></span></code></td></tr>
+            <tr><th scope="row">认证方式</th><td>
+              <span x-text="svc.auth.describe"></span>
+              <div class="field-hint">请求头名称：<code x-text="svc.auth.header"></code>；<span x-text="svc.auth.keys_note"></span></div>
+            </td></tr>
+            <tr><th scope="row">限流说明</th><td x-text="svc.rate_limit.note"></td></tr>
+            <tr><th scope="row">API 大版本／契约版本</th><td>
+              API 大版本 <code x-text="svc.platform_version"></code>
+              · 契约版本 <code x-text="svc.contract_version"></code>
+              <div class="field-hint">API 大版本＝路由 /v1 前缀（请求体不携带版本）；契约演进以契约版本＋本页变更记录为准，不做静默变更</div>
+            </td></tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- ② 入参表 -->
+      <section class="card detail-card" id="detail-params" aria-label="入参表">
+        <div class="card-head"><h2 class="card-title">入参表</h2></div>
+        <div class="table-scroll">
+          <table class="detail-table">
+            <thead><tr><th scope="col">参数名</th><th scope="col">位置</th><th scope="col">类型</th><th scope="col">必填</th><th scope="col">说明</th></tr></thead>
+            <tbody>
+              <template x-for="p in svc.params" :key="p.name">
+                <tr>
+                  <td><code x-text="p.name"></code></td>
+                  <td x-text="p.in === 'body' ? '请求体 JSON' : (p.in === 'query' ? '查询串' : 'URL 路径')"></td>
+                  <td x-text="p.type"></td>
+                  <td x-text="p.required ? '必填' : '可选'"></td>
+                  <td x-text="p.note"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ③ 出参表：字段中文名／类型／脱敏口径；未命中分支如实入表 -->
+      <section class="card detail-card" id="detail-response" aria-label="出参表">
+        <div class="card-head"><h2 class="card-title">出参表</h2></div>
+        <div class="table-scroll">
+          <table class="detail-table">
+            <thead><tr><th scope="col">字段</th><th scope="col">中文名</th><th scope="col">类型</th><th scope="col">说明</th></tr></thead>
+            <tbody>
+              <template x-for="f in svc.response.found_shape" :key="f.name">
+                <tr>
+                  <td><code x-text="f.name"></code></td>
+                  <td x-text="f.cn"></td>
+                  <td x-text="f.type"></td>
+                  <td x-text="f.note"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <template x-if="svc.response.not_found_shape">
+          <div class="detail-subblock">
+            <h3 class="detail-subtitle">键未命中时（HTTP 200，诚实空值）</h3>
+            <div class="table-scroll">
+              <table class="detail-table">
+                <thead><tr><th scope="col">字段</th><th scope="col">中文名</th><th scope="col">取值口径</th></tr></thead>
+                <tbody>
+                  <template x-for="f in svc.response.not_found_shape" :key="f.name">
+                    <tr><td><code x-text="f.name"></code></td><td x-text="f.cn"></td><td x-text="f.note"></td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+        <template x-if="svc.response.auth_fields.length">
+          <div class="detail-subblock">
+            <h3 class="detail-subtitle">返回标签字段清单（授权白名单口径）</h3>
+            <div class="table-scroll">
+              <table class="detail-table">
+                <thead><tr><th scope="col">字段列名</th><th scope="col">中文名</th><th scope="col">类型</th><th scope="col">脱敏口径</th></tr></thead>
+                <tbody>
+                  <template x-for="f in svc.response.auth_fields" :key="f.name">
+                    <tr>
+                      <td><code x-text="f.name"></code></td>
+                      <td x-text="f.cn"></td>
+                      <td x-text="f.type"></td>
+                      <td x-text="f.desensitize || '原值输出'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="field-hint">脱敏规则：<span x-text="svc.response.desensitize_notes.join('；')"></span>；白名单外字段在服务端被投影剔除，绝不外泄。</div>
+          </div>
+        </template>
+      </section>
+
+      <!-- N1 页面动线补全（W-X4）：无凭证语境引导——出参表下方「如何获得调用凭证」→
+           申请接入／帮助快起步（纯静态指引，零业务逻辑；链接随构建改写 ../ 前缀） -->
+      <section class="card detail-card" id="detail-cred-guide" aria-label="如何获得调用凭证">
+        <div class="card-head"><h2 class="card-title">如何获得调用凭证？</h2></div>
+        <div class="field-hint">调用本服务需在请求头 apikey 携带 AppKey（见上方「基本信息 · 认证方式」）。还没有凭证？<a href="apply.html">去申请接入</a>（正式凭证找平台管理员审批）；如何领沙箱凭证、怎么发调用，见<a href="docs.html">帮助与支持 · 5 分钟上手</a>。</div>
+      </section>
+
+      <!-- ④ 错误码＋解决方案（网关 401 与服务层码同表，来源分列）；
+           #46（2026-10-15 错误码到动作闭环）：401/429/配额类错误行内直出「去申请授权／查看配额」
+           跳转按钮——错误码与状态取自机读错误信封同源 sidecar，分类映射为纯前端静态规则（零新接口） -->
+      <section class="card detail-card" id="detail-errors" aria-label="错误码表">
+        <div class="card-head"><h2 class="card-title">错误码与解决方案</h2></div>
+        <div class="table-scroll">
+          <table class="detail-table">
+            <thead><tr><th scope="col">错误码</th><th scope="col">HTTP 状态</th><th scope="col">含义</th><th scope="col">解决方案</th><th scope="col">来源</th><th scope="col">下一步</th></tr></thead>
+            <tbody>
+              <template x-for="e in svc.errors" :key="e.code">
+                <tr>
+                  <td><code x-text="e.code"></code></td>
+                  <td class="num" x-text="e.http_status"></td>
+                  <td x-text="e.meaning"></td>
+                  <td x-text="e.solution"></td>
+                  <td x-text="e.source === 'gateway' ? '网关' : '服务层'"></td>
+                  <td class="detail-err-acts">
+                    <template x-if="errActionApply(e)"><a class="err-act" href="apply.html">去申请授权</a></template>
+                    <template x-if="errActionQuota(e)"><a class="err-act" href="my.html">查看配额</a></template>
+                    <span class="field-hint" x-show="!errActionApply(e) && !errActionQuota(e)">按「解决方案」处理</span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="field-hint" x-text="svc.errors_meta"></div>
+      </section>
+
+      <!-- ⑤ 报文示例：可复制 curl（真实格式示例键；单行整体复制） -->
+      <section class="card detail-card" id="detail-example" aria-label="报文示例">
+        <div class="card-head"><h2 class="card-title">报文示例（可复制）</h2>
+          <span class="spacer"></span>
+          <button class="retry-btn" type="button" @click="copyExample($el)" :data-cmd="exampleText()">复制 curl</button>
+        </div>
+        <div class="code-block detail-code"><pre x-text="exampleText()"></pre></div>
+        <ul class="detail-notes">
+          <template x-for="n in svc.example.notes" :key="n"><li x-text="n"></li></template>
+        </ul>
+      </section>
+
+      <!-- ⑥ 版本＋变更记录（P0 占位：首条为契约初版，后续登记变更在此追加） -->
+      <section class="card detail-card" id="detail-changelog" aria-label="版本与变更记录">
+        <div class="card-head"><h2 class="card-title">版本与变更记录</h2></div>
+        <ul class="detail-changelog">
+          <template x-for="c in svc.changelog" :key="c.version + c.note">
+            <li><span class="detail-changeset"><code x-text="c.version"></code></span><span x-text="c.note"></span></li>
+          </template>
+        </ul>
+      </section>
+
+      <div class="src-note" x-text="'契约来源：portal/openapi/oneserve.openapi.yaml · 由 service/services.yaml 等真源构建期生成 · ' + svc.trial_hint"></div>
+    </div>
+  </template>
+
+  <!-- 数据不可用态：如实报错＋重试（禁空白禁假数据） -->
+  <template x-if="loadError">
+    <div class="card">
+      <div class="error-box">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+        <span>契约数据暂不可用</span>
+        <button class="retry-btn" type="button" @click="load()">重试</button>
+      </div>
+    </div>
+  </template>
+
+</div>

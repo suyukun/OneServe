@@ -1,0 +1,15 @@
+attnum,字段名,数据类型,cn_name,业务口径,敏感级
+1,card_sts,VARCHAR(16),卡状态,卡状态枚举：1正常 2冻结 3止付 4销户,内部
+2,acct_sts,VARCHAR(16),账户状态,账户状态枚举：1正常 2睡眠 3销户,内部
+3,open_days,INT,开户时长天数,"开户距今天数 [0,3650]（10 年内）",内部
+4,bal_band,VARCHAR(16),余额档,卡账户余额分档：A≥10万 B1-10万 C0.1-1万 D<0.1万 E0,内部
+5,last_txn_days,INT,距上次交易天数,"最近一笔交易距今天数 [0,730]（2 年内）",内部
+6,txn_cnt_m1_band,VARCHAR(16),月交易笔数档,近 1 月交易笔数分档：A≥50 B20-49 C5-19 D1-4 E0,内部
+7,txn_amt_m1_band,VARCHAR(16),月交易金额档,近 1 月交易金额分档：A≥5万 B1-5万 C0.3-1万 D<0.3万 E0,敏感
+8,overseas_txn_flag,TINYINT,境外交易标志,近 1 年有境外交易：0否 1是,内部
+9,qpay_flag,TINYINT,快捷支付绑定,绑定快捷支付（含三方支付）：0否 1是,内部
+10,annual_fee_waived_flag,TINYINT,年费减免,本年年费已减免/豁免：0否 1是,内部
+11,points_band,VARCHAR(16),积分档,当前可用积分分档：A≥10万 B3-10万 C1-3万 D0-1万 E0,内部
+12,install_cnt_flag,TINYINT,分期标志,存在未结清账单分期/消费分期：0否 1是,敏感
+13,cash_adv_flag,TINYINT,取现标志,近 1 年有卡账户取现：0否 1是,敏感
+14,card_age_band,VARCHAR(16),卡龄档,首卡持卡年限分档：A≥10年 B5-10年 C3-5年 D1-3年 E<1年,内部

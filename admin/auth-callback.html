@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录回调 · OneServe 管理端</title>
+<style>
+  body { font: 14px/1.7 system-ui, -apple-system, sans-serif; background: #10141c; color: #dfe6f1;
+         display: flex; min-height: 100vh; align-items: center; justify-content: center; margin: 0; }
+  .card { background: #1a2230; border: 1px solid #2c3a52; border-radius: 10px; padding: 28px 34px;
+          max-width: 420px; width: 90%; }
+  h1 { font-size: 16px; margin: 0 0 10px; }
+  p { margin: 6px 0; color: #9fb0ca; word-break: break-all; }
+  .ok { color: #7bd88f; } .err { color: #ff9d9d; }
+  a { color: #6fb3ff; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>统一登录 · 回调处理中</h1>
+  <p id="msg">正在用授权码换取登录令牌……</p>
+  <p><a href="/admin/appkeys.html">手动返回管理页</a></p>
+</div>
+<script>
+/* OneServe 管理端 OIDC 登录回跳页（2026-10-14 Casdoor 集成，ADR-0010 硬前提兑现）。
+ * 流程：Casdoor 登录后带 ?code= 回跳本页 → 后端 /v1/auth/callback 换 token（简化
+ * 路径：client_secret 只在后端）→ token 存 localStorage（跨标签页不失忆）→ 回到
+ * 登录前的原址（admin-gate.js 401 拦截时存的 oneserve-auth-return）。
+ * 本页不加载 admin-gate.js（无 fetch 包装，避免跳转循环）。 */
+(function () {
+  'use strict';
+  var TOKEN_KEY = 'oneserve-oidc-token';
+  var RETURN_KEY = 'oneserve-auth-return';
+  var msg = document.getElementById('msg');
+  var q = new URLSearchParams(location.search);
+  var code = q.get('code') || '';
+  if (!code) {
+    msg.className = 'err';
+    msg.textContent = '回调缺少授权码（code）——请从管理页重新发起登录。';
+    return;
+  }
+  /* ADR-0018（2026-10-19）：state 一并回传——后端 #34 起对 state 强校验（签名 cookie
+   * 比对，fail-closed），只传 code 会被拒（旧版此处漏传，授权码后备通道实际已断）。 */
+  fetch('/v1/admin/auth/callback?code=' + encodeURIComponent(code) +
+        '&state=' + encodeURIComponent(q.get('state') || ''), { cache: 'no-store' })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.j || !res.j.accessToken) {
+        msg.className = 'err';
+        msg.textContent = '换取登录令牌失败：' + ((res.j && res.j.message) || 'HTTP 错误') + '——请重试或联系管理员。';
+        return null;
+      }
+      try { localStorage.setItem(TOKEN_KEY, res.j.accessToken); } catch (e) { /* 存储不可用：如实报错 */ }
+      msg.className = 'ok';
+      msg.textContent = '登录成功，正在返回管理页……';
+      var back = '';
+      try { back = localStorage.getItem(RETURN_KEY) || ''; localStorage.removeItem(RETURN_KEY); } catch (e) { /* noop */ }
+      /* 回址只接受本站 URL（防开放跳转，ADR-0018 起门户页共用同一登录）；缺省回门户首页 */
+      if (back && back.indexOf(location.origin + '/') === 0) {
+        location.replace(back.split('#')[0]);
+      } else {
+        location.replace('/');
+      }
+      return null;
+    })
+    .catch(function (err) {
+      msg.className = 'err';
+      msg.textContent = '回调服务不可达：' + (err && err.message ? err.message : err) + '——稍后重试。';
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!-- ══ 我的接入页（P0-7 · SPEC A7 最小版，D1=b 凭证兼身份）：凭证／配额／日志三块，按凭证查询 ══ -->
+<div class="os-container reveal" x-data="myAccessPage" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">我的接入</div>
+    <h1 class="page-title">凭证 · 配额 · 调用记录</h1>
+  </div>
+
+  <!-- 查询条：无登录（D1=b），凭证即身份——明示「按凭证查询」 -->
+  <section class="card span-24" id="my-caller-bar" aria-label="按凭证查询">
+    <div class="card-body my-caller-row">
+      <div class="my-caller-field">
+        <label for="my-caller-input" class="form-label">
+          你的凭证（AppKey）
+          <span class="my-tip" tabindex="0" role="note"
+                title="调用平台接口时放在 apikey 请求头里的那串钥匙，以 sb_（沙箱凭证，测试用，正式凭证另行审批；默认 7 天有效）或 ak_（正式）开头。平台不保存也无法找回，请自行留存。">？</span>
+        </label>
+        <div class="my-caller-controls">
+          <input class="form-control mono" id="my-caller-input" type="text" autocomplete="off" spellcheck="false"
+                 x-model="callerInput" @keydown.enter="query()"
+                 placeholder="如：sb_0123456789abcdef（签发凭证时显示过的完整串）">
+          <button class="btn btn-primary my-caller-btn" id="my-caller-submit" type="button"
+                  @click="query()" :disabled="callerState === 'loading'"
+                  x-text="callerState === 'loading' ? '查询中…' : '查询'"></button>
+        </div>
+        <div class="field-hint">本页按凭证查询（无需登录）：只显示这把凭证自己的信息，输入别的凭证看不到。</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid-24">
+
+    <!-- 左 2/3：③ 我的日志（近 N 次调用：审计过滤＋traceId 展示/反查＋网关拒记合并） -->
+    <section class="card span-16" id="my-logs" aria-label="我的日志">
+      <div class="card-head">
+        <h2 class="card-title">我的日志</h2>
+        <div class="my-trace-lookup">
+          <label for="my-trace-input" class="field-hint">
+            用追踪号反查
+            <span class="my-tip" tabindex="0" role="note"
+                  title="每次调用的响应头 X-Trace-Id 里都有一个追踪号；报错时把它填在这里，能查到这次调用（包括被网关拦下的）。">？</span>
+          </label>
+          <input class="form-control form-control-sm mono" id="my-trace-input" type="text" autocomplete="off"
+                 spellcheck="false" x-model="traceInput" @keydown.enter="lookupTrace()"
+                 placeholder="粘贴错误响应里的追踪号（X-Trace-Id）">
+          <button class="btn btn-sm btn-outline-secondary" id="my-trace-submit" type="button"
+                  @click="lookupTrace()" :disabled="logsState === 'loading'">反查</button>
+        </div>
+      </div>
+
+      <!-- 反查结果提示（反查模式才出现；普通查询隐藏） -->
+      <div class="my-trace-active" x-show="traceMode" x-cloak>
+        正在按追踪号查：<span class="mono" x-text="logsTraceId"></span>
+        <button class="btn btn-sm btn-link my-trace-clear" type="button" @click="clearTrace()">返回按凭证查看</button>
+      </div>
+
+      <template x-if="logsState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+      <template x-if="logsState === 'error'">
+        <div class="card-body">
+          <div class="error-box"><span>日志暂不可用</span><button class="retry-btn" @click="reloadLogs()">重试</button></div>
+        </div>
+      </template>
+      <template x-if="logsState === 'ok'">
+        <div class="card-body">
+          <table class="my-log-table" id="my-log-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>调用了什么</th>
+                <th>结果</th>
+                <th>耗时</th>
+                <th>追踪号</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(row, i) in logItems" :key="i">
+                <tr>
+                  <td class="my-ts" x-text="fmtTs(row.ts)"></td>
+                  <td>
+                    <span class="mono my-endpoint" x-text="row.endpoint || '—'"></span>
+                    <span class="badge my-badge-gw" x-show="row.source === 'gateway'"
+                          title="这次请求没有通过网关的门口检查（比如凭证填错、已禁用或已过期）。网关侧查不到是谁在调，只能按时间排进来参考；用响应头里的追踪号能精确反查。">网关拒绝</span>
+                  </td>
+                  <td>
+                    <span class="badge" :class="statusClass(row.status)" x-text="'HTTP ' + (row.status ?? '—')"></span>
+                  </td>
+                  <td x-text="row.latencyMs != null ? row.latencyMs + 'ms' : '—'"></td>
+                  <td class="my-trace-cell">
+                    <template x-if="row.traceId">
+                      <span>
+                        <span class="mono my-trace-id" x-text="row.traceId"></span>
+                        <button class="btn btn-sm btn-link my-trace-use" type="button"
+                                title="把这条记录的追踪号填进上方反查框，可精确定位这次调用">用此反查</button>
+                      </span>
+                    </template>
+                    <span x-show="!row.traceId" class="field-hint">未记录</span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <div class="empty-tags" x-show="!logItems.length">还没有查询到调用记录——先到<a href="trial.html">接口调试</a>发起一次调用，记录会显示在这里。</div>
+          <div class="src-note" x-text="logsFootnote()"></div>
+        </div>
+      </template>
+      <template x-if="logsState === 'idle'">
+        <div class="card-body">
+          <div class="empty-tags">在上方输入凭证后，这里会列出这把凭证最近的调用</div>
+          <div class="src-note">每次调用都会记一条台账（含追踪号）；被网关拦下的调用没有凭证身份，按时间并入参考</div>
+        </div>
+      </template>
+    </section>
+
+    <!-- 右 1/3：① 我的凭证 ＋ ② 我的配额 -->
+    <aside class="span-8">
+      <section class="card" id="my-credentials" aria-label="我的凭证">
+        <div class="card-head"><h2 class="card-title">我的凭证</h2></div>
+        <template x-if="credState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+        <template x-if="credState === 'error'">
+          <div class="card-body"><div class="error-box"><span>凭证信息暂不可用</span><button class="retry-btn" @click="reloadCreds()">重试</button></div></div>
+        </template>
+        <template x-if="credState === 'ok'">
+          <div class="card-body">
+            <template x-if="credentials.length">
+              <div>
+                <template x-for="c in credentials" :key="c.appkeyMasked">
+                  <div class="my-cred-item">
+                    <div class="my-cred-key mono" x-text="c.appkeyMasked"></div>
+                    <div class="my-cred-tags">
+                      <span class="badge" :class="c.keyType === 'sandbox' ? 'text-bg-info' : 'text-bg-secondary'"
+                            x-text="c.keyType === 'sandbox' ? '沙箱凭证' : '正式凭证'"></span>
+                      <span class="badge" :class="credStatusClass(c)" x-text="credStatusLabel(c)"></span>
+                      <span class="badge text-bg-warning my-countdown" x-show="c.expiringSoon"
+                            x-text="(c.daysLeft ?? 0) + ' 天后到期'"></span>
+                      <!-- P1-4 轮换重叠期倒计时：新旧 key 并行期间提示旧凭证剩余天数 -->
+                      <span class="badge text-bg-warning my-countdown" x-show="c.rotation && c.rotation.rotated" x-cloak
+                            :title="'轮换发起于 ' + ((c.rotation && c.rotation.rotatedAt) || '—') +
+                                    '，旧凭证重叠期至 ' + ((c.rotation && c.rotation.overlapExpiresAt) || '—') + '（到期自动失效）'"
+                            x-text="rotationLabel(c)"></span>
+                    </div>
+                    <dl class="my-cred-facts">
+                      <div><dt>有效期至</dt><dd x-text="c.expiresAt || '长期'"></dd></div>
+                      <div><dt>绑定应用</dt><dd x-text="c.appName || '—'"></dd></div>
+                      <div><dt>能调的服务</dt>
+                        <dd><template x-for="g in c.grants" :key="g.service"><span class="my-grant-chip" x-text="g.service + '（' + g.fieldsCount + ' 个字段）'"></span></template></dd></div>
+                    </dl>
+                    <div class="field-hint" x-show="c.status === 'expired'">已过有效期，请到 AppKey 发放页重新签发，或<a href="apply.html">去申请接入</a>正式凭证（找平台管理员审批）；调用方式可先到<a href="trial.html">接口调试台</a>查看。</div>
+                    <div class="field-hint" x-show="c.status === 'disabled'">这把凭证已被停用，恢复请联系平台运营。</div>
+                    <div class="field-hint" x-show="c.rotation && c.rotation.expired">这把凭证已被轮换，重叠期已结束并自动失效，请改用轮换后的新凭证。</div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <div class="empty-tags" x-show="!credentials.length">没有查询到这把凭证</div>
+            <div class="src-note" x-show="!credentials.length">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；沙箱凭证在 AppKey 发放页自助签发。还没有自己的凭证？<a href="apply.html">去申请接入</a>，或先到<a href="trial.html">接口调试台</a>体验。</div>
+          </div>
+        </template>
+        <template x-if="credState === 'idle'">
+          <div class="card-body"><div class="empty-tags">输入凭证后显示状态与有效期</div></div>
+        </template>
+      </section>
+
+      <!-- ── 用量统计（权限方案 v1.1 裁决#4：viewer 计量入口补齐·2026-10-16）──
+           数据源 GET /v1/admin/metering/summary（域7 计量查看，ROUTE_MIN_ROLE
+           viewer 地板＝登录即可见——此前唯一入口在 operator+ 的运营台壳内，
+           viewer「有权无门」）。全角色可见，侧栏「用量统计」导航项锚到本块。 -->
+      <section class="card" id="my-metering" aria-label="用量统计（近 7 日计量）">
+        <div class="card-head">
+          <h2 class="card-title">用量统计（近 7 日）</h2>
+          <span class="badge text-bg-success my-quota-badge" x-show="meterState === 'ok'"
+                title="计量真源＝审计台账/统计快照聚合（掩码口径，完整凭证不出端点）。">已接真</span>
+          <span class="badge text-bg-secondary my-quota-badge" x-show="meterState === 'loading'">统计中…</span>
+        </div>
+        <template x-if="meterState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+        <template x-if="meterState === 'error'">
+          <div class="card-body">
+            <div class="error-box"><span>用量统计暂不可用</span><button class="retry-btn" @click="reloadMeter()">重试</button></div>
+          </div>
+        </template>
+        <template x-if="meterState === 'ok' && (!meterRows || !meterRows.length)">
+          <div class="card-body"><div class="empty-tags">近 7 日暂无调用计量</div></div>
+        </template>
+        <template x-if="meterState === 'ok' && meterRows && meterRows.length">
+          <div class="card-body">
+            <div class="src-note" style="margin-bottom:8px;">
+              近 7 日全平台调用 <span class="mono" x-text="meterTotalLabel()"></span> 次
+              （成功 <span class="mono" x-text="meterSuccessLabel()"></span>／失败 <span class="mono" x-text="meterFailLabel()"></span>）；
+              按调用主体聚合，凭证已掩码。生成于 <span class="mono" x-text="meterGeneratedAt"></span>。
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="table" id="my-metering-table" aria-label="近 7 日计量明细">
+                <thead>
+                  <tr><th>调用主体（掩码）</th><th>登记应用</th><th>调用次数</th><th>成功</th><th>失败</th><th>平均耗时</th></tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in meterRows" :key="row.callerMasked">
+                    <tr>
+                      <td class="mono" x-text="row.callerMasked"></td>
+                      <td x-text="row.appName || (row.registered ? '—' : '未登记')"></td>
+                      <td class="mono" x-text="meterNum(row.calls)"></td>
+                      <td class="mono" x-text="meterNum(row.success)"></td>
+                      <td class="mono" x-text="meterNum(row.fail)"></td>
+                      <td class="mono" x-text="row.avgMs != null ? row.avgMs + ' ms' : '—'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <section class="card" id="my-quota" aria-label="我的配额">
+        <div class="card-head">
+          <h2 class="card-title">我的配额</h2>
+          <span class="badge text-bg-success my-quota-badge" x-show="quotaState === 'ok' && quotaFound"
+                title="四个数字都是真值：限额来自授权登记（网关按同一数值强制），已用来自当日审计台账的真实调用条数。">已接真</span>
+          <span class="badge text-bg-secondary my-quota-badge" x-show="quotaState === 'loading'"
+                title="正在按凭证聚合当日用量">统计中…</span>
+        </div>
+
+        <template x-if="quotaState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+        <template x-if="quotaState === 'error'">
+          <div class="card-body">
+            <div class="error-box"><span>配额暂不可用</span><button class="retry-btn" @click="reloadQuota()">重试</button></div>
+          </div>
+        </template>
+
+        <!-- 未查询／未知凭证：如实空态（不显示 0 已用——查无此凭证 ≠ 今天没调用） -->
+        <template x-if="quotaState === 'idle'">
+          <div class="card-body"><div class="empty-tags">输入凭证后显示这把凭证的当日用量</div></div>
+        </template>
+        <template x-if="quotaState === 'ok' && !quotaFound">
+          <div class="card-body">
+            <div class="empty-tags">没有查询到这把凭证的配额</div>
+            <div class="src-note">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；配额随凭证登记，未登记的凭证没有配额可查。需要配额？<a href="apply.html">去申请接入</a>完成授权登记，或先到<a href="trial.html">接口调试台</a>体验。</div>
+          </div>
+        </template>
+
+        <template x-if="quotaState === 'ok' && quotaFound">
+          <div class="card-body">
+            <div class="my-quota-grid" id="my-quota-grid">
+              <div class="my-quota-cell">
+                <div class="my-quota-val" id="quota-limit" x-text="quotaLimitLabel()"></div>
+                <div class="my-quota-name">日限额
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="这把凭证登记的每天最多调用次数（授权登记配置）。网关按同一数值强制拦截（日配额），超出会收到 429。">？</span></div>
+              </div>
+              <div class="my-quota-cell" :class="quotaExceeded() ? 'is-warn' : ''">
+                <div class="my-quota-val" id="quota-used" x-text="quotaUsedLabel()"></div>
+                <div class="my-quota-name">今日已用
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="今天（东八区 0 点到此刻）这把凭证在审计台账里的真实调用条数：成功与失败都算，被限流拒绝的（429）也算一次。">？</span></div>
+              </div>
+              <div class="my-quota-cell" :class="quotaExceeded() ? 'is-warn' : ''">
+                <div class="my-quota-val" id="quota-remaining" x-text="quotaRemainingLabel()"></div>
+                <div class="my-quota-name">今日剩余
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="限额减去已用；超额时显示 0（不显示负数）。">？</span></div>
+              </div>
+              <div class="my-quota-cell">
+                <div class="my-quota-val my-quota-val-sm" id="quota-reset" x-text="quotaResetLabel()"></div>
+                <div class="my-quota-name">重置时间
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="到这个时刻，今日用量清零重新开始计（东八区次日 0 点）。">？</span></div>
+              </div>
+            </div>
+
+            <div class="my-quota-bar" x-show="quotaRatio() !== null" :class="quotaExceeded() ? 'is-warn' : ''">
+              <div class="my-quota-bar-fill" :style="'width: ' + Math.min(100, quotaRatio() || 0) + '%'"></div>
+            </div>
+            <!-- #58（2026-10-15 水电表）：条形读法明示——蓝条＝本期已用占比，留白＝今日剩余 -->
+            <div class="my-quota-bar-legend" x-show="quotaRatio() !== null">
+              条形＝本期已用占比 <span class="mono" x-text="quotaRatioLabel()"></span>；留白＝今日剩余 <span class="mono" x-text="quotaRemainingLabel()"></span> 次
+            </div>
+
+            <div class="my-quota-warn" id="quota-exceeded-note" x-show="quotaExceeded()">
+              今日用量已超过登记限额（<span x-text="quotaUsed()"></span>/<span x-text="quotaLimit()"></span>）：网关已按此限额强制拦截，超出的调用将收到 429（<span class="mono">X-RateLimit-Reason: global</span>）。如需提额请联系平台运营调整登记配额。
+            </div>
+
+            <!-- 近 7 日用量迷你趋势（审计聚合逐日；无调用的日为 0，连续不跳点） -->
+            <div class="my-quota-trend" id="my-quota-trend" aria-label="近 7 日用量">
+              <div class="my-quota-trend-head">
+                <span class="my-quota-trend-title">近 7 日用量</span>
+                <span class="my-quota-trend-nums">
+                  峰值 <span class="mono" x-text="quotaTrendPeak()"></span> · 合计 <span class="mono" x-text="quotaTrendSum()"></span>
+                </span>
+              </div>
+              <div class="my-quota-sparks">
+                <template x-for="d in quotaTrend" :key="d.date">
+                  <div class="my-quota-spark" :title="d.date + '：' + d.used + ' 次'">
+                    <div class="my-quota-spark-bar" :style="sparkHeight(d.used)"></div>
+                    <div class="my-quota-spark-num" x-text="d.used"></div>
+                    <div class="my-quota-spark-day" x-text="sparkDay(d.date)"></div>
+                  </div>
+                </template>
+              </div>
+              <div class="src-note" x-show="!quotaTrend.length">暂无逐日用量数据——凭证开始调用产生计量后，这里会显示近 7 日趋势。</div>
+            </div>
+
+            <div class="src-note" id="quota-caliber-note" x-text="quotaCaliberNote()"></div>
+          </div>
+        </template>
+      </section>
+    </aside>
+
+  </div>
+
+</div>

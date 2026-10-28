@@ -1,0 +1,116 @@
+<!-- ══ 用量总览（1b-9 报表专区一期 · 设计稿 §3.1）：平台级窗口概览——指标卡四张＋近 7 日柱线＋Top 调用方榜 ══ -->
+<div class="os-container reveal" x-data="reportsOverview" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">报表中心</div>
+    <h1 class="page-title">用量总览</h1>
+  </div>
+
+  <!-- 三态：加载（本地）/空/降级（端点随行；降级不回落现算） -->
+  <div class="rpt-state-banner" x-show="status === 'loading'" x-cloak>
+    <span class="os-spinner" aria-hidden="true"></span>聚合中…
+  </div>
+  <div class="rpt-state-banner is-degraded" x-show="status === 'degraded'" x-cloak x-text="message"></div>
+  <div class="rpt-state-banner" x-show="status === 'empty'" x-cloak>窗口内暂无调用记录（未产生调用是真实状态，非缺数）。</div>
+
+  <template x-if="status === 'ok'">
+    <div>
+      <!-- 指标卡四张（拍板 §9-2 甲案）：窗口调用量/成功率/活跃调用方数/热门服务 -->
+      <div class="grid-24" aria-label="指标卡">
+        <section class="card span-6" id="usage-kpi-calls">
+          <div class="card-body">
+            <div class="rpt-kpi-val" x-text="RPT.fmtNum(totals && totals.calls)"></div>
+            <div class="rpt-kpi-name">窗口调用量</div>
+            <div class="rpt-kpi-sub">成功量 <span x-text="RPT.fmtNum(totals && totals.success)"></span> ·
+              失败量 <span x-text="RPT.fmtNum(totals && totals.fail)"></span></div>
+          </div>
+        </section>
+        <section class="card span-6" id="usage-kpi-rate">
+          <div class="card-body">
+            <div class="rpt-kpi-val" x-text="RPT.pctText(totals && totals.successRate)"></div>
+            <div class="rpt-kpi-name">成功率</div>
+            <div class="rpt-kpi-sub">口径见页脚折叠区</div>
+          </div>
+        </section>
+        <section class="card span-6" id="usage-kpi-callers">
+          <div class="card-body">
+            <div class="rpt-kpi-val" x-text="RPT.fmtNum(activeCallers && activeCallers.count)"></div>
+            <div class="rpt-kpi-name">活跃调用方数</div>
+            <div class="rpt-kpi-sub">其中未登记 <span x-text="RPT.fmtNum(activeCallers && activeCallers.unregistered)"></span> 个（总量面口径差如实可见）</div>
+          </div>
+        </section>
+        <section class="card span-6" id="usage-kpi-top">
+          <div class="card-head"><h2 class="card-title">热门服务</h2></div>
+          <div class="card-body">
+            <ol class="rpt-rank-list">
+              <template x-for="(s, i) in topServices" :key="s.service">
+                <li>
+                  <span class="mono" x-text="s.registeredName || s.service"></span>
+                  <span class="rpt-rank-num" x-text="RPT.fmtNum(s.calls)"></span>
+                </li>
+              </template>
+            </ol>
+            <div class="src-note" x-show="!topServices.length">窗口内暂无服务维度数据（随服务维度补丁逐步补全）</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 近 7 日逐日调用量柱线（今日柱高亮由端点日序末位即今日；小时粒度一期没有） -->
+      <section class="card" id="usage-daily-chart-card" style="margin-top:12px">
+        <div class="card-head">
+          <h2 class="card-title">逐日调用量</h2>
+          <div class="rpt-window-group" role="group" aria-label="时间窗">
+            <button type="button" class="btn btn-sm" :class="days === 1 ? 'btn-primary' : 'btn-outline-secondary'"
+                    @click="setDays(1)">今日</button>
+            <button type="button" class="btn btn-sm" :class="days === 7 ? 'btn-primary' : 'btn-outline-secondary'"
+                    @click="setDays(7)">近 7 天</button>
+          </div>
+        </div>
+        <div class="card-body"><div class="rpt-chart" id="usage-daily-chart"></div></div>
+      </section>
+
+      <!-- 主表＝Top 调用方榜（列：调用方、调用量、成功率；默认调用量降序） -->
+      <section class="card" id="usage-top-callers" style="margin-top:12px">
+        <div class="card-head"><h2 class="card-title">调用方榜</h2>
+          <span class="count-note">窗口内按调用量降序（前 10）</span></div>
+        <div class="table-scroll">
+          <table aria-label="调用方榜">
+            <thead><tr>
+              <th>调用方</th><th class="num">调用量</th><th class="num">成功率</th>
+            </tr></thead>
+            <tbody>
+              <template x-for="row in items" :key="row.callerMasked">
+                <tr>
+                  <td>
+                    <div x-text="row.appName || row.callerMasked"></div>
+                    <div class="muted mono" style="font-size:11px" x-text="row.callerMasked"></div>
+                  </td>
+                  <td class="num" x-text="RPT.fmtNum(row.calls)"></td>
+                  <td class="num" x-text="RPT.pctText(row.successRate)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="rpt-pager">
+          <a class="btn btn-sm btn-outline-secondary" href="subjects.html">查看全部调用方 → 主体用量</a>
+        </div>
+      </section>
+
+      <!-- 页脚统一技术详情折叠区（设计稿 §4；机检豁免区） -->
+      <details class="footnote">
+        <summary>口径与数据时点</summary>
+        <ul>
+          <li>数据时点：今日视图随消费者节拍，秒至分钟级。</li>
+          <li>快照为热展示账面，以重放产物为准；本页不作对账／出账依据。</li>
+          <li>时间窗按北京时间（每日 0 点切换）。</li>
+          <li x-show="caliber" x-text="caliber && caliber.success"></li>
+          <li x-show="caliber" x-text="caliber && caliber.avgMs"></li>
+          <li x-show="caliber" x-text="caliber && caliber.notIncluded"></li>
+        </ul>
+      </details>
+    </div>
+  </template>
+</div>
+<script src="assets/vendor/echarts.common.min.js"></script>
+<script src="assets/reports.js"></script>

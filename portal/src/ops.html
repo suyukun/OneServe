@@ -1,0 +1,190 @@
+<!-- ══ 运行视图页（P-3 · 深色驾驶舱） ══
+     布局：顶栏（大字＋环境标识＋时钟）→ 4 KPI 大数字 → 两图（近 7 日调用趋势面积折线／
+     各业务域新鲜度横向条形）→ 底部组件状态带（网关/服务/Redis/审计，P1-6 起为真探活）。
+     纪律：首载骨架屏，此后 60s 静默轮询原位更新（visibilitychange 暂停，不闪骨架屏）；
+     图表 animation:false 无循环动画；每个数字旁小字标注数据来源；
+     TPS/时延取 testkit＋loadtest 实测口径不新造。
+     脚本序：页尾两支经典 script（echarts→ops.js）先于 head 全部 defer 脚本执行，
+     alpine:init 监听先挂、Alpine 最后启动——与 P-1R「初始化不被打断」同一纪律。 -->
+<div class="ops-cockpit reveal" id="ops-cockpit" x-data="opsPage" x-cloak>
+
+  <!-- ── 顶栏：运行视图大字＋环境标识「测试环境」＋时钟 ── -->
+  <header class="ops-top" id="ops-top" aria-label="运行视图顶栏">
+    <div class="ops-title">
+      <span class="ops-title-big">运行视图</span>
+      <span class="ops-title-sub">OneServe 数据运行驾驶舱</span>
+    </div>
+    <!-- 环境标识移入全站环境条（partials/topbar.html：测试环境＋数据快照），本页不再重复 -->
+    <span class="ops-top-spacer"></span>
+    <span class="ops-updated num" x-show="sections.runtimeStatus.updatedAt"
+          x-text="'自动刷新 60s · 数据更新 ' + (sections.runtimeStatus.updatedAt || '')"></span>
+    <span class="ops-clock num" x-text="clock" aria-label="当前时间">--:--:--</span>
+  </header>
+
+  <!-- ── 四个 KPI 大数字（api.js 取数＋mock 降级角标；时延/TPS＝实测口径常量） ── -->
+  <section class="ops-kpi-bar" id="ops-kpi-bar" aria-label="运行核心指标">
+
+    <div class="ops-kpi" id="ops-kpi-calls">
+      <template x-if="st('runtimeStatus') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="sk sk-num"></div><div class="sk sk-line w80"></div></div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'error'">
+        <div class="error-box">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+          <span>数据暂不可用</span>
+          <button class="retry-btn" @click="retry('runtimeStatus')">重试</button>
+        </div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'ok' && !isSmallCallsBase(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">今日调用</div>
+          <div class="ops-kpi-value num" x-text="fmtCompact(data('runtimeStatus').todayCalls)"></div>
+          <div class="ops-kpi-note">精确值 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次 · 最近同步 <span x-text="fmtRel(data('runtimeStatus').lastSyncAt)"></span></div>
+        </div>
+      </template>
+      <!-- P0-1 小基数策略（与首页同源同策略）：今日低于阈值→徽标如实计数，不做大数字 KPI -->
+      <template x-if="st('runtimeStatus') === 'ok' && isSmallCallsBase(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">今日调用</div>
+          <span class="small-base-badge">今日 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次 · 真实计数</span>
+          <div class="ops-kpi-note">网关真实计数（自动刷新 60s） · 最近同步 <span x-text="fmtRel(data('runtimeStatus').lastSyncAt)"></span></div>
+        </div>
+      </template>
+      <div class="ops-src" x-show="st('runtimeStatus') === 'ok'" x-text="endpoint('runtimeStatus') + ' · 字段 todayCalls'"></div>
+    </div>
+
+    <div class="ops-kpi" id="ops-kpi-success">
+      <template x-if="st('runtimeStatus') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="sk sk-num"></div><div class="sk sk-line w60"></div></div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'error'">
+        <div class="error-box"><span>数据暂不可用</span></div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'ok' && rateSampleEnough(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">成功率</div>
+          <div class="ops-kpi-value num" x-text="fmtPercent(data('runtimeStatus').todaySuccessRate)"></div>
+          <div class="ops-kpi-note">口径：今日成功调用占比（今日调用 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次为分母）</div>
+        </div>
+      </template>
+      <!-- P0-1 小样本不展示成功率（与首页状态条同源同策略）：标「样本量不足」 -->
+      <template x-if="st('runtimeStatus') === 'ok' && !rateSampleEnough(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">成功率</div>
+          <span class="sample-note ops-sample-lg">样本量不足</span>
+          <div class="ops-kpi-note">今日调用 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次，不足 100 次暂不展示成功率</div>
+        </div>
+      </template>
+      <div class="ops-src" x-show="st('runtimeStatus') === 'ok'" x-text="endpoint('runtimeStatus') + ' · 字段 todaySuccessRate'"></div>
+    </div>
+
+    <!-- 平均时延＝实测口径常量（loadtest/testkit 2026-09-21，不实时） -->
+    <div class="ops-kpi" id="ops-kpi-latency">
+      <div class="ops-kpi-label">平均时延</div>
+      <div class="ops-kpi-value num"><span x-text="latencyDisplay()"></span><span class="unit">ms</span></div>
+      <div class="ops-kpi-note">50 并发档实测 P50=45ms／P99≈60ms</div>
+      <div class="ops-src">testkit 实测 2026-09-21 · 非实时</div>
+    </div>
+
+    <!-- 当前 TPS＝实测口径常量（容量梯子 100 并发档 RPS 均值，不实时） -->
+    <div class="ops-kpi" id="ops-kpi-tps">
+      <div class="ops-kpi-label">当前 TPS</div>
+      <div class="ops-kpi-value num" x-text="tpsDisplay()"></div>
+      <div class="ops-kpi-note">容量梯子 100 并发档 RPS 均值 1089.9（≈1.09k QPS）</div>
+      <div class="ops-src">扩容压测实测 2026-09-21 · 非实时</div>
+    </div>
+  </section>
+
+  <!-- ── 中部两图（ECharts · oneserve-dark 自定义深色主题） ── -->
+  <section class="ops-charts" aria-label="调用趋势与同步链路状态">
+
+    <div class="ops-chart-card" id="ops-chart-card-trend">
+      <div class="ops-chart-head">
+        <span class="ops-chart-title">调用趋势</span>
+        <span class="ops-chart-sub">近 7 日 · 面积折线</span>
+        <span class="spacer"></span>
+        <span class="demo-badge" x-show="st('overview') === 'ok' && isDemo('overview')"><span class="dot"></span>演示数据</span>
+      </div>
+      <div class="ops-chart-body">
+        <div class="chart" id="ops-chart-trend" role="img" aria-label="近 7 日调用趋势面积折线图"></div>
+        <div class="ops-chart-cover" x-show="st('overview') === 'loading'" aria-hidden="true">
+          <div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div>
+          <div class="sk sk-block"></div><div class="sk sk-block"></div>
+        </div>
+        <div class="ops-chart-cover" x-show="st('overview') === 'error'">
+          <div class="error-box">
+            <span>数据暂不可用</span>
+            <button class="retry-btn" @click="retry('overview')">重试</button>
+          </div>
+        </div>
+      </div>
+      <div class="ops-src" x-show="st('overview') === 'ok'" x-text="endpoint('overview') + ' · 字段 callsTrend7d（横轴日期以 generatedAt 回推 7 日）'"></div>
+    </div>
+
+    <div class="ops-chart-card" id="ops-chart-card-freshness">
+      <div class="ops-chart-head">
+        <span class="ops-chart-title">同步链路状态</span>
+        <span class="ops-chart-sub">各业务域新鲜度 · 横向条形</span>
+        <span class="spacer"></span>
+        <span class="demo-badge" x-show="st('freshness') === 'ok' && isDemo('freshness')"><span class="dot"></span>演示数据</span>
+      </div>
+      <div class="ops-chart-body">
+        <div class="chart" id="ops-chart-freshness" role="img" aria-label="各业务域数据新鲜度横向条形图"></div>
+        <div class="ops-chart-cover" x-show="st('freshness') === 'loading'" aria-hidden="true">
+          <div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div>
+          <div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div>
+        </div>
+        <div class="ops-chart-cover" x-show="st('freshness') === 'error'">
+          <div class="error-box">
+            <span>数据暂不可用</span>
+            <button class="retry-btn" @click="retry('freshness')">重试</button>
+          </div>
+        </div>
+      </div>
+      <div class="ops-src" x-show="st('freshness') === 'ok'" x-text="endpoint('freshness') + ' · 字段 domains[].rows/lastSyncAt/status（条色=同步状态语义色）'"></div>
+    </div>
+  </section>
+
+  <!-- ── 底部状态带：四组件（网关/服务/Redis/审计）真实探活（P1-6）──
+      灯色与文字由 /v1/portal/status 的 components[] 驱动：探不到＝error→「未知」，
+       绝不回退「正常」（此前四卡写死 is-ok＋「正常」＝评估报告 F5/B4 缺陷）。
+       容量梯子 CPU/内存实测降为副注并标「实测档案·非实时」，不与实时状态混排。 ── -->
+  <section class="ops-statusband" id="ops-statusband" aria-label="组件运行状态">
+
+    <template x-for="comp in components()" :key="comp.id">
+      <div class="ops-comp" :id="comp.id">
+        <div class="ops-comp-head">
+          <span class="ops-comp-light" :class="compStatusMeta(comp.status).cls" aria-hidden="true"></span>
+          <span class="ops-comp-name" x-text="comp.name"></span>
+          <span class="ops-comp-tech" x-text="comp.tech + ' · ' + compStatusMeta(comp.status).text"></span>
+        </div>
+        <div class="ops-comp-detail" x-text="comp.detail || '未取到探活明细'"></div>
+        <div class="ops-comp-detail ops-comp-live">探活 <span class="mono" x-text="comp.probe || '—'"></span>
+          · 探于 <span class="mono" x-text="comp.checkedAt || '—'"></span></div>
+        <div class="ops-src ops-archive-src" x-show="comp.archivePerf"
+             x-text="'实测档案（非实时）：' + (comp.archivePerf || '')"></div>
+        <div class="ops-src" x-text="endpoint('runtimeStatus') + ' · 字段 components[' + comp.id + ']'"></div>
+      </div>
+    </template>
+
+    <!-- 未取到探活结果（首载/不可达）：如实显示「未知」，不显示「正常」 -->
+    <div class="ops-comp" id="ops-comp-unknown" x-show="!components().length">
+      <div class="ops-comp-head">
+        <span class="ops-comp-light is-unknown" aria-hidden="true"></span>
+        <span class="ops-comp-name">组件状态</span>
+        <span class="ops-comp-tech" x-text="st('runtimeStatus') === 'error' ? '数据暂不可用 · 未知' : '读取中'"></span>
+      </div>
+      <div class="ops-comp-detail">四组件探活结果取自运行状态接口；取不到＝如实「未知」（不回退「正常」）</div>
+      <div class="ops-src" x-text="endpoint('runtimeStatus') + ' · 字段 components'"></div>
+    </div>
+  </section>
+
+  <!-- 图表底座＋页组件：经典 script（无 defer）置于页尾，先于 head 全部 defer 脚本执行；
+       echarts 哈希入库见 assets/vendor/SHA256SUMS（echarts@5.6.0 common 版，gzip 214KB） -->
+  <script src="assets/vendor/echarts.common.min.js"></script>
+  <script src="assets/ops.js"></script>
+</div>

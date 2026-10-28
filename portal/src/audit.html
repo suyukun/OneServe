@@ -1,0 +1,202 @@
+<!-- ══ 审计查询页（P1-1 · SPEC §2-C1 合规审计面首卡）：只读 · 审计台账八元组检索 ══ -->
+<div class="os-container reveal" x-data="auditQueryPage" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">合规审计</div>
+    <h1 class="page-title">审计查询</h1>
+  </div>
+
+  <!-- 统计摘要卡：按当前筛选窗口全量命中行聚合（默认「今日」窗＝今日总量口径） -->
+  <div class="grid-24" id="audit-summary" aria-label="统计摘要">
+    <section class="card span-6">
+      <div class="card-body">
+        <div class="audit-kpi-val" x-text="summary ? summary.total : '—'"></div>
+        <div class="audit-kpi-name">窗口内调用总量
+          <span class="my-tip" tabindex="0" role="note"
+                title="当前筛选条件命中的全部审计记录条数（与翻页无关）；默认时间窗为「今日」。">？</span></div>
+        <div class="src-note">窗口：<span x-text="rangeLabel()"></span>（成功 <span x-text="summary ? summary.success : '—'"></span> · 失败 <span x-text="summary ? summary.fail : '—'"></span>）</div>
+      </div>
+    </section>
+    <section class="card span-6">
+      <div class="card-body">
+        <div class="audit-kpi-val" :class="ratePending() ? 'audit-kpi-muted' : ''" x-text="rateText()"></div>
+        <div class="audit-kpi-name">成功率
+          <span class="my-tip" tabindex="0" role="note"
+                title="成功（HTTP 2xx）占窗口内总量的比例。样本量低于阈值时不展示比率，只标「样本量不足」——小基数不算比率，不制造恐慌也不装点。">？</span></div>
+        <div class="src-note" x-text="ratePending() ? '样本量不足（低于 ' + (summary ? summary.rateSampleMin : 100) + ' 条不出比率）' : '口径：HTTP 2xx 占窗口内总量'">
+        </div>
+      </div>
+    </section>
+    <section class="card span-6">
+      <div class="card-body">
+        <div class="audit-kpi-val" x-text="summary ? summary.slowCount : '—'"></div>
+        <div class="audit-kpi-name">慢查询
+          <span class="my-tip" tabindex="0" role="note"
+                title="窗口内服务处理耗时超过 200 毫秒的调用条数（对齐平台 SLA「P99≤200ms」口径）。">？</span></div>
+        <div class="src-note">口径：耗时 &gt; <span x-text="summary ? summary.slowMs : 200"></span>ms（SLA P99 同源）</div>
+      </div>
+    </section>
+    <section class="card span-6">
+      <div class="card-head"><h2 class="card-title audit-slow-title">耗时 Top 端点</h2></div>
+      <div class="card-body">
+        <template x-if="summary && summary.slowTop && summary.slowTop.length">
+          <ol class="audit-slow-list">
+            <template x-for="row in summary.slowTop" :key="row.endpoint">
+              <li>
+                <span class="mono audit-slow-ep" x-text="row.endpoint"></span>
+                <span class="audit-slow-nums">均 <span class="mono" x-text="row.avgMs"></span>ms · 峰 <span class="mono" x-text="row.maxMs"></span>ms · <span x-text="row.count"></span> 次</span>
+              </li>
+            </template>
+          </ol>
+        </template>
+        <div class="empty-tags" x-show="state === 'ok' && (!summary || !summary.slowTop || !summary.slowTop.length)">窗口内暂无带耗时的记录——放宽时间窗或清除筛选条件后再试。</div>
+        <div class="src-note">按窗口内平均耗时降序，最多 5 条</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 过滤条：时间窗（快捷＋自定义）/caller/endpoint/状态/追踪号 多条件 AND -->
+  <section class="card span-24" id="audit-toolbar" aria-label="审计过滤">
+    <div class="card-head">
+      <h2 class="card-title">检索条件</h2>
+      <span class="badge text-bg-secondary audit-readonly-badge"
+            title="本页只读：只查台账不改数据；条件全部 AND 组合。">只读</span>
+    </div>
+    <div class="card-body audit-filter-body">
+      <div class="audit-filter-row">
+        <div class="audit-range-group" role="group" aria-label="时间窗快捷选择">
+          <button type="button" class="btn btn-sm audit-range-btn" :class="range === 'today' ? 'btn-primary' : 'btn-outline-secondary'" @click="setRange('today')">今日</button>
+          <button type="button" class="btn btn-sm audit-range-btn" :class="range === '24h' ? 'btn-primary' : 'btn-outline-secondary'" @click="setRange('24h')">近 24 小时</button>
+          <button type="button" class="btn btn-sm audit-range-btn" :class="range === '7d' ? 'btn-primary' : 'btn-outline-secondary'" @click="setRange('7d')">近 7 天</button>
+          <button type="button" class="btn btn-sm audit-range-btn" :class="range === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="setRange('all')">全部</button>
+        </div>
+        <div class="audit-custom-range">
+          <input class="form-control form-control-sm" id="audit-ts-from" type="datetime-local"
+                 x-model="tsFromInput" @change="onCustomChange()" aria-label="起始时间">
+          <span class="field-hint">至</span>
+          <input class="form-control form-control-sm" id="audit-ts-to" type="datetime-local"
+                 x-model="tsToInput" @change="onCustomChange()" aria-label="结束时间">
+        </div>
+      </div>
+      <div class="audit-filter-row">
+        <div class="audit-filter-field">
+          <label for="audit-caller" class="form-label">调用方</label>
+          <input class="form-control form-control-sm mono" id="audit-caller" type="text" autocomplete="off" spellcheck="false"
+                 x-model="callerInput" @keydown.enter="query(0)" placeholder="凭证片段，如 sb_a1b2（支持部分匹配）">
+        </div>
+        <div class="audit-filter-field">
+          <label for="audit-endpoint" class="form-label">端点</label>
+          <input class="form-control form-control-sm mono" id="audit-endpoint" type="text" autocomplete="off" spellcheck="false"
+                 x-model="endpointInput" @keydown.enter="query(0)" placeholder="如 tags/query（支持部分匹配）">
+        </div>
+        <div class="audit-filter-field audit-filter-narrow">
+          <label for="audit-status" class="form-label">状态</label>
+          <select class="form-select form-select-sm" id="audit-status" x-model="statusInput" @change="query(0)">
+            <option value="">全部</option>
+            <option value="2xx">2xx 成功类</option>
+            <option value="4xx">4xx 客户端错误</option>
+            <option value="5xx">5xx 服务端错误</option>
+            <option value="200">200</option>
+            <option value="400">400</option>
+            <option value="401">401</option>
+            <option value="403">403</option>
+            <option value="404">404</option>
+            <option value="429">429</option>
+            <option value="500">500</option>
+          </select>
+        </div>
+        <div class="audit-filter-field">
+          <label for="audit-trace" class="form-label">追踪号</label>
+          <input class="form-control form-control-sm mono" id="audit-trace" type="text" autocomplete="off" spellcheck="false"
+                 x-model="traceInput" @keydown.enter="query(0)" placeholder="X-Trace-Id 精确反查">
+        </div>
+        <div class="audit-filter-narrow">
+          <label for="audit-limit" class="form-label">每页</label>
+          <select class="form-select form-select-sm" id="audit-limit" x-model.number="limitSel" @change="query(0)">
+            <option value="20">20 条</option>
+            <option value="50">50 条</option>
+            <option value="100">100 条</option>
+          </select>
+        </div>
+        <div class="audit-filter-field audit-filter-actions-col">
+          <span class="form-label" aria-hidden="true">&nbsp;</span>
+          <div class="audit-filter-actions">
+            <button class="btn btn-sm btn-primary" id="audit-submit" type="button" @click="query(0)"
+                    :disabled="state === 'loading'" x-text="state === 'loading' ? '查询中…' : '查询'"></button>
+            <button class="btn btn-sm btn-outline-secondary" id="audit-reset" type="button" @click="resetAll()">重置</button>
+          </div>
+        </div>
+      </div>
+      <div class="audit-trace-active" x-show="traceInput" x-cloak>
+        正在按追踪号反查：<span class="mono" x-text="traceInput"></span>
+        <button class="btn btn-sm btn-link audit-trace-clear" type="button" @click="clearTrace()">退出反查</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 结果表：审计台账八元组（audit.py 真源七列＋trace_id 第八列；调用方掩码） -->
+  <section class="card span-24" id="audit-table" aria-label="审计记录">
+    <div class="card-head">
+      <h2 class="card-title">审计台账</h2>
+      <span class="card-sub" x-text="pageText()"></span>
+    </div>
+    <template x-if="state === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+    <template x-if="state === 'error'">
+      <div class="card-body">
+        <div class="error-box"><span x-text="errMsg || '审计查询暂不可用'"></span><button class="retry-btn" @click="query(offset)">重试</button></div>
+      </div>
+    </template>
+    <template x-if="state === 'ok'">
+      <div class="card-body">
+        <div class="audit-table-wrap">
+          <table class="audit-table" id="audit-rows">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>调用方</th>
+                <th>端点</th>
+                <th title="请求参数的 sha256 摘要（平台不留存参数明文）">参数摘要</th>
+                <th>状态</th>
+                <th>耗时</th>
+                <th title="响应体的 sha256 摘要（脱敏后口径）">响应摘要</th>
+                <th>追踪号</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(row, i) in items" :key="offset + '-' + i">
+                <tr>
+                  <td class="audit-ts" x-text="fmtTs(row.ts)"></td>
+                  <td class="mono audit-caller" x-text="row.callerMasked || '—'"></td>
+                  <td class="mono audit-endpoint" x-text="row.endpoint || '—'"></td>
+                  <td class="mono audit-digest" :title="row.paramsDigest" x-text="digestShort(row.paramsDigest)"></td>
+                  <td><span class="badge" :class="statusClass(row.status)" x-text="row.status != null ? ('HTTP ' + row.status) : '—'"></span></td>
+                  <td class="mono" :class="latClass(row.latencyMs)" x-text="row.latencyMs != null ? row.latencyMs + 'ms' : '—'"></td>
+                  <td class="mono audit-digest" :title="row.responseDigest" x-text="digestShort(row.responseDigest)"></td>
+                  <td class="audit-trace-cell">
+                    <template x-if="row.traceId">
+                      <button class="btn btn-sm btn-link audit-trace-use mono" type="button"
+                              title="按这个追踪号精确反查（条件就地生效）"
+                              @click="useTrace(row.traceId)" x-text="row.traceId"></button>
+                    </template>
+                    <span x-show="!row.traceId" class="field-hint">未记录</span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-tags" x-show="!items.length">当前条件下没有查到审计记录</div>
+        <div class="audit-pager">
+          <button class="btn btn-sm btn-outline-secondary" id="audit-prev" type="button"
+                  @click="prevPage()" :disabled="offset <= 0">上一页</button>
+          <span class="audit-pager-text" x-text="pageText()"></span>
+          <button class="btn btn-sm btn-outline-secondary" id="audit-next" type="button"
+                  @click="nextPage()" :disabled="offset + limitSel >= total">下一页</button>
+        </div>
+        <div class="src-note">数据来源：服务审计台账（八元组真源：ts／调用方／端点／参数摘要／状态／耗时／响应摘要／追踪号；调用方按掩码口径展示，完整凭证不出本页）· 生成时间 <span x-text="generatedAt || '—'"></span></div>
+        <div class="src-note">被网关拦下的调用（未过认证）不落这份台账——用「我的接入 → 追踪号反查」可查；本页只读，不提供任何写操作</div>
+      </div>
+    </template>
+  </section>
+
+</div>

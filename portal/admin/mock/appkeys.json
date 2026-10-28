@@ -1,0 +1,80 @@
+{
+  "note": "AppKey 发放登记（O-3 演示基线：后端不可达时降级读取，页面挂「演示数据」角标）。secret_hash_only＝SHA-256(secret) 十六进制前 16 位；本文件不含任何 Secret 明文。appkey 为掩码展示值，完整值只在签发弹窗出现一次；keyType=formal|sandbox。",
+  "updatedBy": "admin@oneserve",
+  "keys": [
+    {
+      "callerId": "partner-demo-1",
+      "callerName": "演示调用方",
+      "appName": "电商标签点查",
+      "appkeyMasked": "ak_3f9c****a21b",
+      "secretHashOnly": "sha256:7d0de8c5e96b4f20",
+      "tagSets": [
+        "基本信息域",
+        "行为域"
+      ],
+      "quotaQps": 50,
+      "quotaDaily": 10000,
+      "oaTicket": "DEMO-2026-004217",
+      "lastUsedAt": "2026-09-21T20:41:00+08:00",
+      "status": "active",
+      "expiresAt": "2027-03-21",
+      "issuedAt": "2026-09-12T10:02:00+08:00",
+      "keyType": "formal"
+    },
+    {
+      "callerId": "partner-demo-1",
+      "callerName": "演示调用方",
+      "appName": "营销活动触达",
+      "appkeyMasked": "ak_b17e****5c40",
+      "secretHashOnly": "sha256:1ab44f9c07e2d533",
+      "tagSets": [
+        "营销域"
+      ],
+      "quotaQps": 20,
+      "quotaDaily": 5000,
+      "oaTicket": "DEMO-2026-004231",
+      "lastUsedAt": "2026-09-19T09:12:00+08:00",
+      "status": "disabled",
+      "expiresAt": "2027-03-19",
+      "issuedAt": "2026-09-15T14:30:00+08:00",
+      "keyType": "formal"
+    },
+    {
+      "callerId": "partner-demo-2",
+      "callerName": "演示调用方",
+      "appName": "客户画像查询（代理）",
+      "appkeyMasked": "ak_9a02****77dd",
+      "secretHashOnly": "sha256:c3f8be2104aa9e67",
+      "tagSets": [
+        "合作方域",
+        "渠道域"
+      ],
+      "quotaQps": 50,
+      "quotaDaily": 10000,
+      "oaTicket": "DEMO-2026-004302",
+      "lastUsedAt": "2026-09-21T22:03:00+08:00",
+      "status": "active",
+      "expiresAt": "2027-03-21",
+      "issuedAt": "2026-09-18T11:20:00+08:00",
+      "keyType": "formal"
+    },
+    {
+      "callerId": "partner-demo-2",
+      "callerName": "演示调用方",
+      "appName": "风险标签查询",
+      "appkeyMasked": "ak_54cd****e08a",
+      "secretHashOnly": "sha256:99e10b7cd4f2a051",
+      "tagSets": [
+        "风险域"
+      ],
+      "quotaQps": 10,
+      "quotaDaily": 2000,
+      "oaTicket": "DEMO-2026-004318",
+      "lastUsedAt": null,
+      "status": "active",
+      "expiresAt": "2027-03-20",
+      "issuedAt": "2026-09-20T16:45:00+08:00",
+      "keyType": "formal"
+    }
+  ]
+}

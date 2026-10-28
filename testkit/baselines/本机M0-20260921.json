@@ -1,0 +1,71 @@
+{
+  "schema": "oneserve.testkit.baseline/1",
+  "created_at": "2026-09-21T16:57:54+08:00",
+  "promoted_by": "待 维护者 确认（首版＝loadtest/results 转换稿）",
+  "env": {
+    "stage": "本机M0",
+    "host": "http://localhost:9080",
+    "stack_git_rev": "02036ae",
+    "locust": "2.46.6",
+    "note": "Docker Desktop macOS，数字不可跨环境比"
+  },
+  "scenario": "regression",
+  "metrics": [
+    {
+      "level": 100,
+      "reqs": 76293,
+      "fails": 0,
+      "err_pct": 0.0,
+      "rps_avg": 1089.9,
+      "p50_ms": 91.0,
+      "p95_ms": 98.0,
+      "p99_ms": 100.0,
+      "rps_tail": 1102.3
+    },
+    {
+      "level": 300,
+      "reqs": 76007,
+      "fails": 0,
+      "err_pct": 0.0,
+      "rps_avg": 1085.8,
+      "p50_ms": 270.0,
+      "p95_ms": 290.0,
+      "p99_ms": 300.0,
+      "rps_tail": 1082.4
+    },
+    {
+      "level": 500,
+      "reqs": 75083,
+      "fails": 0,
+      "err_pct": 0.0,
+      "rps_avg": 1072.6,
+      "p50_ms": 460.0,
+      "p95_ms": 490.0,
+      "p99_ms": 500.0,
+      "rps_tail": 1072.3
+    },
+    {
+      "level": 800,
+      "reqs": 73679,
+      "fails": 0,
+      "err_pct": 0.0,
+      "rps_avg": 1052.6,
+      "p50_ms": 750.0,
+      "p95_ms": 790.0,
+      "p99_ms": 800.0,
+      "rps_tail": 1051.6
+    }
+  ],
+  "sla_check": {
+    "qps_target": 500,
+    "p50_max_ms": 50,
+    "p99_max_ms": 200,
+    "basis": "SPEC §6.1 吞吐口径；时延背书＝50 并发档实测 P50=45ms/P99≈60ms"
+  },
+  "source": {
+    "type": "loadtest-csv-conversion",
+    "dir": "loadtest/results",
+    "measured_at": "2026-09-21T09:04:22+08:00",
+    "note": "2026-09-20 造数·09-21 实测四档；数据复用不重跑（设计稿 §5.1）"
+  }
+}

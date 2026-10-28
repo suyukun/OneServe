@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>服务目录 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="site-gate.js?v=266daaf925e8"></script>
+<script defer src="data-format.js?v=266daaf925e8"></script>
+<script defer src="api.js?v=266daaf925e8"></script>
+<script defer src="assets/app.js?v=266daaf925e8"></script>
+<script defer src="assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="assets/pages.js?v=266daaf925e8"></script>
+<script defer src="assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+<script defer src="assets/alpine.min.js?v=266daaf925e8"></script>
+</head>
+<body class="os-layout">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link is-active" aria-current="page" href="catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="admin/load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="admin/publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="admin/published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="admin/appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="admin/tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="admin/grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="admin/pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="admin/accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="admin/upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="admin/monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="admin/billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 <ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">服务目录</li></ol>（admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="os-crumb" aria-label="面包屑"><ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">服务目录</li></ol></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<!-- ══ 服务目录独立页（P-1R）：业务域分组＋页内搜索＋业务域筛选 chips；?q= 深链承接首页全局搜索 ══ -->
+<div class="os-container reveal" x-data="catalogPage" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">服务目录</div>
+    <h1 class="page-title">按业务域分组的在线 API</h1>
+    <div class="os-page-actions">
+      <a class="os-chip is-link" href="trial.html"><i class="bi bi-play-circle" aria-hidden="true"></i>去试用台</a>
+    </div>
+  </div>
+
+  <!-- 工具行：页内搜索＋业务域筛选（搜索词与 ?q= 深链同源，跨页传参只用 URL query） -->
+  <section class="catalog-toolbar" id="catalog-toolbar" aria-label="目录筛选">
+    <div class="search-box os-search-inline">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+      <input type="search" x-model="query" placeholder="在本页过滤：业务域 / 服务 / API 路径" aria-label="过滤服务目录">
+    </div>
+    <div class="os-chips" id="catalog-domain-chips" role="group" aria-label="业务域筛选">
+      <template x-if="st('catalog') === 'ok'">
+        <button class="os-chip" type="button" :class="{ 'is-active': domainFilter === 'all' }" @click="domainFilter = 'all'">
+          全部 <span class="n num" x-text="domainCount('all')"></span>
+        </button>
+      </template>
+      <template x-for="d in domains()" :key="d.id">
+        <button class="os-chip" type="button" :class="{ 'is-active': domainFilter === d.id }" @click="domainFilter = d.id">
+          <span x-text="d.name"></span> <span class="n num" x-text="domainCount(d.id)"></span>
+        </button>
+      </template>
+    </div>
+  </section>
+
+  <!-- 目录主体：业务域分组卡片墙（P-1 原区块迁入独立页，id 保留） -->
+  <section id="service-catalog" aria-label="服务目录">
+    <div class="section-head">
+      <h2 class="section-title">业务域分组</h2>
+      <span class="section-sub" x-text="st('catalog') === 'ok' ? catalogSummary() : ''"></span>
+    </div>
+
+    <template x-if="st('catalog') === 'loading'">
+      <div class="domain-grid">
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+      </div>
+    </template>
+
+    <template x-if="st('catalog') === 'error'">
+      <div class="card">
+        <div class="error-box">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+          <span>数据暂不可用</span>
+          <button class="retry-btn" @click="retry('catalog')">重试</button>
+        </div>
+      </div>
+    </template>
+
+    <template x-if="st('catalog') === 'ok'">
+      <div>
+        <span class="demo-badge" style="margin-bottom: 8px;" x-show="isDemo('catalog')"><span class="dot"></span>演示数据</span>
+        <div class="domain-grid">
+          <template x-for="d in visibleDomains()" :key="d.id">
+            <div class="card domain-card">
+              <div class="card-head">
+                <h3 class="card-title" x-text="d.name"></h3>
+                <span class="spacer"></span>
+                <span class="status" :class="statusMeta(d.status).cls"><span class="dot"></span><span x-text="d.statusText || statusMeta(d.status).text"></span></span>
+              </div>
+              <div class="domain-meta">
+                <span class="m"><b class="num" x-text="d.fields"></b> 字段</span>
+                <span class="m"><b class="num" x-text="d.services"></b> 个服务</span>
+                <span class="m">同步于 <span x-text="fmtRel(d.lastSyncAt)"></span></span>
+              </div>
+              <div class="svc-list">
+                <!-- P0-2：卡片条目＝链接，可点进 API 详情页（div 不可点问题闭环，SPEC A2/A3） -->
+                <template x-for="it in d.items" :key="it.api">
+                  <a class="svc svc-link" :href="svcHref(it)">
+                    <div class="name" x-text="it.name"></div>
+                    <div class="api" x-text="it.api"></div>
+                    <div class="desc" x-text="it.desc"></div>
+                    <!-- 维护者 2026-10-15 批「按建议」：目录模板属性两件——更新频率/责任主体；
+                         真源 /v1/portal/catalog 恒非空下发，此处 || 兜底只为 mock 降级路径，缺值如实「未标注」 -->
+                    <div class="svc-meta">
+                      <span class="m">更新频率 <b x-text="it.updateFrequency || '未标注'"></b></span>
+                      <span class="m">责任主体 <b x-text="it.owner || '未标注'"></b></span>
+                    </div>
+                    <!-- #42-②（2026-10-15）：「查看详情」从弱化文字提级为明显按钮（样式见 portal.css .svc .svc-go） -->
+                    <span class="svc-go">查看详情 →</span>
+                  </a>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+        <!-- 空态：搜索无匹配／筛选无结果（非空白） -->
+        <div class="empty-state" x-show="visibleDomains().length === 0"
+             x-text="hasSearch() ? '未找到匹配「' + query.trim() + '」的服务，换个关键词试试' : '该业务域暂无在册服务——切回「全部」可查看所有业务域的在册服务'"></div>
+        <div class="src-note" x-text="endpoint('catalog') + (sections.catalog.updatedAt ? ' · 更新 ' + sections.catalog.updatedAt : '')"></div>
+      </div>
+    </template>
+  </section>
+
+</div>
+
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+</body>
+</html>

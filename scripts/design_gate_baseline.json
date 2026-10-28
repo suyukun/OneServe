@@ -1,0 +1,19 @@
+{
+  "version": "1.2",
+  "generatedAt": "2026-10-15T10:16:49.322Z",
+  "totalViolations": 0,
+  "summary": {
+    "A1·裸hex(CSS纯裸)": 0,
+    "A2·font-size越界": 0,
+    "A3·间距越界": 0,
+    "A4·radius越界": 0,
+    "A5·HTML内联hex": 0,
+    "A6·主按钮>1/页": 0,
+    "A7·品牌红>2/页": 0,
+    "A8·focus-none": 0,
+    "A9·radius:50%": 0,
+    "A10·--admin-*": 0
+  },
+  "fingerprints": [],
+  "violationCount": 0
+}

@@ -1,0 +1,67 @@
+{
+  "note": "假合作方挡板（O-2「测试一把」目标）。口径同 upstreams.js 内置挡板副本的固定 JSON 风格：上游无脑配合，治理语义全在被测侧。scenarios 按路由末段 match 命中；settlement 故意 503＝演示「测试不过不让发布」门禁；delayMs 为模拟网络耗时区间（ms）。",
+  "stub": {
+    "name": "mock-合作方数据中台",
+    "baseUrl": "http://localhost:9100",
+    "scenarios": [
+      {
+        "name": "信息查询",
+        "match": "record",
+        "status": 200,
+        "delayMs": [40, 120],
+        "response": {
+          "code": "0",
+          "msg": "ok",
+          "source": "mock-partner",
+          "data": {
+            "agency": "mock-合作方数据中台",
+            "record": { "id": "PT-DEMO-0001", "name": "张*三", "status": "正常", "balance_yuan": 1234.56 },
+            "policy": [{ "no": "PT2026-0001", "type": "标准类型A", "start": "2024-01-01" }]
+          }
+        }
+      },
+      {
+        "name": "政策目录查询",
+        "match": "policy",
+        "status": 200,
+        "delayMs": [60, 150],
+        "response": {
+          "code": "0",
+          "msg": "ok",
+          "source": "mock-partner",
+          "data": {
+            "agency": "mock-合作方数据中台",
+            "items": [
+              { "no": "PT2026-0001", "type": "标准类型A", "start": "2024-01-01" },
+              { "no": "PT2026-0002", "type": "标准类型B", "start": "2024-01-01" }
+            ]
+          }
+        }
+      },
+      {
+        "name": "结算单查询（挡板检修中·故意 503）",
+        "match": "settlement",
+        "status": 503,
+        "delayMs": [200, 400],
+        "response": {
+          "code": "503",
+          "msg": "mock-合作方结算接口检修中（门禁：测试不过→不让发布）",
+          "source": "mock-partner",
+          "data": null
+        }
+      }
+    ],
+    "fallback": {
+      "name": "通用兜底",
+      "match": "*",
+      "status": 200,
+      "delayMs": [30, 90],
+      "response": {
+        "code": "0",
+        "msg": "ok",
+        "source": "mock-partner",
+        "data": { "agency": "mock-合作方数据中台", "echo": "任意路径兜底响应" }
+      }
+    }
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "contractVersion": "2026-09-23",
+  "source": "portal/openapi/oneserve.openapi.yaml（构建期由 scripts/gen_openapi.py 生成）",
+  "domains": [
+    {
+      "id": "user",
+      "name": "用户标签域",
+      "services": [
+        {
+          "service_id": "v1-svc-card-acct-summary",
+          "name": "用户标签域·KV 点查",
+          "endpoint": "/v1/svc/card-acct-summary",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "service_id": "v1-svc-usr-asset-tag",
+          "name": "用户标签域·KV 点查",
+          "endpoint": "/v1/svc/usr-asset-tag",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "service_id": "v1-svc-usr-asset-tag1",
+          "name": "用户标签域·KV 点查",
+          "endpoint": "/v1/svc/usr-asset-tag1",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "service_id": "v1-svc-usr-asset-tag1014",
+          "name": "用户标签域·KV 点查",
+          "endpoint": "/v1/svc/usr-asset-tag1014",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "service_id": "v1-svc-usr-asset-tag1020",
+          "name": "用户标签域·KV 点查",
+          "endpoint": "/v1/svc/usr-asset-tag1020",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "service_id": "v1-svc-usr-basic-info",
+          "name": "用户标签域·KV 点查",
+          "endpoint": "/v1/svc/usr-basic-info",
+          "methods": [
+            "POST"
+          ]
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "service_id": "v1-svc-card-acct-summary",
+      "name": "用户标签域·KV 点查",
+      "domainId": "user",
+      "endpoint": "/v1/svc/card-acct-summary",
+      "methods": [
+        "POST"
+      ],
+      "summary": "输入查询键，返回该实体的授权标签字段（白名单投影＋脱敏后输出，data_as_of 时点照带）",
+      "elementsComplete": true
+    },
+    {
+      "service_id": "v1-svc-usr-asset-tag",
+      "name": "用户标签域·KV 点查",
+      "domainId": "user",
+      "endpoint": "/v1/svc/usr-asset-tag",
+      "methods": [
+        "POST"
+      ],
+      "summary": "输入查询键，返回该实体的授权标签字段（白名单投影＋脱敏后输出，data_as_of 时点照带）",
+      "elementsComplete": true
+    },
+    {
+      "service_id": "v1-svc-usr-asset-tag1",
+      "name": "用户标签域·KV 点查",
+      "domainId": "user",
+      "endpoint": "/v1/svc/usr-asset-tag1",
+      "methods": [
+        "POST"
+      ],
+      "summary": "输入查询键，返回该实体的授权标签字段（白名单投影＋脱敏后输出，data_as_of 时点照带）",
+      "elementsComplete": true
+    },
+    {
+      "service_id": "v1-svc-usr-asset-tag1014",
+      "name": "用户标签域·KV 点查",
+      "domainId": "user",
+      "endpoint": "/v1/svc/usr-asset-tag1014",
+      "methods": [
+        "POST"
+      ],
+      "summary": "输入查询键，返回该实体的授权标签字段（白名单投影＋脱敏后输出，data_as_of 时点照带）",
+      "elementsComplete": true
+    },
+    {
+      "service_id": "v1-svc-usr-asset-tag1020",
+      "name": "用户标签域·KV 点查",
+      "domainId": "user",
+      "endpoint": "/v1/svc/usr-asset-tag1020",
+      "methods": [
+        "POST"
+      ],
+      "summary": "输入查询键，返回该实体的授权标签字段（白名单投影＋脱敏后输出，data_as_of 时点照带）",
+      "elementsComplete": true
+    },
+    {
+      "service_id": "v1-svc-usr-basic-info",
+      "name": "用户标签域·KV 点查",
+      "domainId": "user",
+      "endpoint": "/v1/svc/usr-basic-info",
+      "methods": [
+        "POST"
+      ],
+      "summary": "输入查询键，返回该实体的授权标签字段（白名单投影＋脱敏后输出，data_as_of 时点照带）",
+      "elementsComplete": true
+    }
+  ]
+}

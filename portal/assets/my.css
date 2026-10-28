@@ -1,0 +1,101 @@
+/* ============================================================
+ * OneServe 门户 · 我的接入页样式（P0-7 · assets/my.css，新增文件）
+ * 仅引用既有令牌（tokens.css）；只定义本页私有结构类，不动全局。
+ * ============================================================ */
+
+/* 查询条：输入框＋按钮同一行（结构对齐：按钮与 input 同容器等高，弃魔法数 margin） */
+.my-caller-row { display: flex; flex-wrap: wrap; }
+.my-caller-field { flex: 1 1 320px; min-width: 0; }
+.my-caller-controls { display: flex; gap: var(--os-space-2, 8px); align-items: stretch; }
+.my-caller-btn { flex: 0 0 auto; }
+
+/* 「？」小问号提示（纯 CSS tooltip 走 title，这里只管形态） */
+.my-tip { display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: 4px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong, #d9d9d9); color: var(--text-muted, #8c8c8c);
+  font-size: 11px; line-height: 1; cursor: help; user-select: none; }
+
+/* 日志表 */
+.my-log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.my-log-table th { text-align: left; font-weight: 600; color: var(--text-muted, #8c8c8c);
+  padding: 6px 8px; border-bottom: 1px solid var(--border-light, #f0f0f0); white-space: nowrap; }
+.my-log-table td { padding: 7px 8px; border-bottom: 1px solid var(--border-light, #f0f0f0);
+  vertical-align: top; }
+.my-log-table .my-ts { white-space: nowrap; color: var(--text-muted, #8c8c8c); }
+.my-log-table .my-endpoint { word-break: break-all; }
+.my-trace-cell { max-width: 240px; }
+.my-trace-id { font-size: 12px; word-break: break-all; }
+.my-trace-use { padding: 0 4px; font-size: 12px; vertical-align: baseline; }
+.my-badge-gw { margin-left: 6px; font-size: 11px; background: var(--status-warn, #D4760A); color: #fff; }
+
+/* 反查模式提示条 */
+.my-trace-lookup { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.my-trace-lookup .form-control { width: 260px; }
+.my-trace-active { margin: 0 16px 10px; padding: 6px 10px; border-radius: 4px;
+  background: var(--bg-subtle, #f5f5f5); font-size: 13px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.my-trace-clear { padding: 0; font-size: 13px; }
+
+/* 凭证卡 */
+.my-cred-item { padding: 10px 0; border-bottom: 1px solid var(--border-light, #f0f0f0); }
+.my-cred-item:last-child { border-bottom: none; }
+.my-cred-key { font-size: 15px; font-weight: 600; }
+.my-cred-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.my-countdown { font-size: 12px; }   /* 到期倒计时≤7 天标黄（badge warning 已黄） */
+.my-cred-facts { margin: 0; font-size: 13px; }
+.my-cred-facts > div { display: flex; gap: 8px; padding: 2px 0; }
+.my-cred-facts dt { color: var(--text-muted, #8c8c8c); flex: 0 0 auto; min-width: 5em; }
+.my-cred-facts dd { margin: 0; word-break: break-all; }
+.my-grant-chip { display: inline-block; margin: 0 6px 4px 0; padding: 1px 8px;
+  border-radius: 10px; background: var(--bg-inset, #f0f0f0); font-size: 12px; }
+
+/* 配额四宫格（P1-3 四要素接真：限额＝登记值、已用＝当日审计真实调用） */
+.my-quota-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--space-1, 8px); }
+.my-quota-cell { border: 1px solid var(--border-light, #f0f0f0); border-radius: 6px;
+  padding: 10px 8px; text-align: center; }
+.my-quota-cell.is-warn { border-color: var(--status-warn, #D4760A); }
+.my-quota-val { font-size: 20px; font-weight: 700; color: var(--text-strong, #262626); }
+.my-quota-val-sm { font-size: 15px; }        /* 重置时间是 MM-DD HH:mm，字号让行不折 */
+.my-quota-name { font-size: 12px; color: var(--text-muted, #8c8c8c); margin-top: 2px; }
+.my-quota-badge { font-size: 11px; }
+
+/* 用量条（比例来自端点 ratio；超额转警告色，不换形状） */
+.my-quota-bar { margin-top: var(--space-1, 8px); height: 6px; border-radius: 3px;
+  background: var(--bg-inset, #f0f0f0); overflow: hidden; }
+.my-quota-bar-fill { height: 100%; background: var(--chart-1, #5070dd); }
+.my-quota-bar.is-warn .my-quota-bar-fill { background: var(--status-warn, #D4760A); }
+/* #58 水电表（2026-10-15）：条形读法图例——已用占比／今日剩余 */
+.my-quota-bar-legend { margin-top: 4px; font-size: 12px; color: var(--text-muted, #8c8c8c); }
+.my-quota-bar-legend .mono { color: var(--text-body, #434343); }
+.my-quota-warn { margin-top: var(--space-1, 8px); padding: 6px 8px; border-radius: 4px;
+  font-size: 12px; line-height: 1.5; background: var(--bg-subtle, #f5f5f5);
+  border-left: 3px solid var(--status-warn, #D4760A); color: var(--text-body, #434343); }
+
+/* 近 7 日迷你趋势（审计聚合逐日；柱高按峰值归一，0 次留底线不消失） */
+.my-quota-trend { margin-top: var(--space-2, 16px); }
+.my-quota-trend-head { display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-1, 8px); flex-wrap: wrap; margin-bottom: var(--space-1, 8px); }
+.my-quota-trend-title { font-size: 13px; font-weight: 600; color: var(--text-body, #434343); }
+.my-quota-trend-nums { font-size: 12px; color: var(--text-muted, #8c8c8c); }
+.my-quota-sparks { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+.my-quota-spark { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+  justify-content: flex-end; align-items: center; height: 100%; }
+.my-quota-spark-bar { width: 100%; max-width: 28px; min-height: 2px; border-radius: 2px;
+  background: var(--chart-1, #5070dd); }
+.my-quota-spark-num { font-size: 11px; color: var(--text-muted, #8c8c8c); margin-top: 2px; }
+.my-quota-spark-day { font-size: 10px; color: var(--text-faint, #8c8c8c); white-space: nowrap; }
+
+/* 窄屏（P0-12）：≤720px 无横向溢出——日志表容器内滚动（SPEC §5 P0-12），头/摘要可换行 */
+@media (max-width: 720px) {
+  .my-caller-controls { flex-wrap: wrap; }
+  .my-caller-btn { width: 100%; }
+  .my-trace-lookup .form-control { width: 100%; }
+  .card-head { flex-wrap: wrap; }
+  .my-log-table { display: block; overflow-x: auto; }
+  .my-trace-id { word-break: break-all; }
+  .my-cred-key { word-break: break-all; }
+  .my-quota-trend-head { flex-direction: column; align-items: flex-start; }
+  .my-quota-spark-day { font-size: 9px; }      /* 390px 七根柱挤得下，日标签再收一档 */
+  .my-quota-warn { font-size: 11px; }
+}

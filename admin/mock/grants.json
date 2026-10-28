@@ -1,0 +1,296 @@
+{
+  "note": "授权管理（1b-8）演示基线：后端不可达时降级读取，页面挂「演示数据」角标。本文件为演示副本，不含任何凭证明文；appkey 为掩码展示值。登记动作在演示模式下仅页面内存演示、如实标注。",
+  "tenants": [
+    {
+      "tenant": "demo_bank",
+      "displayName": "演示银行",
+      "status": "active",
+      "tenantType": "internal",
+      "tenantTypeLabel": "内部",
+      "oaTicket": "DEMO-20260929-001",
+      "activeKeys": 1,
+      "grantsCount": 3,
+      "readonly": false
+    },
+    {
+      "tenant": "partner-demo",
+      "displayName": "合作方演示",
+      "status": "active",
+      "tenantType": "external",
+      "tenantTypeLabel": "外部",
+      "oaTicket": "DEMO-20260929-002",
+      "activeKeys": 1,
+      "grantsCount": 1,
+      "readonly": false
+    },
+    {
+      "tenant": "demo-1020",
+      "displayName": "演示租户1020",
+      "status": "active",
+      "tenantType": "sandbox",
+      "tenantTypeLabel": "沙箱",
+      "oaTicket": "",
+      "activeKeys": 1,
+      "grantsCount": 2,
+      "readonly": true
+    }
+  ],
+  "details": {
+    "demo_bank": {
+      "tenant": "demo_bank",
+      "displayName": "演示银行",
+      "status": "active",
+      "tenantType": "internal",
+      "tenantTypeLabel": "内部",
+      "oaTicket": "DEMO-20260929-001",
+      "readonly": false,
+      "grants": [
+        {
+          "service": "svc-tags",
+          "serviceName": "用户资产标签",
+          "kind": "service",
+          "kindLabel": "字段服务",
+          "route": "/v1/svc/tags",
+          "fields": [
+            "age_band",
+            "city_code",
+            "aum_band"
+          ],
+          "availableFields": [
+            "age_band",
+            "city_code",
+            "aum_band",
+            "vip_flag",
+            "risk_level"
+          ],
+          "fieldSpace": "wide297",
+          "oaTicket": "",
+          "oaEffective": "DEMO-20260929-001",
+          "oaSource": "tenant",
+          "effectiveFrom": "",
+          "effectiveTo": "",
+          "status": "active",
+          "readonly": false
+        },
+        {
+          "service": "svc-card",
+          "serviceName": "账户摘要",
+          "kind": "service",
+          "kindLabel": "字段服务",
+          "route": "/v1/svc/card",
+          "fields": [
+            "card_sts"
+          ],
+          "availableFields": [
+            "card_sts",
+            "bal_band",
+            "open_days"
+          ],
+          "fieldSpace": "wide297",
+          "oaTicket": "DEMO-2026-004217",
+          "oaEffective": "DEMO-2026-004217",
+          "oaSource": "grant",
+          "effectiveFrom": "2026-10-01",
+          "effectiveTo": "2027-09-30",
+          "status": "active",
+          "readonly": false
+        },
+        {
+          "service": "proxy-local",
+          "serviceName": "资产标签代理",
+          "kind": "proxy",
+          "kindLabel": "整路由",
+          "route": "/proxy/local/tags",
+          "fields": [],
+          "availableFields": [],
+          "fieldSpace": "proxy",
+          "oaTicket": "",
+          "oaEffective": "DEMO-20260929-001",
+          "oaSource": "tenant",
+          "effectiveFrom": "",
+          "effectiveTo": "",
+          "status": "active",
+          "readonly": false
+        }
+      ],
+      "availableServices": [
+        {
+          "id": "svc-tags",
+          "name": "用户资产标签",
+          "kind": "service",
+          "kindLabel": "字段服务",
+          "route": "/v1/svc/tags",
+          "fields": [
+            "age_band",
+            "city_code",
+            "aum_band",
+            "vip_flag",
+            "risk_level"
+          ],
+          "fieldSpace": "wide297"
+        },
+        {
+          "id": "svc-card",
+          "name": "账户摘要",
+          "kind": "service",
+          "kindLabel": "字段服务",
+          "route": "/v1/svc/card",
+          "fields": [
+            "card_sts",
+            "bal_band",
+            "open_days"
+          ],
+          "fieldSpace": "wide297"
+        },
+        {
+          "id": "proxy-local",
+          "name": "资产标签代理",
+          "kind": "proxy",
+          "kindLabel": "整路由",
+          "route": "/proxy/local/tags",
+          "fields": [],
+          "fieldSpace": "proxy"
+        }
+      ],
+      "credentials": [
+        {
+          "appkeyMasked": "sb_d2a3****8a1b",
+          "keyType": "sandbox",
+          "status": "active",
+          "services": [
+            "svc-tags",
+            "proxy-local"
+          ]
+        }
+      ]
+    },
+    "partner-demo": {
+      "tenant": "partner-demo",
+      "displayName": "合作方演示",
+      "status": "active",
+      "tenantType": "external",
+      "tenantTypeLabel": "外部",
+      "oaTicket": "DEMO-20260929-002",
+      "readonly": false,
+      "grants": [
+        {
+          "service": "svc-tags",
+          "serviceName": "用户资产标签",
+          "kind": "service",
+          "kindLabel": "字段服务",
+          "route": "/v1/svc/tags",
+          "fields": [
+            "age_band",
+            "city_code"
+          ],
+          "availableFields": [
+            "age_band",
+            "city_code",
+            "aum_band",
+            "vip_flag",
+            "risk_level"
+          ],
+          "fieldSpace": "wide297",
+          "oaTicket": "",
+          "oaEffective": "DEMO-20260929-002",
+          "oaSource": "tenant",
+          "effectiveFrom": "",
+          "effectiveTo": "",
+          "status": "active",
+          "readonly": false
+        }
+      ],
+      "availableServices": [
+        {
+          "id": "svc-tags",
+          "name": "用户资产标签",
+          "kind": "service",
+          "kindLabel": "字段服务",
+          "route": "/v1/svc/tags",
+          "fields": [
+            "age_band",
+            "city_code",
+            "aum_band",
+            "vip_flag",
+            "risk_level"
+          ],
+          "fieldSpace": "wide297"
+        }
+      ],
+      "credentials": [
+        {
+          "appkeyMasked": "sb_1e5f****4138",
+          "keyType": "sandbox",
+          "status": "active",
+          "services": [
+            "svc-tags"
+          ]
+        }
+      ]
+    },
+    "demo-1020": {
+      "tenant": "demo-1020",
+      "displayName": "演示租户1020",
+      "status": "active",
+      "tenantType": "sandbox",
+      "tenantTypeLabel": "沙箱",
+      "oaTicket": "",
+      "readonly": true,
+      "grants": [
+        {
+          "service": "svc-tag1020",
+          "serviceName": "资产标签（演示）",
+          "kind": "service",
+          "kindLabel": "字段服务",
+          "route": "/v1/svc/tag1020",
+          "fields": [
+            "aum_band",
+            "active_m3_flag"
+          ],
+          "availableFields": [
+            "aum_band",
+            "active_m3_flag",
+            "vip_flag"
+          ],
+          "fieldSpace": "wide297",
+          "oaTicket": "",
+          "oaEffective": "",
+          "oaSource": "none",
+          "effectiveFrom": "",
+          "effectiveTo": "",
+          "status": "active",
+          "readonly": true
+        },
+        {
+          "service": "proxy-ext-1020",
+          "serviceName": "外部代理（演示）",
+          "kind": "proxy",
+          "kindLabel": "整路由",
+          "route": "/proxy/ext/tag1020",
+          "fields": [],
+          "availableFields": [],
+          "fieldSpace": "proxy",
+          "oaTicket": "",
+          "oaEffective": "",
+          "oaSource": "none",
+          "effectiveFrom": "",
+          "effectiveTo": "",
+          "status": "active",
+          "readonly": true
+        }
+      ],
+      "availableServices": [],
+      "credentials": [
+        {
+          "appkeyMasked": "sb_741a****25e6",
+          "keyType": "sandbox",
+          "status": "active",
+          "services": [
+            "svc-tag1020",
+            "proxy-ext-1020"
+          ]
+        }
+      ]
+    }
+  }
+}

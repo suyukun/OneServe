@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数据装载 · OneServe</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<style>
+  * { box-sizing: border-box; }
+  [x-cloak] { display: none !important; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-body);
+         font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.6; }
+  .page { max-width: 720px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+  .page-head h1 { font-size: var(--fs-heading); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .page-head .hint { color: var(--text-body); margin: 0; }
+  .muted { color: var(--text-muted); }
+  .mono { font-family: var(--font-mono); }
+
+  /* ── Stepper（视觉标准 §六：三态；与发布台同款） ── */
+  .stepper { display: flex; align-items: center; gap: 12px; margin: var(--space-5) 0; }
+  .step { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+  .step:last-child { flex: 0 0 auto; }
+  .step-dot { width: 28px; height: 28px; border-radius: var(--radius-full); display: inline-flex;
+              align-items: center; justify-content: center; font-size: var(--fs-body); font-weight: 600;
+              border: 1px solid var(--border-strong); color: var(--text-muted); background: transparent; }
+  .step-name { font-size: var(--fs-caption); color: var(--text-muted); }
+  .step.is-done .step-dot { background: var(--status-ok); border-color: var(--status-ok); color: var(--bg-card); }
+  .step.is-current .step-dot { background: var(--brand-primary); border-color: var(--brand-primary);
+                               color: var(--brand-on);
+                               box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 25%, transparent); }
+  .step.is-current .step-name { color: var(--text-strong); font-weight: 600; }
+  .step-line { flex: 1 1 auto; height: 2px; background: var(--border-strong); min-width: 16px; }
+  .step-line.is-reached { background: var(--brand-primary); }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+          padding: var(--space-5); margin-bottom: var(--space-4); }
+  .card-title { font-size: var(--fs-subheading); color: var(--text-strong); margin: 0 0 2px; }
+  .card-sub { font-size: var(--fs-caption); color: var(--text-muted); margin: 0 0 var(--space-4); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+         min-height: 40px; padding: 0 var(--space-4); border-radius: var(--radius-md);
+         border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-strong);
+         font-size: var(--fs-body); cursor: pointer; }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+  .btn-primary { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--brand-on); }
+  .btn-danger { background: var(--status-danger, #d64545); border-color: var(--status-error); color: #fff; }
+
+  .dot { width: 10px; height: 10px; border-radius: var(--radius-full); display: inline-block;
+         margin-right: 8px; background: var(--text-muted); vertical-align: middle; }
+  .dot.is-ok { background: var(--status-ok); }
+  .dot.is-bad { background: var(--status-danger, #d64545); }
+
+  .result { border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); font-size: var(--fs-body); }
+  .result-good { background: color-mix(in srgb, var(--status-ok) 12%, transparent);
+                 border: 1px solid var(--status-ok); }
+  .result-bad { background: color-mix(in srgb, var(--status-danger, #d64545) 10%, transparent);
+                border: 1px solid var(--status-danger, #d64545); }
+  /* P3-装载409分支修复卡：线上版预判提示（琥珀＝警示但非错误，出路是换日期不是覆盖） */
+  .result-warn { background: color-mix(in srgb, var(--status-warn, #d4760a) 12%, transparent);
+                 border: 1px solid var(--status-warn, #d4760a); }
+
+  .table-row { display: flex; align-items: flex-start; gap: var(--space-3);
+               padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+  .table-row:last-child { border-bottom: none; }
+  .table-name { font-weight: 600; color: var(--text-strong); }
+  .chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: var(--radius-full);
+          border: 1px solid var(--border); font-size: var(--fs-caption); color: var(--text-muted);
+          margin-right: 6px; }
+  .chip.is-live { border-color: var(--status-ok); color: var(--status-ok); }
+
+  /* ── P3：版本行（每版本一行：已装载日期＋是否线上）＋字段清单折叠 ── */
+  .ver-lines { margin-top: 6px; }
+  .ver-line { display: block; font-size: var(--fs-caption); color: var(--text-muted); }
+  .ver-line.is-live { color: var(--status-ok); font-weight: 600; }
+  /* 字段释义收权（2026-10-14）：③ 装载环节字段清单——未释义/新增字段标记 */
+  .chip.is-miss { border-color: var(--status-warn, #d4760a); color: var(--status-warn, #d4760a); }
+  .chip.is-new { border-color: var(--brand-primary); color: var(--brand-primary); }
+  .field-table tr.is-missing td { background: color-mix(in srgb, var(--status-warn, #d4760a) 7%, transparent); }
+  .field-subhead { font-size: var(--fs-subheading); color: var(--text-strong); margin: 0 0 2px; }
+  textarea.ddl-input { width: 100%; margin-top: 8px; font-family: var(--font-mono, monospace); font-size: 12px; }
+  .field-list { margin-top: 6px; border: 1px solid var(--border); border-radius: var(--radius-md);
+                padding: var(--space-3); }
+  .field-table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); }
+  .field-table th, .field-table td { text-align: left; padding: 3px 10px 3px 0;
+                                     border-bottom: 1px solid var(--border); vertical-align: top; }
+  .field-table th { color: var(--text-muted); font-weight: 500; }
+  .field-table tr:last-child td { border-bottom: none; }
+
+  /* ── P3 追加：字段清单头部「查询主键」行（醒目但克制：加粗标签＋值＋一句话用途） ── */
+  .key-line { font-size: var(--fs-caption); margin: 0 0 8px; padding: 4px 10px;
+              border-left: 3px solid var(--brand-primary);
+              background: color-mix(in srgb, var(--brand-primary) 6%, transparent);
+              border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .key-line strong { font-weight: 600; }
+
+  .kv { display: grid; grid-template-columns: 96px 1fr; row-gap: 6px; margin: 0; }
+  .kv dt { color: var(--text-muted); }
+  .kv dd { margin: 0; color: var(--text-strong); }
+
+
+  @media (max-width: 720px) {
+    .page { padding: var(--space-4) var(--space-3); }
+    /* 门户壳顶栏窄屏可换行（接壳后 .topbar 改名 .os-topbar，同门户口径；P0-12） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="../site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="../site-gate.js?v=266daaf925e8"></script>
+<script defer src="../data-format.js?v=266daaf925e8"></script>
+<script defer src="../api.js?v=266daaf925e8"></script>
+<script defer src="../assets/app.js?v=266daaf925e8"></script>
+<script defer src="../assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="../assets/pages.js?v=266daaf925e8"></script>
+<script defer src="../assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+
+</head>
+<body class="os-layout" x-data="loadWizard()" x-init="boot()">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="../index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="../catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="../trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="../my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="../apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="../docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="../errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link is-active" aria-current="page" href="load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="../reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="../grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 （admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="crumb" id="admin-crumb" aria-label="面包屑"><span>管理</span><span class="crumb-sep">›</span><span aria-current="page">数据装载</span></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="../docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<div class="os-container">
+  <header class="page-head" id="page-head">
+    <h1 id="page-title">数据装载</h1>
+    <p class="hint" id="page-hint">把 HBase 真表全量装载成 Redis 热数据版本（表:版本）。</p>
+  </header>
+
+  <!-- ══ Stepper：四步（① 选源 → ② 发现表 → ③ 装载 → ④ 结果） ══ -->
+  <nav class="stepper" id="load-stepper" aria-label="装载步骤">
+    <div class="step" id="load-step-nav-1" :class="stepClass(1)">
+      <span class="step-dot" x-text="step > 1 ? '✓' : 1"></span><span class="step-name">选源</span>
+      <span class="step-line" :class="step > 1 ? 'is-reached' : ''"></span>
+    </div>
+    <div class="step" id="load-step-nav-2" :class="stepClass(2)">
+      <span class="step-dot" x-text="step > 2 ? '✓' : 2"></span><span class="step-name">发现表</span>
+      <span class="step-line" :class="step > 2 ? 'is-reached' : ''"></span>
+    </div>
+    <div class="step" id="load-step-nav-3" :class="stepClass(3)">
+      <span class="step-dot" x-text="step > 3 ? '✓' : 3"></span><span class="step-name">装载</span>
+      <span class="step-line" :class="step > 3 ? 'is-reached' : ''"></span>
+    </div>
+    <div class="step" id="load-step-nav-4" :class="stepClass(4)">
+      <span class="step-dot" x-text="step > 4 ? '✓' : 4"></span><span class="step-name">结果</span>
+    </div>
+  </nav>
+
+  <!-- ══ ① 选源：源卡片＋连接状态（绿/红＋分类原因＋行动指引） ══ -->
+  <section class="card" id="load-section-source" x-show="step === 1" aria-label="选择数据源">
+    <h2 class="card-title">选择数据源</h2>
+    <p class="card-sub">当前唯一源＝HBase；未来多源在此扩展。</p>
+    <template x-for="s in sources" :key="s.id">
+      <div class="table-row" :id="'load-source-' + s.id">
+        <div style="flex:1;">
+          <div class="table-name"><span class="dot" :class="s.status === 'ok' ? 'is-ok' : 'is-bad'"></span>
+            <span x-text="s.name"></span>
+            <span class="mono muted" style="margin-left:8px;" x-text="s.endpoint"></span>
+            <span class="chip" x-text="'auth: ' + s.authMode"></span>
+            <span class="chip" x-show="s.status === 'ok' && s.tableCount !== null"
+                  x-text="'表 ' + s.tableCount + ' 张'"></span>
+          </div>
+          <div class="muted" style="font-size: var(--fs-caption); margin-top:4px;"
+               x-show="s.status !== 'ok'" x-text="s.message"></div>
+        </div>
+      </div>
+    </template>
+    <!-- N4（2026-10-14 门槛稿 AC-2）：连接状态时间戳行——探测何时发生一目了然，
+         步骤①卡片下方空旷感随之收紧（评审 8/10 两条改进之二）。 -->
+    <p class="muted" id="load-source-probedat" x-show="probedAt"
+       style="font-size: var(--fs-caption); margin: 8px 0 0;" role="status"
+       x-text="probedAt ? '连接状态探测于 ' + probedAt + ' · 点「刷新连接状态」可重测' : ''"></p>
+    <div class="result result-bad" id="load-source-error" x-show="sourceError" x-cloak role="alert" style="margin-top: var(--space-3);">
+      <span x-text="sourceError"></span>
+    </div>
+    <div style="display:flex; gap: 12px; margin-top: var(--space-4);">
+      <button class="btn" id="load-source-refresh" type="button" @click="refreshSources()"
+              :disabled="sourceBusy" x-text="sourceBusy ? '正在探测…' : '刷新连接状态'"></button>
+      <button class="btn btn-secondary" id="load-source-next" type="button"
+              :disabled="!sourceOk" @click="discover()">下一步：发现表清单</button>
+    </div>
+  </section>
+
+  <!-- ══ ② 发现表清单（真连接；HBase 不可达＝如实分类报错，不显示假表） ══ -->
+  <section class="card" id="load-section-tables" x-show="step === 2" aria-label="发现表清单">
+    <h2 class="card-title">HBase 表清单</h2>
+    <p class="card-sub">
+      <span x-text="tables.length + ' 张表（扫描时间 ' + (scanTime() || '—') + '）'"></span>
+      <button class="btn" id="load-tables-refresh" type="button" style="min-height:32px; margin-left:8px;"
+              @click="discover()" :disabled="tablesBusy" x-text="tablesBusy ? '读取中…' : '刷新'"></button>
+    </p>
+    <div class="result result-bad" id="load-tables-error" x-show="tablesError" x-cloak role="alert">
+      <strong x-text="tablesErrorTitle"></strong><br><span x-text="tablesError"></span>
+    </div>
+    <template x-for="t in tables" :key="t.full">
+      <div class="table-row">
+        <div style="flex:1;">
+          <div class="table-name"><span class="mono" x-text="t.full"></span>
+            <span x-show="t.tableCnName" x-text="'· ' + t.tableCnName"></span></div>
+          <div class="muted" style="font-size: var(--fs-caption); margin-top:2px;"
+               x-text="t.tableDesc || (t.namespace === 'default' ? '' : 'ns: ' + t.namespace)"></div>
+          <!-- P3：版本行（每版本一行）；线上版绿字突出，列族术语不再出现在行内 -->
+          <div class="ver-lines">
+            <template x-for="v in t.loaded.versions" :key="v">
+              <span class="ver-line" :class="v === t.loaded.latestVersion ? 'is-live' : ''"
+                    x-text="v === t.loaded.latestVersion ? '当前线上版：' + v : '已装载 ' + v + ' · 未上线'"></span>
+            </template>
+            <span class="ver-line" x-show="t.loaded.note" x-text="t.loaded.note"></span>
+          </div>
+        </div>
+        <button class="btn" type="button" :id="'load-pick-' + t.table"
+                @click="pick(t)">装载此表</button>
+      </div>
+    </template>
+    <button class="btn" id="load-tables-back" type="button" @click="step = 1" style="margin-top: var(--space-3);">返回上一步</button>
+  </section>
+
+  <!-- ══ ③ 选表装载：全量（无勾字段控件——装载不裁列，AC-8） ══ -->
+  <section class="card" id="load-section-load" x-show="step === 3" aria-label="全量装载">
+    <h2 class="card-title">全量装载</h2>
+    <p class="card-sub">整表导入（不选列）：字段裁剪归发布流程（服务投影）；此处只产「表:版本」热数据。</p>
+    <dl class="kv" style="margin-bottom: var(--space-3);">
+      <dt>数据表</dt><dd class="mono" id="load-picked-table" x-text="picked ? picked.full : '—'"></dd>
+      <dt>版本日期</dt>
+      <dd><input type="date" id="load-version-input" x-model="version" style="min-height:36px;">
+        <span class="muted" style="font-size: var(--fs-caption);">默认当日；可改日期补历史。同表同日已装载默认拒绝，也可覆盖重灌。</span></dd>
+    </dl>
+    <!-- 字段释义收权（2026-10-14）：DDL 释义定义权归装载环节、绑定 Redis 侧结构——选表后
+         展示字段清单确认：默认沿用上次版本 sync:schema 释义（同字段集零操作可继续）；
+         可贴 DDL 覆盖（复用 B1 parse/save 端点，错误信封同源）；未释义/新增字段如实标出
+         引导补齐，不静默沿用错位。装载完成释义随版本固化 sync:schema（发布/凭证同源）。 -->
+    <div class="field-list" id="load-fields" style="margin-bottom: var(--space-3);">
+      <h3 class="field-subhead">字段释义</h3>
+      <p class="card-sub" style="margin-bottom: var(--space-3);">装进 Redis 的表结构释义随本次装载按版本固化；发布向导、凭证授权与服务文档将同源展示。</p>
+      <!-- 键行（P3 三批·修二口径随字段清单搬家）：字段名行固定；描述行＝发布登记人工填写 -->
+      <div class="key-line">
+        <div><strong>查询主键字段名</strong>：<span class="mono">key</span>（HBase rowkey）</div>
+        <div x-text="keyDescLine(picked)"></div>
+      </div>
+      <p class="muted" id="load-fields-state" x-show="picked"
+         style="font-size: var(--fs-caption); margin: 0 0 6px;" x-text="fieldStateText()"></p>
+      <table class="field-table" id="load-fields-table">
+        <thead><tr><th>字段名</th><th>类型</th><th>中文释义</th><th>状态</th></tr></thead>
+        <tbody>
+          <template x-for="r in fieldRows" :key="r.name">
+            <tr :class="defMissing(r) ? 'is-missing' : ''">
+              <td class="mono" x-text="r.name"></td>
+              <td x-text="r.type || '—'"></td>
+              <td x-text="r.cnName || '—'"></td>
+              <td><span class="chip is-miss" x-show="defMissing(r)">未释义</span><span
+                   class="chip is-new" x-show="r.added">新增</span></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <!-- 未释义引导（AC-5）：标出＋引导补齐，不静默沿用错位释义 -->
+      <div class="result result-warn" id="load-fields-missing" x-show="missingCount" x-cloak role="status"
+           style="margin-top: var(--space-3);">
+        <span x-text="missingText()"></span>
+      </div>
+      <!-- 贴 DDL 覆盖（可选；默认沿用上次释义）——复用 B1 parse/save 端点与错误信封 -->
+      <div id="load-ddl" style="margin-top: var(--space-3);">
+        <label for="load-ddl-input" class="field-subhead" style="display:block;">贴 DDL 覆盖释义（可选）</label>
+        <textarea class="ddl-input" id="load-ddl-input" x-model="ddlImp.ddl" rows="6" spellcheck="false"
+                  placeholder="CREATE TABLE card_acct_summary (&#10;  card_sts character varying(16) COMMENT '卡状态',&#10;  …&#10;)"></textarea>
+        <button class="btn" type="button" id="load-ddl-parse" @click="ddlParse()"
+                :disabled="ddlImp.busy || !ddlImp.ddl.trim()"
+                x-text="ddlImp.busy ? '解析中…' : '解析预览'"></button>
+        <p class="muted" id="load-ddl-note" x-show="ddlImp.note" x-text="ddlImp.note" style="margin-top:6px"></p>
+        <div id="load-ddl-preview" x-show="ddlImp.rows.length" x-cloak style="margin-top:10px;max-height:300px;overflow:auto">
+          <table class="field-table" style="width:100%">
+            <thead><tr><th>#</th><th>字段名</th><th>类型</th><th>cn_name（COMMENT）</th><th>业务口径</th><th>敏感级</th></tr></thead>
+            <tbody>
+              <template x-for="r in ddlImp.rows" :key="r['字段名']">
+                <tr><td x-text="r.attnum"></td><td class="mono" x-text="r['字段名']"></td>
+                    <td x-text="r['数据类型']"></td><td x-text="r['cn_name'] || '（空）'"></td>
+                    <td x-text="r['业务口径'] || '（空）'"></td><td x-text="r['敏感级'] || '（空）'"></td></tr>
+              </template>
+            </tbody>
+          </table>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            <button class="btn btn-secondary" type="button" id="load-ddl-save" @click="ddlConfirm()"
+                    :disabled="ddlImp.busy || !ddlImp.rows.length">确认覆盖当次释义</button>
+            <span class="muted" x-show="ddlImp.diff" x-text="ddlImp.diff"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- P3-装载409分支修复卡：目标版本==该表行 loaded.latestVersion（当前线上版）→
+         前端预判不发请求（线上版后端连 replace 也拒——保护在线调用，杜绝 409 死循环）；
+         琥珀提示给换日期出路。此路径无覆盖按钮——覆盖重灌仅限非线上版 409。 -->
+    <div class="result result-warn" id="load-live-block" x-show="liveBlock" x-cloak role="alert"
+         style="margin-bottom: var(--space-3);">
+      <span x-text="liveBlock"></span>
+    </div>
+    <div class="result result-bad" id="load-conflict" x-show="conflict" x-cloak role="alert" style="margin-bottom: var(--space-3);">
+      <strong>同表同日已装载，默认拒绝</strong><br><span x-text="conflict"></span>
+      <!-- P3：覆盖重灌＝显式红字警示＋原生 confirm 二次确认，不另加步骤 -->
+      <div style="margin-top:8px; color: var(--status-error); font-weight:600;">
+        覆盖重灌将先清空该版本已装载数据，再全量重新装载。
+      </div>
+      <button class="btn btn-danger" id="load-overwrite" type="button" style="margin-top:8px;"
+              @click="overwrite()" :disabled="loading"
+              x-text="loading ? '覆盖重灌中…' : '覆盖重灌'"></button>
+      <!-- P3-装载409分支修复卡：小字补充——覆盖重灌仅对非线上版可行；若目标版本已
+           成为线上版（后端仍拒），出路＝换版本日期装载新版、发布台切换上线。 -->
+      <span class="muted" style="display:block; margin-top:6px; font-size: var(--fs-caption);"
+            x-text="'线上版不可覆盖；若 ' + versionNum() + ' 已成为线上版请换日期'"></span>
+    </div>
+    <div class="result result-bad" id="load-error" x-show="loadError" x-cloak role="alert" style="margin-bottom: var(--space-3);">
+      <span x-text="loadError"></span>
+    </div>
+    <!-- P3-装载超时卡：装载计时反馈——提交即显示，已用时每秒跳；响应（任何形态）到达即停。
+         大表分钟级等待不再像「没反应」，杜绝重复提交（usr_asset_tag 100 万行教训）。 -->
+    <div class="result" id="load-progress" x-show="loading" x-cloak role="status"
+         style="margin-bottom: var(--space-3); border: 1px solid var(--brand-primary);
+                background: color-mix(in srgb, var(--brand-primary) 8%, transparent);">
+      <span x-text="'装载中…已用时 ' + loadElapsed + 's' + (loadProgress > 0 ? ' · 进度 ' + loadProgress + '%' : '') + '（大表首次装载约 2-5 分钟，请勿重复提交）'"></span>
+    </div>
+    <div style="display:flex; gap: 12px;">
+      <button class="btn" id="load-back" type="button" @click="step = 2" :disabled="loading">返回表清单</button>
+      <button class="btn btn-primary" id="load-submit" type="button" @click="submit()"
+              :disabled="loading" x-text="loading ? '装载中…（整表导入，行数多时稍候）' : '开始全量装载'"></button>
+    </div>
+  </section>
+
+  <!-- ══ ④ 结果：表:版本｜行数｜对账（＋schema 字段数；去发布直达发布台） ══ -->
+  <section class="card" id="load-section-result" x-show="step === 4" x-cloak aria-label="装载结果">
+    <h2 class="card-title">装载完成</h2>
+    <p class="card-sub">数据资产已就绪，可在发布台（流程②）基于该表版本发布服务。</p>
+    <dl class="kv">
+      <dt>表:版本</dt>
+      <dd class="mono" id="load-result-version" x-text="result ? result.table + ':' + result.version : ''"></dd>
+      <dt>行数</dt>
+      <dd id="load-result-rows" x-text="result ? result.loaded + ' 行' : ''"></dd>
+      <dt>校验</dt>
+      <dd id="load-result-recon"
+          x-text="result ? ((result.reconcile.pass ? '对账 pass' : '对账未过') + '，差异 ' + (result.reconcile.diffCount || 0) + ' 条') : ''"></dd>
+      <dt>字段元数据</dt>
+      <dd id="load-result-schema"
+          x-text="result && result.schema ? ((result.schema.fieldCount || '—') + ' 个字段') : ''"></dd>
+      <dt>耗时</dt>
+      <dd id="load-result-elapsed" x-text="result ? ((result.elapsedMs || 0) + ' ms') : ''"></dd>
+    </dl>
+    <div style="display:flex; gap: 12px; margin-top: var(--space-4);">
+      <a class="btn btn-secondary" id="load-goto-publish" href="publish.html">去发布 →</a>
+      <button class="btn" id="load-again" type="button" @click="reset()">再装一张表</button>
+    </div>
+  </section>
+
+</div>
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+<script defer src="admin-gate.js?v=266daaf925e8"></script>
+<script defer src="load.js?v=266daaf925e8"></script>
+<script defer src="../assets/alpine.min.js?v=266daaf925e8"></script>
+</body>
+</html>

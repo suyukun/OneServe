@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>接口调试 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="site-gate.js?v=266daaf925e8"></script>
+<script defer src="data-format.js?v=266daaf925e8"></script>
+<script defer src="api.js?v=266daaf925e8"></script>
+<script defer src="assets/app.js?v=266daaf925e8"></script>
+<script defer src="assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="assets/pages.js?v=266daaf925e8"></script>
+<script defer src="assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+<script defer src="assets/alpine.min.js?v=266daaf925e8"></script>
+</head>
+<body class="os-layout">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link is-active" aria-current="page" href="trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="admin/load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="admin/publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="admin/published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="admin/appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="admin/tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="admin/grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="admin/pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="admin/accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="admin/upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="admin/monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="admin/billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 <ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">接口调试</li></ol>（admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="os-crumb" aria-label="面包屑"><ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">接口调试</li></ol></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<!-- ══ 接口调试独立页（门面批 2026-10-08 重设计，原「试用台」）：
+     定位＝已发布服务的在线调试台——发布后验证链路通不通。单页三区：
+     ① 顶部控制行（选已发布服务＋AppKey）；② 接口信息卡（访问地址/入参/出参，选服务自动带出）；
+     ③ 调用与结果（key 调用→字段表＋原始 JSON＋状态与耗时）。
+     文案纪律：生产口径；错误原样展示错误信封（不加工、不替代）。 ══ -->
+<div class="os-container reveal">
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">接口调试</div>
+    <h1 class="page-title">已发布服务在线调试</h1>
+  </div>
+
+  <section class="card" id="trial-panel" aria-label="接口调试台" x-data="trialPanel" x-cloak>
+
+    <!-- #47 试用告知（2026-10-15 · 纯静态）：计费／配额／数据来源三件事进页明示，消除「这次算不算数」 -->
+    <div class="trial-notice" id="trial-notice" role="note" aria-label="调试台计费配额与数据来源告知">
+      <div class="trial-notice-item"><b>计费</b>当前阶段不计费——平台未接入计费，如接入会在此明示</div>
+      <div class="trial-notice-item"><b>配额</b>占用——与生产调用同口径计入这把凭证的当日用量（<a href="my.html">我的接入</a>可查）；已登记配额的凭证照常按限额拦截</div>
+      <div class="trial-notice-item"><b>数据</b>真实——已发布服务直查当前线上数据版本，查不到＝如实未命中，不造演示数</div>
+    </div>
+    <details class="trial-vs-prod" id="trial-vs-prod">
+      <summary>接口调试台 vs 生产接入——差在哪</summary>
+      <table class="tag-table">
+        <thead><tr><th>维度</th><th>接口调试台（本页）</th><th>生产接入</th></tr></thead>
+        <tbody>
+          <tr><td class="k">调用链路</td><td class="v">门户反代 → 同一网关</td><td class="v">你的业务系统直连同一网关</td></tr>
+          <tr><td class="k">数据</td><td class="v" colspan="2">同一份当前线上数据版本（没有独立的「调试专用水位数」）</td></tr>
+          <tr><td class="k">凭证</td><td class="v">沙箱凭证即可（<span class="mono">sb_</span> 开头）</td><td class="v">正式凭证（<span class="mono">ak_</span> 开头，另行审批发放）</td></tr>
+          <tr><td class="k">计量与配额</td><td class="v" colspan="2">同口径：每次调用（含被 429 拒绝的）都计入审计台账与凭证当日用量</td></tr>
+          <tr><td class="k">计费</td><td class="v" colspan="2">当前阶段均不计费（平台未接入计费）</td></tr>
+          <tr><td class="k">适合</td><td class="v">发一次真实调用，验证链路通不通</td><td class="v">业务系统长期稳定调用</td></tr>
+        </tbody>
+      </table>
+      <div class="src-note">口径依据：调用链路＝门户 /v1/ 反代 → 网关（apikey 请求头鉴权）；用量＝审计台账按凭证精确聚合，与「我的配额」同一来源。</div>
+    </details>
+
+    <!-- ① 顶部控制行：服务下拉（已发布列表）＋ AppKey 输入 -->
+    <div class="trial-controls" id="trial-controls">
+      <div class="trial-control">
+        <label for="trial-service-select">服务</label>
+        <select class="trial-select" id="trial-service-select" x-model="serviceId" @change="onServiceChange()">
+          <option value="" x-text="servicesOptionText()"></option>
+          <template x-for="s in published()" :key="s.id">
+            <option :value="s.id" x-text="s.serviceName + '　' + s.routePath"></option>
+          </template>
+        </select>
+        <button class="link-btn" id="trial-services-retry" type="button" x-show="servicesState === 'error'" @click="loadServices()">重试</button>
+      </div>
+      <div class="trial-control">
+        <label for="trial-apikey">AppKey</label>
+        <input class="trial-input" id="trial-apikey" type="text" autocomplete="off" spellcheck="false"
+               x-model="apikey" placeholder="填你的沙箱凭证（测试用，正式凭证另行审批；向管理员索取）">
+      </div>
+    </div>
+    <div class="src-note" x-show="servicesState === 'error'" x-text="servicesError"></div>
+
+    <!-- ② 接口信息卡：选服务自动带出（访问地址＋入参表＋出参表） -->
+    <div class="trial-api-info" id="trial-api-info" x-show="serviceId">
+      <div class="trial-field">
+        <label>访问地址</label>
+        <div class="hash-box" id="trial-endpoint">
+          <span class="lbl">POST <span class="mono" x-text="endpointPath()"></span>（经门户反代转发到网关，请求头 apikey 鉴权）</span>
+          <div class="val"><span class="mono" x-text="endpointUrl()"></span></div>
+        </div>
+      </div>
+
+      <div class="trial-field">
+        <label>入参</label>
+        <table class="tag-table" id="trial-param-table">
+          <thead><tr><th>字段名</th><th>说明</th><th>示例值</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="k">key</td>
+              <td>用户唯一标识，64 位十六进制</td>
+              <td class="v">
+                <span class="mono" x-text="sampleKey() || '未取到（粘贴真实 key）'"></span>
+                <button class="copy-inline" id="trial-copy-sample" type="button" x-show="sampleKey()"
+                        @click="copySample()" x-text="sampleCopied ? '已复制' : '复制'"></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <span class="field-hint" x-text="sampleKeyNote()"></span>
+      </div>
+
+      <div class="trial-field">
+        <label>出参（该服务授权字段）</label>
+        <table class="tag-table" id="trial-fields-table">
+          <thead><tr><th>字段名</th><th>类型</th><th>中文释义</th></tr></thead>
+          <tbody>
+            <template x-for="f in outFields()" :key="f.name">
+              <tr><td class="k" x-text="f.name"></td><td class="v" x-text="f.type"></td><td class="v" x-text="f.cnName"></td></tr>
+            </template>
+          </tbody>
+        </table>
+        <span class="field-hint" x-show="schemaState === 'error'" x-text="schemaError"></span>
+        <span class="field-hint" x-show="schemaState === 'loading'">正在读取表级 schema 元数据…</span>
+      </div>
+    </div>
+
+    <!-- ③ 调用与结果：key 输入（预填示例值）→ 调用 → 字段表＋原始 JSON＋状态与耗时 -->
+    <div class="trial-invoke" id="trial-invoke" x-show="serviceId">
+      <div class="trial-form">
+        <div class="trial-field">
+          <label for="trial-key-input">key（预填示例值，可改）</label>
+          <input class="trial-input" id="trial-key-input" type="text" autocomplete="off" spellcheck="false"
+                 x-model="keyInput" placeholder="粘贴要查询的 key">
+        </div>
+        <div class="trial-actions">
+          <button class="send-btn" id="trial-invoke-btn" type="button" @click="invoke()"
+                  :disabled="!canInvoke()" x-text="state === 'loading' ? '调用中…' : '调用'"></button>
+          <span class="field-hint" x-text="invokeHint()"></span>
+        </div>
+      </div>
+
+      <div class="trial-result" id="trial-result">
+        <template x-if="state === 'loading'">
+          <div><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+        </template>
+
+        <!-- 服务端错误（HTTP≥400）：错误信封原样展示（error/message＋错误码中心链接＋追踪号） -->
+        <template x-if="state === 'error'">
+          <div class="error-box" id="trial-error-envelope">
+            <template x-if="httpStatus !== null">
+              <div>
+                <span>调用失败（HTTP <span x-text="httpStatus"></span>）——网关返回以下错误，未做任何加工：</span>
+                <div class="field-hint"><span class="mono" id="trial-error-code" x-text="err && err.error"></span>　<span id="trial-error-message" x-text="err && err.message"></span></div>
+                <div class="field-hint" id="trial-error-docs" x-show="err && err.docs_url">
+                  错误说明：<a id="trial-error-docs-link" :href="err && err.docs_url" x-text="err && err.docs_url"></a>
+                  <span class="mono" x-show="traceId" x-text="'追踪号 ' + traceId"></span>
+                </div>
+              </div>
+            </template>
+            <template x-if="httpStatus === null">
+              <div><span>请求未到达网关（门户反代不可达或超时）——请稍后再试</span></div>
+            </template>
+            <button class="retry-btn" @click="invoke()">重试</button>
+          </div>
+        </template>
+
+        <template x-if="state === 'ok'">
+          <div>
+            <div class="result-meta">
+              <span class="mono" x-text="'HTTP ' + httpStatus"></span>
+              <span class="lat" x-text="latencyMs + 'ms'"></span>
+              <span x-text="result && result.found ? '命中' : '未命中'"></span>
+            </div>
+            <table class="tag-table" x-show="result && result.found">
+              <thead><tr><th>字段名</th><th>值</th><th>中文释义</th></tr></thead>
+              <tbody>
+                <template x-for="row in resultRows()" :key="row.name">
+                  <tr><td class="k" x-text="row.name"></td><td class="v" x-text="row.value"></td><td class="v" x-text="row.cnName"></td></tr>
+                </template>
+              </tbody>
+            </table>
+            <div class="empty-tags" x-show="result && !result.found" id="trial-not-found">
+              未命中：这个 key 在当前数据版本里没有对应数据（服务与链路本身正常）。
+            </div>
+            <details class="raw-json" id="trial-raw-json">
+              <summary>原始 JSON</summary>
+              <pre x-text="rawJson()"></pre>
+            </details>
+            <!-- N1 页面动线补全（W-X4）：调用成功态「下一步」提示（纯静态指引，零业务逻辑） -->
+            <div class="field-hint" id="trial-next-steps">
+              下一步：<a href="docs.html#docs-step-key">申请正式凭证</a>（找平台管理员审批），或在<a href="my.html">我的接入</a>查看用量。
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 调用示例（curl 为主；Python 折叠收进二级）——锚 id 沿用旧页签名，docs.html 深链不变 -->
+    <details class="call-example" id="trial-tab-http">
+      <summary>调用示例（curl）</summary>
+      <div class="code-block" id="trial-example-curl">
+        <pre x-text="curlCmd()"></pre>
+        <button class="copy-btn" id="trial-copy-curl" type="button" @click="copyCurl()" x-text="curlCopied ? '已复制' : '复制'"></button>
+      </div>
+      <details class="call-example call-example-sub" id="trial-tab-sdk">
+        <summary>Python（requests）</summary>
+        <div class="code-block" id="trial-example-python">
+          <pre x-text="pythonCmd()"></pre>
+          <button class="copy-btn" id="trial-copy-python" type="button" @click="copyPython()" x-text="pythonCopied ? '已复制' : '复制'"></button>
+        </div>
+      </details>
+    </details>
+
+  </section>
+
+</div>
+
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+</body>
+</html>

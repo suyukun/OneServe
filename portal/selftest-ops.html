@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="dark"><!-- P-3 自测断言页：与 selftest.html/selftest-p2.html 同款（移出导航，经 docs.html 可达） -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneServe 门户 · P-3 自测断言页（运行视图驾驶舱）</title>
+<!-- P-3 自测：ECharts 主题 registerTheme/口径常量/图表选型/格式化复用/构建产物扫描；无外部引用 -->
+<link rel="stylesheet" href="assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: var(--bg-page); color: var(--text-body); padding: 24px; font-size: 13px; }
+  h1 { font-size: 16px; color: var(--text-strong); margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 920px; background: var(--bg-card); }
+  th, td { border: 1px solid var(--border-strong); padding: 8px; text-align: left; font-size: 12px; }
+  th { background: var(--bg-subtle); color: var(--text-strong); }
+  td.mono { font-family: var(--font-mono); word-break: break-all; }
+  .pass { color: var(--status-ok); font-weight: 600; }
+  .fail { color: var(--status-error); font-weight: 600; }
+  .skip { color: var(--text-muted); font-weight: 600; }
+  #summary { margin: 16px 0; font-size: 14px; }
+  .group { margin: 16px 0 8px; font-weight: 600; color: var(--text-strong); }
+</style>
+</head>
+<body>
+<h1>P-3 自测断言（运行视图驾驶舱：ECharts 主题＋口径＋选型＋产物扫描）</h1>
+<div id="summary">运行中…</div>
+<div id="results"></div>
+<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
+     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
+<script src="site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<script src="assets/vendor/echarts.common.min.js"></script>
+<script src="data-format.js"></script>
+<script src="assets/ops.js"></script>
+<script>
+(function () {
+  var F = window.Fmt, OC = window.OpsCockpit;
+  var PALETTE = ['#5070dd', '#505372', '#785db0', '#0ca8df', '#ff994d', '#3fbe95', '#fb628b'];
+  /* P1-6：状态带四卡改为真探活渲染（:id 绑定），静态区块＝状态带＋「未取到＝未知」占位 */
+  var REQUIRED_IDS = ['ops-cockpit', 'ops-top', 'ops-kpi-bar', 'ops-kpi-calls', 'ops-kpi-success',
+    'ops-kpi-latency', 'ops-kpi-tps', 'ops-chart-trend', 'ops-chart-freshness', 'ops-statusband', 'ops-comp-unknown'];
+  var TREND = [31200, 35400, 33800, 38150, 36700, 41200, 48213];   /* mock/overview.json callsTrend7d */
+  var DOMAINS = [                                                     /* mock/freshness.json domains 精简同构 */
+    { name: '基本信息域', rows: 12847202, status: 'ok', lastSyncAt: '2026-09-21T06:30:00+08:00' },
+    { name: '行为域', rows: 38204515, status: 'ok', lastSyncAt: '2026-09-21T06:30:00+08:00' },
+    { name: '合作方域', rows: 5366270, status: 'warn', lastSyncAt: '2026-09-20T23:40:00+08:00' }];
+
+  function cssVarHex(name) {           /* 解析 CSS 令牌实值（防 ECharts 主题与令牌漂移） */
+    var el = document.createElement('div');
+    el.style.color = 'var(' + name + ')';
+    document.body.appendChild(el);
+    var m = getComputedStyle(el).color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    document.body.removeChild(el);
+    if (!m) return '';
+    return '#' + [1, 2, 3].map(function (i) { return ('0' + parseInt(m[i], 10).toString(16)).slice(-2); }).join('');
+  }
+
+  /* 主题真实生效断言：注册名 init → getOption().color 必须等于色板（无主题时默认 #5470c6） */
+  function themeAppliedColor() {
+    var holder = document.createElement('div');
+    holder.style.cssText = 'position:absolute;left:-9999px;width:320px;height:200px;';
+    document.body.appendChild(holder);
+    var ch = echarts.init(holder, OC.THEME_NAME);
+    ch.setOption({ xAxis: { type: 'category', data: ['a', 'b'] }, yAxis: { type: 'value' },
+                   series: [{ type: 'bar', data: [1, 2] }] });
+    var col = ch.getOption().color;
+    ch.dispose();
+    document.body.removeChild(holder);
+    return JSON.stringify(col);
+  }
+
+  var trendOpt = OC.buildTrendOption(TREND, '2026-09-21T06:30:00+08:00');
+  var freshOpt = OC.buildFreshnessOption(DOMAINS, Date.parse('2026-09-21T07:30:00+08:00'));
+
+  /* ── 核心断言（无网络依赖，file:// 直开也计分） ── */
+  var CASES = [
+    ['格式化口径', '今日调用 48213 → 4.8万（KPI 口径=runtimeStatus.todayCalls）', function () { return F.formatCompact(48213); }, '4.8万'],
+    ['格式化口径', '成功率 0.996 → 99.6%（KPI 口径=todaySuccessRate）', function () { return F.formatPercent(0.996); }, '99.6%'],
+    ['格式化口径', 'TPS 1089.9 → 1,090（KPI 展示=tpsDisplay 同式）', function () { return F.formatThousands(Math.round(OC.LOADTEST.tps)); }, '1,090'],
+    ['格式化口径', '新鲜度 rows 12847202 → 1284.7万（条形标签口径）', function () { return F.formatCompact(12847202); }, '1284.7万'],
+    ['ECharts 接入', 'vendor common 版加载且主版本 5', function () { return (echarts && echarts.version || '').split('.')[0]; }, '5'],
+    ['深色主题', "registerTheme 名='oneserve-dark'（自定义，禁内置 dark）", function () { return OC.THEME_NAME; }, 'oneserve-dark'],
+    ['深色主题', '分类色 7 色与 v1.1 色板逐位一致', function () { return JSON.stringify(OC.THEME.color); }, JSON.stringify(PALETTE)],
+    ['深色主题', '主题与 CSS 令牌零漂移（--bg-inset/--border-light 实值比对）', function () {
+      return cssVarHex('--bg-inset') + '|' + cssVarHex('--border-light'); },
+      OC.THEME.tooltip.backgroundColor + '|' + OC.THEME.valueAxis.splitLine.lineStyle.color],
+    ['深色主题', "init('oneserve-dark') 实例色板=自定义（非默认 #5470c6）", function () { return themeAppliedColor(); }, JSON.stringify(PALETTE)],
+    ['深色主题', 'animation:false＋底色 transparent（静态渲染，底色归 CSS）', function () {
+      return String(OC.THEME.animation) + '/' + OC.THEME.backgroundColor; }, 'false/transparent'],
+    ['图表选型', '调用趋势=面积折线（line＋areaStyle），7 标签锚 generatedAt', function () {
+      return trendOpt.series[0].type + '+' + (trendOpt.series[0].areaStyle ? 'area' : 'no') + '/' + trendOpt.xAxis.data.length + '/' + trendOpt.xAxis.data[6]; },
+      'line+area/7/09-21'],
+    ['图表选型', '趋势数据 7 点原样透传（不加工不新造）', function () { return JSON.stringify(trendOpt.series[0].data); }, JSON.stringify(TREND)],
+    ['图表选型', '同步链路=横向条形（bar＋yAxis category），域序反转', function () {
+      return freshOpt.series[0].type + '/' + freshOpt.yAxis.type + '/' + freshOpt.yAxis.data[0]; }, 'bar/category/合作方域'],
+    ['图表选型', '条色=同步状态语义色（反转后首位=warn 域 #e2a03f，次位=ok 域 #3fb965）', function () {
+      return freshOpt.series[0].data[0].itemStyle.color + '/' + freshOpt.series[0].data[1].itemStyle.color; }, '#e2a03f/#3fb965'],
+    ['实测口径', 'TPS=1089.9（100 并发档 rps_avg）/P50=45/P99=60（50 并发档）', function () {
+      return OC.LOADTEST.tps + '/' + OC.LOADTEST.latencyP50 + '/' + OC.LOADTEST.latencyP99; }, '1089.9/45/60'],
+    ['防花哨', 'DATA_POLLING=true（60s 静默轮询·visibilitychange 暂停；周期定时器=数据轮询＋顶栏时钟）', function () { return String(OC.DATA_POLLING) + '/' + String(OC.CLOCK_ONLY_INTERVAL); }, 'true/false'],
+    /* P1-6 状态带接真：写死的 ok 常量必须不存在（评估 F5/B4「永远亮绿」缺陷根因） */
+    ['状态带接真', '无写死组件常量（OC.COMPONENTS 已退役，改为后端 components[] 驱动）', function () { return typeof OC.COMPONENTS; }, 'undefined'],
+    ['状态带接真', '组件顺序与后端 id 对齐（4 卡：网关/服务/Redis/审计）', function () { return OC.COMPONENT_ORDER.join(','); },
+      'ops-comp-gateway,ops-comp-service,ops-comp-redis,ops-comp-audit'],
+    ['状态带接真', '容量梯子实测降为副注且标「非实时」', function () { return OC.COMPONENT_ARCHIVE['ops-comp-gateway'].perf.indexOf('100 并发档') !== -1 ? 'archive' : 'missing'; }, 'archive']
+  ];
+
+  var pass = 0, counted = 0, skipped = 0, failed = 0, html = '', group = '';
+  // #36 XSS 全扫（2026-10-15）：actual＝断言返回值（异常 message/服务端回显均可能），
+  // 插值进 innerHTML 即注入面——escapeHtml 基线同款。
+  var _esc = function (s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  };
+  function row(g, name, actual, expect, state) {
+    if (g !== group) { group = g; html += '<div class="group">' + _esc(group) + '</div>'; }
+    var cls = state === 'PASS' ? 'pass' : (state === 'SKIP' ? 'skip' : 'fail');
+    html += '<tr><td>' + _esc(name) + '</td><td class="mono">' + _esc(actual) + '</td><td class="mono">' + _esc(expect) +
+            '</td><td class="' + cls + '">' + state + '</td></tr>';
+    if (state === 'PASS') { pass++; counted++; }
+    else if (state === 'SKIP') { skipped++; }
+    else { failed++; counted++; }
+  }
+  CASES.forEach(function (c) {
+    var actual, state = 'PASS';
+    try { actual = String(c[2]()); if (actual !== c[3]) state = 'FAIL'; }
+    catch (e) { actual = 'EXCEPTION: ' + e.message; state = 'FAIL'; }
+    row(c[0], c[1], actual, c[3], state);
+  });
+
+  function summary() {
+    var all = failed === 0;
+    document.getElementById('summary').innerHTML =
+      '<span class="' + (all ? 'pass' : 'fail') + '">' + pass + ' / ' + counted +
+      (all ? ' 全过 ✓' : ' 存在失败 ✗') + '</span>' +
+      (skipped ? '　<span class="skip">SKIP ' + skipped + '（file:// 直开无 fetch/crypto，经 http 服务时全跑）</span>' : '') +
+      '　依赖：assets/vendor/echarts.common.min.js＋assets/ops.js＋data-format.js（哈希见 assets/vendor/SHA256SUMS）';
+    document.title = all ? 'P-3 自测：全过' : 'P-3 自测：失败';
+  }
+
+  /* ── 构建产物扫描（http 服务时执行；file:// 直开自动 SKIP 不计分） ── */
+  function textOf(r) { return r.text(); }
+  function sha256hex(buf) {
+    return crypto.subtle.digest('SHA-256', buf).then(function (d) {
+      return Array.prototype.map.call(new Uint8Array(d), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    });
+  }
+  fetch('ops.html', { cache: 'no-store' }).then(textOf).catch(function () { return null; })
+    .then(function (opsHtml) {
+      var chain = Promise.resolve();
+      if (opsHtml === null) {
+        row('产物扫描', 'ops.html 区块/外链/防花哨/主题注册/哈希/数据锚（http 服务下执行）', 'fetch 不可用', 'file:// 需 http 服务', 'SKIP');
+        return;
+      }
+      var idsOk = REQUIRED_IDS.every(function (id) { return opsHtml.indexOf('id="' + id + '"') !== -1; });
+      row('产物扫描', 'ops.html 含全部 11 个关键区块 id（build 注册表）', idsOk ? '11/11 齐' : '缺失', '11/11 齐', idsOk ? 'PASS' : 'FAIL');
+
+      var noExt = !/https?:\/\/(?:cdn|unpkg|jsdelivr|google)/i.test(opsHtml);
+      row('产物扫描', 'ops.html 无外网引用（内网白屏红线）', noExt ? '0 处' : '有', '0 处', noExt ? 'PASS' : 'FAIL');
+
+      var noFancy = !/count-?up|requestAnimationFrame|infinite/i.test(opsHtml);
+      row('产物扫描', 'ops.html 无 count-up/requestAnimationFrame/infinite（防花哨）', noFancy ? '0 处' : '有', '0 处', noFancy ? 'PASS' : 'FAIL');
+
+      return fetch('assets/ops.js', { cache: 'no-store' }).then(textOf).then(function (opsJs) {
+        var okTheme = opsJs.indexOf('registerTheme(THEME_NAME') !== -1 && opsJs.indexOf('animation: false') !== -1;
+        row('产物扫描', 'ops.js 含 registerTheme(THEME_NAME 与 animation: false（grep 断言）', okTheme ? '均在' : '缺', '均在', okTheme ? 'PASS' : 'FAIL');
+
+        return fetch('mock/runtimeStatus.json', { cache: 'no-store' }).then(textOf)
+          .then(function (rt) { return [rt, fetch('mock/freshness.json', { cache: 'no-store' }).then(textOf)]; });
+      }).then(function (arr) {
+        return Promise.all(arr).then(function (m) {
+          var rt = JSON.parse(m[0]), fr = JSON.parse(m[1]);
+          var ok = rt.todayCalls === 48213 && rt.todaySuccessRate === 0.996 && fr.domains.length === 6;
+          row('产物扫描', 'mock 锚：todayCalls=48213／todaySuccessRate=0.996／freshness 6 域（KPI 同源）',
+            rt.todayCalls + '/' + rt.todaySuccessRate + '/' + fr.domains.length, '48213/0.996/6', ok ? 'PASS' : 'FAIL');
+        });
+      }).then(function () {
+        if (!window.crypto || !crypto.subtle) {
+          row('产物扫描', 'echarts.common.min.js sha256=SHA256SUMS 记录值', 'crypto.subtle 不可用（非安全上下文）', '需 https/localhost', 'SKIP');
+          return;
+        }
+        return fetch('assets/vendor/SHA256SUMS', { cache: 'no-store' }).then(textOf).then(function (manifest) {
+          var m = manifest.match(/^([0-9a-f]{64})\s+echarts\.common\.min\.js$/m);
+          return fetch('assets/vendor/echarts.common.min.js', { cache: 'no-store' })
+            .then(function (r) { return r.arrayBuffer(); })
+            .then(sha256hex)
+            .then(function (hex) {
+              var ok = !!m && m[1] === hex;
+              row('产物扫描', 'echarts.common.min.js sha256=SHA256SUMS 记录值', hex.slice(0, 16) + '…', m ? m[1].slice(0, 16) + '…' : '清单缺行', ok ? 'PASS' : 'FAIL');
+            });
+        });
+      });
+    })
+    .catch(function (e) {
+      row('产物扫描', '扫描组异常', String(e && e.message), '—', 'FAIL');
+    })
+    .then(function () {
+      document.getElementById('results').innerHTML =
+        '<table><tr><th>断言</th><th>实际</th><th>期望</th><th>结果</th></tr>' + html + '</table>';
+      summary();
+    });
+})();
+</script>
+</body>
+</html>

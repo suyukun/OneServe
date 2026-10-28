@@ -1,0 +1,274 @@
+{
+  "checkedAt": "2026-09-23T02:24:57+00:00",
+  "dualSource": {
+    "status": "ok",
+    "message": "HBase meta 与字段字典 CSV 一致（fixture 双源拼装）"
+  },
+  "domains": [
+    {
+      "id": "营销域",
+      "name": "营销域",
+      "desc": "真 HBase meta×字段字典 CSV",
+      "tables": [
+        {
+          "namespace": "default",
+          "table": "oneserve_demo",
+          "keyTypes": [
+            "usr_id",
+            "phone_sm3"
+          ],
+          "keySamples": {
+            "phone_sm3": "ee5e7b1cbf65495467be9ff49ac5fc14b6887547c1cd7f8856221b23f1efa062"
+          },
+          "families": [
+            {
+              "name": "cf",
+              "columns": [
+                {
+                  "name": "ac_active_sts_01",
+                  "cnName": "行为活跃度字段001",
+                  "type": "character varying(128)",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_02",
+                  "cnName": "行为活跃度字段002",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_03",
+                  "cnName": "行为活跃度字段003",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_04",
+                  "cnName": "行为活跃度字段004",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_05",
+                  "cnName": "行为活跃度字段005",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_06",
+                  "cnName": "行为活跃度字段006",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_07",
+                  "cnName": "行为活跃度字段007",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_13",
+                  "cnName": "行为活跃度字段008",
+                  "type": "smallint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_17",
+                  "cnName": "行为活跃度字段009",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_26",
+                  "cnName": "行为活跃度字段010",
+                  "type": "smallint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_27",
+                  "cnName": "行为活跃度字段011",
+                  "type": "character varying(128)",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_active_sts_28",
+                  "cnName": "行为活跃度字段012",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_bussi_sts_01",
+                  "cnName": "业务行为字段001",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_bussi_sts_03",
+                  "cnName": "业务行为字段002",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_bussi_sts_10",
+                  "cnName": "业务行为字段003",
+                  "type": "tinyint",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_01",
+                  "cnName": "点击行为字段001",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_02",
+                  "cnName": "点击行为字段002",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_03",
+                  "cnName": "点击行为字段003",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_04",
+                  "cnName": "点击行为字段004",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_05",
+                  "cnName": "点击行为字段005",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_11",
+                  "cnName": "点击行为字段006",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_12",
+                  "cnName": "点击行为字段007",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_13",
+                  "cnName": "点击行为字段008",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_14",
+                  "cnName": "点击行为字段009",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_15",
+                  "cnName": "点击行为字段010",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_154",
+                  "cnName": "点击行为字段011",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_156",
+                  "cnName": "点击行为字段012",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_162",
+                  "cnName": "点击行为字段013",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_163",
+                  "cnName": "点击行为字段014",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_165",
+                  "cnName": "点击行为字段015",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_171",
+                  "cnName": "点击行为字段016",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_172",
+                  "cnName": "点击行为字段017",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_174",
+                  "cnName": "点击行为字段018",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_180",
+                  "cnName": "点击行为字段019",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_181",
+                  "cnName": "点击行为字段020",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_183",
+                  "cnName": "点击行为字段021",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_189",
+                  "cnName": "点击行为字段022",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_190",
+                  "cnName": "点击行为字段023",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_192",
+                  "cnName": "点击行为字段024",
+                  "type": "integer",
+                  "sensitive": "内部"
+                },
+                {
+                  "name": "ac_click_sts_198",
+                  "cnName": "点击行为字段025",
+                  "type": "integer",
+                  "sensitive": "内部"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

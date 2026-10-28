@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>租户管理 selftest（运行中…）</title>
+<!-- OneServe 运营版 管理功能群一期 · 租户管理 selftest（设计稿 §1.10-8；沿 selftest 断言页惯例不经导航暴露）：
+     断言 tenants.js 纯函数（window.T8）＋ tenants.html 关键区块 id／交互不变式——
+     yaml 态新建按钮可用＋冻结/解冻两按钮置灰＋降级文案命中（§1.8）；
+     新建表单校验（ID 格式/沙箱免单号置灰/正式缺单号禁提交）；未登记行无操作按钮；
+     冻结两段确认开关；零外网引用。
+     打开方式：http.server（推荐，mock 可达）或 file:// 直开（无外网断言自动跳过）。 -->
+<link rel="stylesheet" href="../portal/assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: #171B21; color: #E6E9EE; padding: 24px; font-size: 13px; }
+  h1 { font-size: 16px; margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 920px; }
+  th, td { border: 1px solid #2C333D; padding: 8px; text-align: left; font-size: 12px; }
+  th { color: #98A2AE; font-weight: 500; }
+  .pass { color: #3FBE95; font-weight: 600; }
+  .fail { color: #E05252; font-weight: 600; }
+  .skip { color: #D89A3C; font-weight: 600; }
+  #summary { margin: 16px 0; font-size: 14px; }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: var(--font-mono, monospace); }
+</style>
+</head>
+<body>
+<h1>OneServe 运营版 · 租户管理 断言页</h1>
+<div id="summary">运行中…</div>
+<div id="results"></div>
+
+<!-- DOM 探针：以 tenants.html 同套 id 挂载 Alpine 组件（隐藏），注入态后断言交互不变式 -->
+<div id="dom-probe" style="display:none" x-data="tenantsAdmin()" x-init="boot()">
+  <div id="yaml-banner" x-show="mode === 'yaml'" x-text="T8.YAML_LIFECYCLE_COPY"></div>
+  <span id="probe-banner-show" x-text="mode === 'yaml' ? 'show' : 'hide'"></span>
+  <button id="create-btn" type="button" @click="openCreate()" :disabled="!canWrite()">新建租户</button>
+  <span id="probe-create-disabled" x-text="document.getElementById('create-btn').disabled ? 'yes' : 'no'"></span>
+  <div class="toolbar" id="tenant-toolbar">
+    <input id="tenant-search" type="text" x-model="search">
+    <select id="tenant-type-filter" x-model="typeFilter">
+      <option value="">全部类型</option><option value="internal">内部</option>
+      <option value="external">外部</option><option value="sandbox">沙箱</option>
+    </select>
+    <select id="tenant-status-filter" x-model="statusFilter">
+      <option value="">全部状态</option><option value="active">在册</option>
+      <option value="frozen">已冻结</option>
+    </select>
+    <span id="list-source" x-text="mode === 'db' ? '数据源：元数据库快照' : '数据源：yaml 矩阵投影'"></span>
+  </div>
+  <table id="tenant-table"><tbody id="probe-tenants-tbody">
+    <template x-for="t in tenants" :key="t.tenant">
+      <tr :data-testid="'tenant-row-' + t.tenant">
+        <td class="mono" x-text="t.tenant"></td>
+        <td x-text="t.displayName"></td>
+        <td><span :class="T8.typeBadgeClass(t.tenantType)" x-text="T8.typeLabel(t.tenantType)"></span>
+            <span class="badge" x-show="!t.registered" id="probe-badge-unregistered">未登记</span></td>
+        <td><span :class="T8.statusBadgeClass(t.status)" x-text="T8.statusLabel(t.status)"></span></td>
+        <td class="num" x-text="t.activeKeys"></td>
+        <td class="num" x-text="t.grantsCount"></td>
+        <td class="mono" x-text="t.oaTicket || '—'"></td>
+        <td class="muted" x-text="t.createdAt || '—'"></td>
+        <td>
+          <a id="view-grants-btn" type="button" :href="'grants.html?tenant=' + encodeURIComponent(t.tenant)">查看授权</a>
+          <template x-if="t.registered">
+            <button type="button" data-action="freeze" :disabled="!canWrite() || mode !== 'db' || t.status !== 'active'"
+                    @click="askFreeze(t)">冻结</button>
+          </template>
+          <template x-if="t.registered">
+            <button type="button" class="btn-safe" data-action="unfreeze" :disabled="!canWrite() || mode !== 'db' || t.status !== 'frozen'"
+                    @click="askUnfreeze(t)">解冻</button>
+          </template>
+          <template x-if="!t.registered">
+            <span class="badge badge-warn" :title="T8.UNREGISTERED_COPY">ⓘ 详情</span>
+          </template>
+          <span id="probe-unregistered-note" x-show="!t.registered" x-cloak
+                x-text="!t.registered ? T8.UNREGISTERED_COPY : ''"></span>
+        </td>
+      </tr>
+    </template>
+  </tbody></table>
+  <div class="metrics" id="metrics">
+    <div class="metric" id="metric-total"><div class="k">租户总数</div>
+      <div class="v num" x-text="summary ? summary.tenants : '—'"></div></div>
+    <div class="metric" id="metric-active"><div class="k">在册（active）</div>
+      <div class="v num" x-text="summary ? summary.active : '—'"></div></div>
+    <div class="metric" id="metric-frozen"><div class="k">已冻结（frozen）</div>
+      <div class="v num" x-text="summary ? summary.frozen : '—'"></div></div>
+  </div>
+  <div id="create-modal" x-show="create.open">
+    <input id="create-tenant-id" type="text" x-model="create.tenantId">
+    <input id="create-display-name" type="text" x-model="create.displayName">
+    <input type="radio" id="create-type-internal" name="create-type" value="internal" x-model="create.tenantType">
+    <input type="radio" id="create-type-external" name="create-type" value="external" x-model="create.tenantType">
+    <input type="radio" id="create-type-sandbox" name="create-type" value="sandbox" x-model="create.tenantType">
+    <p id="create-type-note" x-text="typeNote(create.tenantType)"></p>
+    <input id="create-oa-ticket" type="text" x-model="create.oaTicket" :disabled="create.tenantType === 'sandbox'">
+    <span id="probe-ticket-disabled" x-text="create.tenantType === 'sandbox' ? 'yes' : 'no'"></span>
+    <input id="create-remark" type="text" x-model="create.remark">
+    <button id="create-submit" type="button" @click="submitCreate()" :disabled="createSubmitDisabled()">登记</button>
+    <span id="probe-submit-disabled" x-text="createSubmitDisabled() ? 'yes' : 'no'"></span>
+    <p id="create-type-note2" x-text="T8.TYPE_NOTES.sandbox || ''"></p>
+  </div>
+  <div class="pager" id="pager" x-show="total > 0">
+    <button class="btn btn-sm" type="button" id="pager-prev" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+    <span>第 <span class="num" x-text="page"></span> 页 · 共 <span class="num" x-text="total"></span> 条</span>
+    <button class="btn btn-sm" type="button" id="pager-next" :disabled="page * pageSize >= total" @click="goPage(page + 1)">下一页</button>
+  </div>
+  <details class="caliber" id="caliber-note"><summary>口径与降级说明</summary><p id="caliber-yaml" x-text="T8.YAML_LIFECYCLE_COPY"></p></details>
+  <div id="freeze-modal" x-show="freeze.open">
+    <div id="freeze-plan" x-text="T8.impactsText(freeze.plan)"></div>
+    <input type="checkbox" id="freeze-switch" x-model="freeze.armed">
+    <button id="freeze-step-btn" type="button" @click="freezeStep()" x-text="freeze.stage === 1 ? '继续（进入二次确认）' : '确认冻结'"></button>
+    <span id="probe-freeze-stage" x-text="freeze.stage"></span>
+    <span id="probe-freeze-armed" x-text="freeze.armed ? 'yes' : 'no'"></span>
+  </div>
+  <div id="unfreeze-modal" x-show="unfreeze.open">
+    <input id="unfreeze-ticket" type="text" x-model="unfreeze.ticket">
+    <button id="unfreeze-submit" type="button" @click="submitUnfreeze()" :disabled="!unfreeze.ticket">确认解冻</button>
+    <span id="probe-unfreeze-disabled" x-text="unfreeze.ticket ? 'no' : 'yes'"></span>
+  </div>
+  <span id="probe-mode" x-text="mode"></span>
+  <span id="probe-count" x-text="tenants.length"></span>
+  <span id="probe-canwrite" x-text="canWrite() ? 'w' : 'r'"></span>
+</div>
+
+<!-- W2 进墙标注：本页属登录墙内页面——off 态跑测或预注入 token（localStorage oneserve-oidc-token） -->
+<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载 -->
+<script src="admin-gate.js"></script><!-- 登录闸共享模块（tenants.js 组件依赖它） -->
+<script src="tenants.js"></script><!-- 先业务脚本后 Alpine（本仓 alpine 构建微任务即启动） -->
+<script src="../portal/assets/alpine.min.js"></script>
+<script src="selftest-tenants.js"></script>
+</body>
+</html>

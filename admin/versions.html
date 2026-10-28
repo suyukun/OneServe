@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>版本管理 · OneServe</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * 版本管理页（P3 2026-10-08：Redis 版本空间管理，系统管理员定期清理用）
+ *   · 列表：全部版本空间（表/版本/键数/状态/操作）——SCAN tags:* 按数据面聚合，
+ *     每行标 isLive（线上·保护）/registered（孤儿徽标）/verMeta/schemaMeta 在场性
+ *   · 删除：两段式确认（沿已发布页下线先例：点删除 → 确认条显示将删键数 →
+ *     二次点确认执行）；线上版行删除按钮禁用＋tooltip（后端另有 409 保护闸兜底）
+ *   · 保护闸只锁线上版（latest 指针指向的那一版）；物理上一版允许删除＝
+ *     接受失去该版回滚窗口（维护者 拍板：空间优先）。不做 TTL 自动化。
+ * 三批（2026-10-08 修五·维护者 反馈「孤立」）：接入门户壳——注册进
+ * scripts/build_portal.py 的 ADMIN_PAGES＋NAV_KEYS（sidebar/topbar 完整风格，
+ * 侧栏「版本管理」行构建期注入 active）。页内逻辑（versions.js）保持不变，
+ * 仅外壳统一。本文件是唯一真源：构建期抽取正文/样式/脚本拼进门户壳。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  [x-cloak] { display: none !important; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-body);
+         font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.6; }
+  .page { max-width: 860px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+  .page-head h1 { font-size: var(--fs-heading); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .page-head .hint { color: var(--text-body); margin: 0; }
+  .muted { color: var(--text-muted); }
+  .mono { font-family: var(--font-mono); }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius);
+          padding: var(--space-5); margin-bottom: var(--space-5); }
+  .card-title { font-size: var(--fs-title); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .card-sub { color: var(--text-body); font-size: var(--fs-caption); margin: 0 0 var(--space-4); }
+
+  .btn { border: 1px solid var(--border-strong); background: var(--bg-subtle); color: var(--text-strong);
+         border-radius: var(--radius); height: 36px; padding: 4px 16px; font-size: var(--fs-body);
+         font-family: inherit; cursor: pointer;
+         transition: border-color var(--motion-duration) var(--motion-ease); }
+  .btn:hover:not(:disabled) { border-color: var(--brand-primary); }
+  .btn:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+  .btn:disabled { opacity: .38; cursor: not-allowed; }
+  .btn-danger { background: transparent; border-color: var(--status-error); color: var(--status-error); }
+  .btn-danger:hover:not(:disabled) { border-color: var(--status-error);
+               background: color-mix(in srgb, var(--status-error) 10%, transparent); }
+  .btn-sm { height: 28px; padding: 4px 12px; font-size: var(--fs-caption); }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-full);
+           padding: 2px 8px; font-size: var(--fs-caption); flex: none; }
+  .badge .dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; flex: none; }
+  .badge-ok { color: var(--status-ok); background: color-mix(in srgb, var(--status-ok) 12%, transparent); }
+  .badge-muted { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 12%, transparent); }
+  .badge-warn { color: var(--status-warn, #b7791f); background: color-mix(in srgb, var(--status-warn, #b7791f) 14%, transparent); }
+
+  .result { display: flex; gap: 8px; align-items: flex-start; border-radius: var(--radius);
+            padding: 12px 16px; font-size: var(--fs-body); color: var(--text-strong); }
+  .result-bad { border: 1px solid var(--status-error);
+                background: color-mix(in srgb, var(--status-error) 8%, transparent); }
+  .result-ok { border: 1px solid var(--status-ok);
+               background: color-mix(in srgb, var(--status-ok) 8%, transparent); }
+  .result .mark { font-weight: 600; flex: none; }
+  .err-text { font-size: var(--fs-caption); color: var(--status-error); margin: 4px 0 0; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: var(--fs-caption); color: var(--text-body); font-weight: 600; text-align: left;
+       padding: 8px 0; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  /* 2026-10-15 修：数据 td 用 break-word 防逐字断（中文 keep-all 语义） */
+  td { font-size: var(--fs-body); padding: 12px 12px 12px 0; border-bottom: 1px solid var(--border-light);
+       vertical-align: top; overflow-wrap: break-word; word-break: normal; }
+  td.mono, span.mono { white-space: nowrap; }
+  tbody tr:hover td { background: var(--bg-subtle); }
+  .empty-tip { text-align: center; color: var(--text-muted); padding: var(--space-6) 0; }
+  /* B9 空态修正（2026-10-14，同 perf 页既定模式）：空态行改 template x-if 原子增删
+     （旧 x-show 无 x-cloak——Alpine 未起时「还没有任何版本空间」闪现）；截图器冻结
+     Alpine effect 时由 :has() 兜底——有数据行→空态必不显示。 */
+  #versions-empty { display: none; }
+  #versions-tbody:not(:has(tr[data-testid^="space-row-"])) #versions-empty { display: table-row; }
+
+  .keys-cell .meta-line { font-size: var(--fs-caption); color: var(--text-muted); margin-top: 2px; }
+  .confirm-strip { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                   border: 1px solid var(--status-error); border-radius: var(--radius);
+                   padding: 4px 10px; background: color-mix(in srgb, var(--status-error) 6%, transparent);
+                   font-size: var(--fs-caption); }
+  .confirm-strip .n { color: var(--status-error); font-weight: 600; }
+
+  @media (max-width: 720px) {
+    .page { padding: var(--space-4) var(--space-4); }
+    /* 接壳后顶栏＝门户 .os-topbar（修五）：窄屏允许换行，防 390px 横向溢出（P0-12） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body x-data="versionsConsole()" x-init="boot()">
+
+<main class="page">
+  <header class="page-head" id="page-head">
+    <h1 id="page-title">版本管理</h1>
+    <p class="hint" id="page-hint">Redis 版本空间一览＋定期清理（系统管理员用）：只进不出的版本空间在这里按「表:版本」物理删除；线上版受保护不可删。</p>
+    <p style="margin: 8px 0 0;"><a class="btn btn-sm" id="go-load-link" href="load.html">← 去装载新版本</a></p>
+  </header>
+
+  <section class="card" id="versions-section" aria-label="版本空间列表">
+    <h2 class="card-title">版本空间 <span class="muted" id="space-count" style="font-size: var(--fs-caption);"
+          x-text="spaces.length ? '（' + spaces.length + ' 个空间 · ' + totalKeys.toLocaleString() + ' 键）' : '（0）'"></span></h2>
+    <p class="card-sub">聚合自数据面（SCAN tags:*）：状态＝线上·保护（latest 指针指向，删除禁用）／可删／孤儿（无服务登记）。删除两段式确认，不可恢复。</p>
+
+    <div class="result result-bad" id="versions-error" x-show="error" x-cloak role="alert" style="margin-bottom: var(--space-4);">
+      <span class="mark" aria-hidden="true">!</span>
+      <span>
+        <strong x-text="error && error.title"></strong><br>
+        <span x-text="error && error.message"></span>
+        <button class="btn btn-sm" id="versions-retry-btn" type="button" style="margin-left: 8px;"
+                @click="load()" :disabled="busy"
+                x-text="busy ? '正在读取…' : '重试'"></button>
+      </span>
+    </div>
+    <p class="muted" id="versions-loading" x-show="busy && !error" x-cloak>正在扫描版本空间（键多时需数秒）…</p>
+
+    <div class="result result-ok" id="versions-done" x-show="doneNote" x-cloak role="status" style="margin-bottom: var(--space-4);">
+      <span class="mark" aria-hidden="true">✓</span>
+      <span x-text="doneNote"></span>
+    </div>
+
+    <table id="versions-table">
+      <thead><tr>
+        <th id="col-ns">表（namespace）</th>
+        <th id="col-ver">版本</th>
+        <th id="col-keys">键数</th>
+        <th id="col-status">状态</th>
+        <th id="col-actions">操作</th>
+      </tr></thead>
+      <tbody id="versions-tbody">
+        <template x-for="(s, i) in spaces" :key="s.namespace + ':' + s.version">
+          <tr :data-testid="'space-row-' + i">
+            <td>
+              <span class="mono" x-text="s.namespace"></span>
+              <span class="badge badge-warn" :data-testid="'orphan-badge-' + i"
+                    x-show="!s.registered" x-cloak
+                    title="console_services 无服务登记此表（数据在、无服务引用）">孤儿</span>
+            </td>
+            <td class="mono" x-text="s.version"></td>
+            <td class="keys-cell">
+              <div x-text="s.keys.toLocaleString()"></div>
+              <div class="meta-line" x-text="metaLine(s)"></div>
+            </td>
+            <td>
+              <span class="badge" :class="s.isLive ? 'badge-ok' : (s.registered ? 'badge-muted' : 'badge-warn')"
+                    :data-testid="'space-status-' + i">
+                <span class="dot" x-show="s.isLive"></span>
+                <span x-text="statusOf(s)"></span>
+              </span>
+            </td>
+            <td>
+              <!-- 两段式确认第一段：点删除 → 确认条显示将删键数 -->
+              <template x-if="confirming !== i">
+                <button class="btn btn-sm btn-danger" type="button" :id="'delete-btn-' + i"
+                        data-action="delete-space" @click="askDelete(i)"
+                        :disabled="s.isLive || deleting"
+                        :title="s.isLive ? '线上版不可删除；如需淘汰请先装载新版本并切换上线' : '删除整个版本空间（不可恢复）'"
+                        x-text="s.isLive ? '删除（线上保护）' : '删除'"></button>
+              </template>
+              <!-- 第二段：确认条内二次点「确认删除」才执行 -->
+              <template x-if="confirming === i">
+                <span class="confirm-strip" :data-testid="'confirm-strip-' + i">
+                  <span>将删除 <span class="n" x-text="s.keys.toLocaleString()"></span> 键（<span class="mono" x-text="s.namespace + ':' + s.version"></span>，不可恢复）</span>
+                  <button class="btn btn-sm btn-danger" type="button" :id="'confirm-btn-' + i"
+                          data-action="confirm-delete" :disabled="deleting"
+                          @click="confirmDelete()"
+                          x-text="deleting ? '删除中…' : '确认删除'"></button>
+                  <button class="btn btn-sm" type="button" :id="'cancel-btn-' + i"
+                          :disabled="deleting" @click="cancelDelete()">取消</button>
+                </span>
+              </template>
+              <p class="err-text" x-show="deleteError && confirming === i" x-cloak x-text="deleteError"></p>
+            </td>
+          </tr>
+        </template>
+        <!-- B9 空态修正：template x-if 原子增删（空态与数据行不可能并存）；CSS :has() 兜底见页首 -->
+        <template x-if="!busy && !error && spaces.length === 0">
+          <tr id="versions-empty"><td colspan="5" class="empty-tip">
+            <div>还没有任何版本空间</div>
+            <div>去 <a id="go-load-empty" href="load.html">数据装载</a> 装载后，版本空间会列在这里</div>
+          </td></tr>
+        </template>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<script src="admin-gate.js"></script><!-- 管理页共享闸（加载序硬规矩：先业务 js 后 alpine） -->
+<script src="versions.js"></script><!-- 版本管理页组件（先定义后加载 Alpine，硬规矩） -->
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs@3.14.9 自托管副本 -->
+</body>
+</html>

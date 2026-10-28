@@ -1,0 +1,26 @@
+# 根 context 生产构建专用（Dockerfile.prod / portal/Dockerfile.prod）：
+# 只压 context 传输体积与构建可重复性；dev 构建的 context 各自目录内无本文件，行为不变。
+# COPY 白名单（service/ config/ loadtest/ configs/ portal/）
+# 之外的目录一律排除；.env 与密钥永不进构建上下文。
+# 例外（2026-10-21 前置卡）：/scripts 单放行 meta_migrate.py（Dockerfile.prod COPY 进
+# 镜像＝meta_writer db 模式容器内规划器依赖；其余 scripts/ 仍排除）。
+.git
+/.env*
+/node_modules
+/admin
+/backlog
+/dist
+/docs
+/tests
+/testkit
+/access
+/mock
+/scripts
+!/scripts/meta_migrate.py
+/sync
+/outputs
+/.dsh
+**/__pycache__
+**/.pytest_cache
+**/.DS_Store
+/loadtest/results

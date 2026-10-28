@@ -1,0 +1,5 @@
+# OneServe testkit 第三方依赖（仅此两个；勿装全局——rich 用：
+#   pip3 install --target testkit/lib rich
+# locust 已随平台压测环境安装（2.46.6），不重复安装。
+locust>=2.46
+rich>=13

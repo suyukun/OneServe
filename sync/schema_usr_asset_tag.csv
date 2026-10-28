@@ -1,0 +1,19 @@
+attnum,字段名,数据类型,cn_name,业务口径,敏感级
+1,aum_band,VARCHAR(16),AUM等级,管理资产规模分档：A≥100万 B30-100万 C10-30万 D1-10万 E<1万,内部
+2,dep_bal_band,VARCHAR(16),存款余额档,存款余额分档（口径同 AUM 五档）,内部
+3,wealth_hold_flag,TINYINT,理财持有,当前持有理财产品：0否 1是,内部
+4,fund_hold_flag,TINYINT,基金持有,当前持有基金产品：0否 1是,内部
+5,ins_hold_flag,TINYINT,保险持有,当前持有保单：0否 1是,内部
+6,loan_flag,TINYINT,贷款标志,存在未结清贷款：0否 1是,内部
+7,mortgage_flag,TINYINT,房贷标志,存在未结清个人住房贷款：0否 1是,内部
+8,credit_limit_band,VARCHAR(16),信用额度档,信用额度分档：A≥10万 B5-10万 C1-5万 D0.3-1万 E<0.3万,敏感
+9,overdue_cnt_band,VARCHAR(16),逾期次数档,近 24 月逾期次数分档：A0次 B1-2次 C3-5次 D6-9次 E≥10次,敏感
+10,active_m3_flag,TINYINT,近3月活跃,近 3 个月有主动交易/登录：0否 1是,内部
+11,dormant_m12_flag,TINYINT,12月沉睡,近 12 个月无任何主动行为：0否 1是,内部
+12,login_cnt_band,VARCHAR(16),月登录次数档,近 1 月登录次数分档：A≥30 B10-29 C3-9 D1-2 E0,内部
+13,pay_cnt_band,VARCHAR(16),月支付笔数档,近 1 月支付笔数分档：A≥50 B20-49 C5-19 D1-4 E0,内部
+14,salary_in_flag,TINYINT,工资代发,存在代发工资入账：0否 1是,内部
+15,cross_sell_cnt_band,VARCHAR(16),交叉销售数档,持有产品线数量分档：A≥5 B3-4 C2 D1 E0,内部
+16,churn_risk_band,VARCHAR(16),流失风险档,流失倾向模型分档：A极高 B高 C中 D低 E极低,内部
+17,ltv_band,VARCHAR(16),客户价值档,客户生命周期价值分档：A≥10万 B3-10万 C1-3万 D0.1-1万 E<0.1万,内部
+18,mk_response_band,VARCHAR(16),营销响应档,营销响应倾向分档：A高 B较高 C中 D低 E极低,内部

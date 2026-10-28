@@ -1,0 +1,27 @@
+[Unit]
+Description=Docker Application Container Engine
+Documentation=https://docs.docker.com
+After=network-online.target docker.socket firewalld.service containerd.service time-set.target
+Wants=network-online.target containerd.service
+Requires=docker.socket
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+[Service]
+Type=notify
+# 官方静态二进制装在 /usr/local/bin（docs.docker.com/engine/install/binaries 惯例）；
+# -H fd:// 配合 docker.socket 做 socket 激活，与官方 deb 单元同款写法。
+ExecStart=/usr/local/bin/dockerd -H fd://
+ExecReload=/bin/kill -s HUP $MAINPID
+TimeoutStartSec=0
+RestartSec=2
+Restart=always
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+Delegate=yes
+KillMode=process
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target

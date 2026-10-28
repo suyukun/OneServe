@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>O-2 selftest（运行中…）</title>
+<!-- OneServe 运营版 O-2 自测页：断言 upstreams.js 纯函数（window.O2）＋
+     upstreams.html 区块 id/向导三步切换/草稿开关/预览 YAML/测试一把/发布门禁/留痕 diff。
+     无外网引用；Alpine 复用 portal 自托管副本（../portal/assets/alpine.min.js）。
+     打开方式：http.server（推荐，fetch mock 可达）或 file:// 直开（部分断言自动降级/跳过）。 -->
+<link rel="stylesheet" href="../portal/assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: #171B21; color: #E6E9EE; padding: 24px; font-size: 13px; }
+  h1 { font-size: 16px; margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 920px; }
+  th, td { border: 1px solid #2C333D; padding: 8px; text-align: left; font-size: 12px; }
+  th { color: #98A2AE; font-weight: 500; }
+  .pass { color: #3FBE95; font-weight: 600; }
+  .fail { color: #E05252; font-weight: 600; }
+  .skip { color: #D89A3C; font-weight: 600; }
+  #summary { margin: 16px 0; font-size: 14px; }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: var(--font-mono, monospace); }
+</style>
+</head>
+<body>
+<h1>OneServe 运营版 O-2 · 上游/挡板代理配置 断言页</h1>
+<div id="summary">运行中…</div>
+<div id="results"></div>
+
+<!-- DOM 探针：以 upstreams.html 同套 id 挂载 Alpine 组件（隐藏），断言向导交互；
+     空表单起步→断「下一步拦截」，随后逐步填值驱动三步切换/测试/发布/草稿/留痕 diff。 -->
+<div id="dom-probe" style="display:none" x-data="upstreamAdmin()" x-init="boot()">
+  <nav class="steps" id="wizard-steps">
+    <span class="step-dot" id="step-ind-1" :class="step === 1 ? 'on' : ''"></span>
+    <span class="step-dot" id="step-ind-2" :class="step === 2 ? 'on' : ''"></span>
+    <span class="step-dot" id="step-ind-3" :class="step === 3 ? 'on' : ''"></span>
+  </nav>
+  <div id="wizard-step-1" data-step="1" x-show="step === 1">
+    <input id="service-name-input" type="text" x-model="form.serviceName">
+    <p class="err err-inline" id="service-name-error" x-text="stepTouched ? serviceNameError() : ''"
+       x-show="stepTouched && serviceNameError()" x-cloak></p>
+    <input id="route-path-input" type="text" x-model="form.routePath">
+    <p class="err err-inline" id="route-path-error" x-text="stepTouched ? routeError() : ''"
+       x-show="stepTouched && routeError()" x-cloak></p>
+    <div id="route-overwrite-warning" x-show="routeOverwriteEntry()" x-cloak
+         x-text="routeOverwriteEntry() ? '将覆盖已有条目 ' + routeOverwriteEntry().serviceName : ''"></div>
+    <input type="checkbox" id="draft-toggle" x-model="form.draftMode">
+  </div>
+  <div id="wizard-step-2" data-step="2" x-show="step === 2" x-cloak>
+    <input id="upstream-url-input" type="text" x-model="form.upstreamUrl">
+    <p class="err err-inline" id="upstream-url-error" x-text="stepTouched ? upstreamUrlError() : ''"
+       x-show="stepTouched && upstreamUrlError()" x-cloak></p>
+    <input id="timeout-sec-input" type="number" x-model.number="form.timeoutSec">
+    <input id="retry-count-input" type="number" x-model.number="form.retryCount">
+    <input id="upstream-name-input" type="text" x-model="form.upstreamName">
+    <p class="err err-inline" id="upstream-name-error" x-text="stepTouched ? upstreamNameError() : ''"
+       x-show="stepTouched && upstreamNameError()" x-cloak></p>
+  </div>
+  <div id="wizard-step-3" data-step="3" x-show="step === 3" x-cloak>
+    <div id="release-mode-row">
+      <template x-for="m in RELEASE_MODES" :key="m.value">
+        <label><input type="radio" name="release-mode" :value="m.value" x-model="releaseMode"> <span x-text="m.label"></span></label>
+      </template>
+      <span id="release-mode-note">发布后 ≤30 秒网关生效</span>
+    </div>
+    <pre id="preview-yaml" x-text="previewYaml()"></pre>
+    <button id="test-fire-btn" type="button" @click="runTestNow()" :disabled="testing"></button>
+    <div id="test-result-box" x-show="test" x-cloak>
+      <span id="test-verdict" x-text="testVerdictLabel()"></span>
+      <span id="test-via" x-text="testViaLabel()"></span>
+      <div id="test-conclusion" x-text="testVerdictText()"></div>
+      <div id="test-method-note" x-text="testMethodNote()"></div>
+      <!-- 2026-10-20 QC：状态码/耗时只在技术详情；「连不上？」仅真不可达态显示 -->
+      <div id="test-live-probe-hint" x-show="showUnreachableHint()" x-cloak>连不上？容器栈内请用服务名</div>
+      <details id="test-tech-details"><summary>技术详情</summary><pre id="test-tech-body" x-text="testTechnicalText()"></pre></details>
+    </div>
+  </div>
+  <div class="err" id="step-error" x-text="stepErr(step)"></div>
+  <button id="prev-step-btn" type="button" @click="prevStep()" :disabled="step === 1"></button>
+  <button id="next-step-btn" type="button" @click="nextStep()"></button>
+  <button id="save-draft-btn" type="button" :disabled="gateLocked()" @click="saveDraft()"></button>
+  <button id="publish-btn" type="button" :disabled="!canPublish() || gateLocked()" @click="publish()"></button>
+  <p class="err err-inline" id="save-error" x-text="saveError" x-show="saveError" x-cloak></p>
+  <!-- P0-6 闸探针：banner 文案与锁定态镜像（断言用） -->
+  <div id="gate-banner" x-show="gateLocked()" x-cloak><span id="gate-banner-text" x-text="gateBannerText()"></span></div>
+  <span id="probe-token-state" x-text="tokenState"></span>
+  <section id="proxy-list-section">
+    <table id="proxy-table"><tbody id="probe-tbody">
+      <template x-for="(p, i) in proxies" :key="p.id"><tr :data-testid="'proxy-row-' + i">
+        <td x-text="p.serviceName"></td><td x-text="p.status"></td>
+        <td class="mono" x-text="p.lastModifiedBy"></td><td x-text="fmtDT(p.lastModifiedAt)"></td>
+      </tr></template>
+    </tbody></table>
+  </section>
+  <div id="trace-bar"><span id="trace-text" x-text="lastTrace"></span>
+    <button id="trace-view-diff" type="button" @click="openDiff()"></button></div>
+  <div id="diff-modal">
+    <span id="diff-added" x-text="'+' + diffModal.added"></span><span id="diff-removed" x-text="'-' + diffModal.removed"></span>
+    <div id="diff-body"><template x-for="(l, i) in diffModal.lines" :key="i">
+      <div class="dl" :class="l.op === '+' ? 'dl-add' : (l.op === '-' ? 'dl-del' : 'dl-ctx')" x-text="l.text"></div>
+    </template></div>
+  </div>
+  <!-- 探针状态镜像（读组件状态用，避免依赖 Alpine 内部 API） -->
+  <span id="probe-step" x-text="step"></span>
+  <span id="probe-draft" x-text="form.draftMode ? 'draft' : 'pub'"></span>
+  <span id="probe-count" x-text="proxies.length"></span>
+  <span id="probe-last-status" x-text="(proxies[proxies.length - 1] || {}).status"></span>
+  <span id="probe-trace" x-text="lastTrace"></span>
+  <span id="probe-source" x-text="source"></span>
+</div>
+
+<script>/* P0-6 门禁自测种子：会话令牌预置（探针发布/存草稿/下线流程可写；锁定态断言在用例内另行置空） */try { sessionStorage.setItem('oneserve-admin-token', 'selftest-seed'); } catch (e) {}</script>
+<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
+     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
+<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<script src="admin-gate.js"></script><!-- P0-6 管理令牌闸共享模块（upstreams.js 组件依赖它） -->
+<script src="upstreams.js"></script><!-- 先业务脚本后 Alpine（本仓 alpine 构建微任务即启动，见 upstreams.html 同注） -->
+<script src="../portal/assets/alpine.min.js"></script>
+<script src="selftest-upstreams.js"></script>
+</body>
+</html>

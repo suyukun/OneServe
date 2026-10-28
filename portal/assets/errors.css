@@ -1,0 +1,25 @@
+/* ============================================================
+ * OneServe 门户 · A6 错误码中心页样式（assets/errors.css，P1-2 新增）
+ * 只引用既有令牌（tokens.css）；码表复用 fields.css 的 .fd-table 结构，
+ * 此处仅补信封示例块与说明列表两处本页特有样式。
+ * ============================================================ */
+.err-sample {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light, #f0f0f0);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-strong);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.err-envelope-list { margin: 0; padding-left: 1.2em; font-size: 13px; }
+.err-envelope-list li { margin: 3px 0; }
+.err-envelope-list code { font-family: var(--font-mono); color: var(--text-strong); }
+
+/* 深链锚点定位：目标行短暂高亮（docs_url#<code> 打开即能看见） */
+#errors-table tr:target { outline: 2px solid var(--status-error); outline-offset: -2px; }

@@ -1,0 +1,27 @@
+# OneServe 生产栈运行期兼容补丁（2026-10-23 收编自 ECS 手工版 /root/OneServe/compose.seccomp.yml）
+# 形态：第三份叠加文件——docker-compose -f docker-compose.yml -f compose.prod.yml \
+#   -f compose.runtime-fixes.yml -p oneserve-prod up -d（scripts/deploy.sh 已自动带上）。
+# 为什么存在（2026-10-23 生产 ECS 部署五病根之二/之四，docker 18.09 实证）：
+#   ① Kylin V10 + docker 18.09 默认 seccomp profile 误杀新 glibc 镜像的线程创建
+#      （现象 can't start new thread）——service/batch-worker/casdoor-init
+#      三容器需 seccomp=unconfined 才能起（与镜像内代码无关，纯引擎 profile 过旧）。
+#   ② apisix 镜像 /usr/local/apisix/conf 属主是 uid 1001，而镜像默认用户 636 无权读挂载
+#      进来的 config.prod.yaml——需 user: "1001:0"。
+# 解除条件（docker 升级后回收本文件）：
+#   - ECS docker 升到 ≥20.10（seccomp profile 随新版本更新，新 glibc 线程创建不再误杀）
+#     后：先在测试窗口去掉本文件起栈验证三容器＋apisix 正常，全绿再删本文件，并同步删
+#     scripts/deploy.sh 里 COMPOSE_FILES 的第三项（commit 注明「runtime-fixes 回收」）。
+services:
+  # ① seccomp 兼容：docker 18.09 profile 过旧误杀线程创建（详见头注①）
+  service:
+    security_opt:
+      - seccomp=unconfined
+  batch-worker:
+    security_opt:
+      - seccomp=unconfined
+  casdoor-init:
+    security_opt:
+      - seccomp=unconfined
+  # ② apisix conf 目录属主 uid 1001、镜像默认用户 636 无权读（详见头注②）
+  apisix:
+    user: "1001:0"

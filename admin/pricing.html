@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>价目管理 · OneServe 运营控制台</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * OneServe 运营控制台 · 价目管理（管理功能群一期 B 节；docs/design/管理功能群一期设计_v1.md §2 已拍板）
+ *
+ * 【走位】列表＋新建向导（两步＋预览两段式确认）＋停用两段式：
+ *   ① 主表：价目行＝ID 等宽码／计价对象（service_ref＋kind 徽标）／模型徽标／档位摘要／
+ *     生效区间／币种／备注／展示态（按今日推算，非存储态）／操作（停用·查看档位）
+ *   ② 新建：第一步 计价对象（选择器值＝endpoint 原值，P0-4；命中预演）＋模型三选＋生效区间；
+ *     第二步 模型分流表单（按次单档／套餐两档／阶梯行式编辑器）；预览＝档位全览＋冲突检测
+ *   ③ 停用按展示态分派（P1-⑧）：在窗→置止日；未生效→撤回删除；已过期→按钮禁用
+ * 【口径】常驻提示条：价目变更不追溯历史账单（ADR-0024 决定第 4 条）；B 型创建随 selector 端点
+ *   bTypeOpen 开关双态（§2.8 延后条件已兑现，后端 B_TYPE_CREATE_OPEN 已翻闸＝True）。
+ *   写操作仅 admin（展示层收敛；服务端角色闸是权威裁决）；读 viewer 地板。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css"><!-- 仅取令牌（间距/字号/字体/圆角） -->
+<style>
+  /* ── 独立简化深色样式（同 admin/grants 页惯例；不依赖组件库） ── */
+  :root {
+    --admin-bg: #1c222b; --admin-card: #242b36; --admin-inset: #1b2029;
+    --admin-accent: #E85B6B; --admin-line: #35404d; --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE; --admin-note: #ACB8C4;
+    --admin-ok: #3FBE95; --admin-warn: #D89A3C; --admin-danger: #E05252;
+    --admin-info: #4C9EE8;   /* 主动作/进行中语义色：与错误红分离（评审①） */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px); }
+  h1 { font-size: 20px; margin: 0 0 var(--space-1, 8px); font-weight: 700; }
+  .hint { color: var(--admin-muted); font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  .btn-primary { background: var(--admin-info); border-color: var(--admin-info); color: #081724; font-weight: 600; }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--admin-muted); }
+  .btn-ghost:hover:not(:disabled) { color: var(--admin-text); border-color: var(--admin-line); }
+  input[type="date"] { color-scheme: dark; }   /* 原生日期控件与深色主题统一（评审③） */
+  .btn-secondary { background: var(--admin-inset); border-color: #4a5866; }   /* 次级按钮边框增强可辨（评审复评②） */
+  .btn:disabled { background: var(--admin-inset); border-color: var(--admin-line);
+                  color: var(--admin-muted); cursor: not-allowed; opacity: .45; }   /* 禁用态可辨（同 tenants 页惯例；视觉评审②轮①） */
+  .btn-primary:disabled { background: rgba(76, 158, 232, 0.22); border-color: var(--admin-info);
+                          color: rgba(230, 233, 238, 0.55); }   /* 禁用保留主色身份（评审复评①） */
+  .btn-sm { padding: 3px 10px; }
+  .btn-danger { border-color: var(--admin-danger); color: var(--admin-danger); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .tag { display: inline-block; background: var(--admin-inset); border: 1px solid var(--admin-line);
+         border-radius: 999px; padding: 0 8px; margin: 1px 4px 1px 0; font-size: var(--fs-tiny, 11px); color: var(--admin-muted); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-active { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-warn { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-muted { color: var(--admin-note); border: 1px solid var(--admin-line); }   /* 字色提亮一档仍弱于状态徽标（视觉评审②轮②） */
+  .caliber { background: rgba(216, 154, 60, 0.10); border: 1px solid rgba(216, 154, 60, 0.5);
+             color: #E8B563; border-radius: var(--radius, 8px);
+             padding: 8px 12px; font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .degraded { background: rgba(224, 82, 82, 0.10); border: 1px solid rgba(224, 82, 82, 0.55);
+              color: #FF8A8A; border-radius: var(--radius, 8px);
+              padding: 8px 12px; font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .toolbar { display: flex; gap: var(--space-1, 8px); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2, 16px); }
+  .toolbar input, .toolbar select, .field input, .field select {
+    background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 5px 10px; font-size: var(--fs-small, 12px); }
+  .field { margin-bottom: var(--space-2, 16px); }
+  .field label { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  .field .note { color: var(--admin-note); font-size: var(--fs-tiny, 11px); margin-top: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2, 16px); }
+  .radio-row { display: flex; gap: var(--space-3, 24px); flex-wrap: wrap; }
+  .radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: var(--fs-small, 12px); }
+  .modal-mask { position: fixed; inset: 0; background: rgba(10, 13, 18, 0.72);
+                display: flex; align-items: flex-start; justify-content: center;
+                padding: var(--space-4, 32px) var(--space-2, 16px); overflow: auto; z-index: 40; }
+  .modal { margin: auto; }   /* 视口内垂直居中；超高内容仍可滚动（评审①布局） */
+  .modal { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+           padding: var(--space-3, 24px); width: 880px; max-width: 100%; }
+  .modal h2 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-2, 16px); }
+  .modal-foot { display: flex; justify-content: flex-end; gap: var(--space-1, 8px); margin-top: var(--space-2, 16px); }
+  .error-line { color: var(--admin-danger); font-size: var(--fs-small, 12px);
+                margin: var(--space-1, 8px) 0; white-space: pre-wrap; }
+  .ok-line { color: var(--admin-ok); font-size: var(--fs-small, 12px); margin: var(--space-1, 8px) 0; }
+  .tier-row { display: grid; grid-template-columns: 110px 110px 150px 40px; gap: var(--space-1, 8px);
+              align-items: center; margin-bottom: var(--space-1, 8px); }
+  .tier-row input { background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+                    border-radius: var(--radius, 8px); padding: 5px 8px; font-size: var(--fs-small, 12px); width: 100%; }
+  .tier-row input[disabled] { color: var(--admin-muted); }
+  .tier-head { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); }
+  .pager { display: flex; align-items: center; gap: var(--space-2, 16px); margin-top: var(--space-2, 16px);
+           color: var(--admin-muted); font-size: var(--fs-small, 12px); }
+  tbody tr:last-child td { border-bottom: none; }   /* 空态行收边不残留细线 */
+  .steps { display: flex; gap: var(--space-2, 16px); margin-bottom: var(--space-3, 24px);
+           color: var(--admin-muted); font-size: var(--fs-small, 12px); }
+  .steps .on { color: var(--admin-info); font-weight: 600; }
+  input[type="radio"] { accent-color: var(--admin-info); }
+  .preview-box { background: var(--admin-inset); border: 1px solid var(--admin-line);
+                 border-radius: var(--radius, 8px); padding: var(--space-2, 16px); }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px var(--space-2, 16px); font-size: var(--fs-small, 12px); }
+  .kv dt { color: var(--admin-muted); }
+  .kv dd { margin: 0; }
+  .footnote { color: var(--admin-note); font-size: var(--fs-tiny, 11px);
+              border-top: 1px dashed var(--admin-line); margin-top: var(--space-2, 16px); padding-top: var(--space-1, 8px); }
+  /* 窄屏 P0-12（≤720px）：门户顶栏换行＋宽表容器内滚动——接壳契约（收口批接线时补齐，
+     同 tenants/grants 页口径；桌面外观零变化） */
+  @media (max-width: 720px) {
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body x-data="pricingAdmin()" x-init="boot()">
+<main class="page">
+  <h1>价目管理</h1>
+  <p class="hint">usage.price_item／price_tier · migrations/0004 计费表组 · 读 viewer / 写 admin · 域9 计费管理</p>
+  <div class="caliber" role="note">价目变更不追溯历史账单——已出账单按出账时点成交单价快照固化（ADR-0024 决定第 4 条）</div>
+  <div class="degraded" x-cloak x-show="status === 'degraded'" role="alert" x-text="statusMessage"></div>
+
+  <div class="toolbar">
+    <input type="search" style="width: 240px" placeholder="service_ref 精确过滤" x-model="filter.service" @keydown.enter="load()" />
+    <select x-model="filter.state">
+      <option value="">全部展示态</option>
+      <option value="in_window">在生效窗内</option>
+      <option value="pending">未生效</option>
+      <option value="expired">已过期</option>
+    </select>
+    <button class="btn btn-secondary btn-sm" type="button" @click="load()">查询</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-secondary btn-sm" type="button" title="只读统计：最近一个完整账期 usage_daily 各 endpoint 的 priced 覆盖情况" @click="openCoverage()">查看出账前覆盖率</button>
+    <button class="btn btn-primary" type="button" x-show="canWrite()" @click="openWizard()">新建价目</button>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>价目 ID</th><th>计价对象</th><th>模型</th><th>档位摘要</th>
+          <th>生效区间</th><th>币种</th><th>展示状态</th><th>备注</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="it in items" :key="it.itemId">
+          <tr>
+            <td class="mono" x-text="it.itemId"></td>
+            <td><span class="mono" x-text="it.serviceRef"></span></td>
+            <td><span class="badge badge-muted" x-text="it.modelLabel"></span></td><!-- 模型徽标＝中性（语义色＝展示状态专用；视觉抛光①） -->
+            <td class="mono" x-text="it.tierSummary"></td>
+            <td><span x-text="it.effectiveFrom + ' ~ ' + (it.effectiveTo || '长期')"></span></td>
+            <td x-text="it.currency"></td>
+            <td><span class="badge" :class="stateClass(it.state)" x-text="it.stateLabel"></span></td>
+            <td x-text="it.remark || '—'"></td><!-- 空值占位「—」（同 tenants/billing 页惯例；视觉抛光②） -->
+            <td style="white-space: nowrap">
+              <button class="btn btn-sm btn-secondary" type="button" @click="openDetail(it.itemId)">查看档位</button>
+              <button class="btn btn-sm btn-danger" type="button" x-show="canWrite()"
+                      :disabled="it.state === 'expired'" :title="it.state === 'expired' ? '已过期条目自然到期，无需停用' : ''"
+                      @click="askRetire(it)">停用</button>
+            </td>
+          </tr>
+        </template>
+          <template x-if="items.length === 0">
+            <tr><td colspan="9" style="text-align: center; color: var(--admin-note); padding: 24px 10px">
+              <template x-if="status === 'loading'"><span>加载中…</span></template>
+              <template x-if="status === 'degraded'"><span>计费库未启用或未响应——起 oneserve-meta 后点「查询」重试；价目为空期间出账走空价目试运行口径，不受影响</span></template>
+              <template x-if="status === 'ok'"><span>暂无价目——空价目试运行：出账全流程照跑，账单只出用量与成功量、金额不计应收（ADR-0024 决定第 9 条）；可点右上「新建价目」登记第一条</span></template>
+            </td></tr>
+          </template>
+      </tbody>
+    </table>
+    <div class="pager" x-show="status === 'ok'">
+      <span x-text="'共 ' + total + ' 条 · 第 ' + page + ' 页 / 每页 ' + pageSize"></span>
+      <button class="btn btn-sm btn-secondary" type="button" :disabled="page <= 1" @click="page--; load()">上一页</button>
+      <button class="btn btn-sm btn-secondary" type="button" :disabled="page * pageSize >= total" @click="page++; load()">下一页</button>
+    </div>
+  </div>
+</main>
+<!-- ── 新建向导（两步＋预览两段式确认） ── -->
+<div class="modal-mask" x-cloak x-show="wizard.open">
+  <div class="modal">
+    <h2>新建价目</h2>
+    <div class="steps">
+      <span :class="wizard.step === 1 ? 'on' : ''">① 计价对象与生效区间</span>
+      <span :class="wizard.step === 2 ? 'on' : ''">② 模型分流表单</span>
+      <span :class="wizard.step === 3 ? 'on' : ''">③ 预览与两段式确认</span>
+    </div>
+
+    <div x-show="wizard.step === 1">
+      <div class="field">
+        <label><span style="color: var(--admin-danger)">*</span> 计价对象（选择器值＝endpoint 原值，即计价引擎真匹配键）</label>
+        <select x-model="form.serviceRef" @change="selKind = $event.target.selectedOptions[0].getAttribute('data-kind') || 'service'">
+          <option value="">— 请选择服务或上游代理 —</option>
+          <template x-for="s in selector" :key="s.id + ':' + s.endpoint">
+            <option :value="s.endpoint" :data-kind="s.kind"
+                    :disabled="s.kind === 'proxy' && !bTypeOpen" x-text="(s.kind === 'proxy' ? (bTypeOpen ? '[代理·B 型] ' : '[代理·有条件延后] ') : '[服务] ') + s.name + '　' + s.endpoint"></option>
+          </template>
+        </select>
+        <div class="note" style="max-width: 640px">A 型＝服务调用地址；B 型＝代理调用地址（平台自动剥离审计留存标记，避免同一代理被拆成两个计价键）。<span x-cloak x-show="bTypeOpen">B 型已开放创建（bTypeOpen=true）。</span><span x-cloak x-show="!bTypeOpen">B 型暂不开放（bTypeOpen=false），防止漏计费。</span></div>
+      </div>
+      <div class="field">
+        <button class="btn btn-sm btn-secondary" type="button" :disabled="!form.serviceRef" @click="hitPreview()">命中预演（最近一个完整账期）</button>
+        <div class="note" style="max-width: 640px">预演＝按计价引擎同款精确匹配试查用量账，报告命中行数与未覆盖地址，选错对象当场可见。</div>
+        <div class="preview-box" x-show="hit.ok" style="margin-top: 8px">
+          <dl class="kv">
+            <dt>账期窗口</dt><dd class="mono" x-text="hit.period + '（' + hit.windowFrom + ' ~ ' + hit.windowToExclusive + '）'"></dd>
+            <dt>将命中</dt><dd><span class="badge" :class="hit.willHit ? 'badge-active' : 'badge-warn'"
+              x-text="hit.willHit ? '命中 ' + hit.hitRows + ' 行 / 调用 ' + hit.hitCalls + ' 次 / 成功 ' + hit.hitSuccess + ' 次' : '未命中（该窗内此 endpoint 无用量行）'"></span></dd>
+            <dt>窗内 endpoint</dt><dd x-text="'共 ' + hit.distinctEndpoints + ' 个 · 总调用 ' + hit.windowCalls + ' 次'"></dd>
+            <dt>未覆盖样本</dt><dd>
+              <template x-for="(u, i) in hit.unhitTop" :key="i">
+                <span class="tag mono" x-text="u.endpoint + ' × ' + u.calls"></span>
+              </template>
+              <span class="note" x-show="hit.unhitTop.length === 0">无其他未覆盖 endpoint</span>
+            </dd>
+          </dl>
+          <div class="note">命中判据＝usage_daily.endpoint 对归一 service_ref 精确匹配（引擎同源）</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>计价模型</label>
+        <div class="radio-row">
+          <label><input type="radio" value="per_call" x-model="form.model">按次（单档）</label>
+          <label><input type="radio" value="monthly_package" x-model="form.model">套餐（两档）</label>
+          <label><input type="radio" value="tiered" x-model="form.model">阶梯（行式）</label>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label><span style="color: var(--admin-danger)">*</span> 生效起（每月 1 日——价目按自然月整月生效）</label>
+          <input type="date" x-model="form.effectiveFrom" />
+          <div class="note" x-show="form.effectiveFrom && form.effectiveFrom.slice(8) !== '01'" style="color: var(--admin-warn)">
+            生效起须为每月 1 日（服务端强校验）
+          </div>
+        </div>
+        <div class="field">
+          <label>生效止（可选，空＝长期）</label>
+          <input type="date" x-model="form.effectiveTo" />
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>币种（ISO 4217）</label><input type="text" x-model="form.currency" placeholder="CNY" /></div>
+        <div class="field"><label>备注（≤200 字）</label><input type="text" x-model="form.remark" /></div>
+      </div>
+    </div>
+
+    <div x-show="wizard.step === 2">
+      <div x-show="form.model === 'per_call'" class="field">
+        <label>单价（每次成功调用；区间自动 [0,∞) 单档）</label>
+        <input type="text" x-model="perCall.price" placeholder="0.500000" />
+      </div>
+      <div x-show="form.model === 'monthly_package'">
+        <div class="grid2">
+          <div class="field"><label>月含额度 N（次数）</label><input type="number" min="1" x-model.number="pack.quota" /></div>
+          <div class="field"><label>超额单价 P</label><input type="text" x-model="pack.overage" placeholder="0.800000" /></div>
+        </div>
+        <div class="note">自动生成两档：[0,N)@0（额度内 0 价档）＋ [N,∞)@P（超额单价档）——ADR-0024 决定第 2 条</div>
+      </div>
+      <div x-show="form.model === 'tiered'">
+        <div class="tier-row tier-head"><span>下界（含·自动）</span><span>上界（不含·末档留空＝不封顶）</span><span>单价</span><span></span></div>
+        <template x-for="(t, i) in tiers" :key="i">
+          <div class="tier-row">
+            <input type="number" :value="tierLower(i)" disabled />
+            <input type="number" min="1" x-model.number="t.upper" :placeholder="i === tiers.length - 1 ? '不封顶' : '必填'" />
+            <input type="text" x-model="t.price" placeholder="0.000000" />
+            <button class="btn btn-sm btn-danger" type="button" x-show="tiers.length > 2" @click="tiers.splice(i, 1)">删</button>
+          </div>
+        </template>
+        <button class="btn btn-sm btn-secondary" type="button" @click="tiers.push({ upper: '', price: '' })">＋ 加一档</button>
+        <div class="note">区间三不变量：首档下界＝0／区间连续（下一档下界＝上一档上界，自动带出）／末档上界空＝不封顶；服务端校验权威。</div>
+      </div>
+    </div>
+
+    <div x-show="wizard.step === 3">
+      <div class="preview-box">
+        <strong>将落库的 price_item 行（diff 视角：新建无 diff，直接展示行集）</strong>
+        <dl class="kv" style="margin-top: 8px">
+          <dt>service_ref</dt><dd class="mono" x-text="preview.serviceRef"></dd>
+          <dt>model</dt><dd x-text="preview.modelLabel + '（' + preview.model + '）'"></dd>
+          <dt>生效区间</dt><dd x-text="preview.effectiveFrom + ' ~ ' + (preview.effectiveTo || '长期') + ' · ' + preview.currency"></dd>
+          <dt>备注</dt><dd x-text="preview.priceItemRow ? preview.priceItemRow.remark : ''"></dd>
+        </dl>
+        <strong>将落库的 price_tier 行（档位全览）</strong>
+        <table style="margin-top: 8px">
+          <thead><tr><th>区间</th><th>下界（含）</th><th>上界（不含）</th><th>单价</th></tr></thead>
+          <tbody>
+            <template x-for="(t, i) in preview.tiers" :key="i">
+              <tr><td class="mono" x-text="t.range"></td><td x-text="t.lowerBound"></td>
+                  <td x-text="t.upperBound === null ? '不封顶' : t.upperBound"></td><td class="mono" x-text="t.unitPrice"></td></tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="ok-line" x-show="preview.conflicts.length === 0" x-text="preview.conflictMessage"></div>
+        <div class="error-line" x-show="preview.conflicts.length > 0" x-text="preview.conflictMessage"></div>
+        <template x-for="(c, i) in preview.conflicts" :key="i">
+          <div class="tag mono" x-text="c.itemId + '：' + c.effectiveFrom + ' ~ ' + (c.effectiveTo || '长期')"></div>
+        </template>
+      </div>
+    </div>
+
+    <div class="error-line" x-text="wizard.error"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" type="button" @click="closeWizard()">取消</button>
+      <button class="btn btn-secondary" type="button" x-show="wizard.step > 1" @click="wizard.step--">上一步</button>
+      <button class="btn" type="button" x-show="wizard.step === 1" :class="'btn-primary'"
+              :disabled="!form.serviceRef || !form.effectiveFrom || (selKind === 'proxy' && !bTypeOpen)"
+              @click="wizard.step = 2">下一步</button>
+      <button class="btn" type="button" x-show="wizard.step === 2" :class="'btn-primary'" @click="toPreview()">生成预览</button>
+      <button class="btn" type="button" x-show="wizard.step === 3" :class="'btn-primary'" @click="confirmCreate()">确认创建</button>
+    </div>
+  </div>
+</div>
+<!-- ── 档位详情 ── -->
+<div class="modal-mask" x-cloak x-show="detail.open">
+  <div class="modal">
+    <h2>价目档位 <span class="mono" x-text="detail.item ? detail.item.itemId : ''"></span></h2>
+    <dl class="kv" x-show="detail.item">
+      <dt>计价对象</dt><dd class="mono" x-text="detail.item ? detail.item.serviceRef : ''"></dd>
+      <dt>模型</dt><dd x-text="detail.item ? detail.item.modelLabel + '（' + detail.item.model + '）' : ''"></dd>
+      <dt>生效区间</dt><dd x-text="detail.item ? detail.item.effectiveFrom + ' ~ ' + ((detail.item.effectiveTo) || '长期') : ''"></dd>
+      <dt>展示状态</dt><dd x-text="detail.item ? detail.item.stateLabel : ''"></dd>
+      <dt>币种</dt><dd x-text="detail.item ? detail.item.currency : ''"></dd>
+    </dl>
+    <table style="margin-top: 16px">
+      <thead><tr><th>区间</th><th>下界（含）</th><th>上界（不含）</th><th>单价</th></tr></thead>
+      <tbody>
+        <template x-for="(t, i) in detail.tiers" :key="i">
+          <tr><td class="mono" x-text="t.range"></td><td x-text="t.lowerBound"></td>
+              <td x-text="t.upperBound === null ? '不封顶' : t.upperBound"></td><td class="mono" x-text="t.unitPrice"></td></tr>
+        </template>
+      </tbody>
+    </table>
+    <div class="footnote">已出账单的成交单价存在 bill_line.unit_price 快照，与本表后续改动无关。</div>
+    <div class="modal-foot"><button class="btn btn-secondary" type="button" @click="detail.open = false">关闭</button></div>
+  </div>
+</div>
+
+<!-- ── 停用两段式 ── -->
+<div class="modal-mask" x-cloak x-show="retire.open">
+  <div class="modal" style="width: 620px">
+    <h2>停用价目（两段式确认）</h2>
+    <dl class="kv">
+      <dt>价目</dt><dd class="mono" x-text="retire.itemId"></dd>
+      <dt>计价对象</dt><dd class="mono" x-text="retire.serviceRef"></dd>
+      <dt>展示状态</dt><dd x-text="retire.stateLabel"></dd>
+      <dt>分派结果</dt><dd x-text="retire.effect"></dd>
+    </dl>
+    <div class="caliber" style="margin-top: 16px">已出账单不受影响；今日其后的出账按无价处理（空价目口径）或命中下一生效价目。</div>
+    <div class="error-line" x-text="retire.error"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" type="button" @click="retire.open = false">取消</button>
+      <button class="btn btn-danger" type="button" x-show="retire.stage === 1" @click="retire.stage = 2">继续（进入二次确认）</button>
+      <button class="btn btn-danger" type="button" x-show="retire.stage === 2" @click="confirmRetire()">确认停用</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 出账前覆盖率（只读统计） ── -->
+<div class="modal-mask" x-cloak x-show="cover.open">
+  <div class="modal">
+    <h2>priced 覆盖率报告（出账前只读统计）</h2>
+    <div class="toolbar">
+      <input type="text" placeholder="账期 YYYY-MM（空＝最近一个完整账期）" x-model="cover.period" />
+      <button class="btn btn-sm btn-secondary" type="button" @click="loadCoverage()">查询</button>
+    </div>
+    <div class="degraded" x-show="cover.empty" x-text="cover.message"></div>
+    <div x-show="!cover.empty">
+      <dl class="kv">
+        <dt>账期</dt><dd class="mono" x-text="cover.period + '（' + cover.windowFrom + ' ~ ' + cover.windowToExclusive + '）'"></dd>
+        <dt>覆盖</dt><dd x-text="cover.coveredEndpoints + ' / ' + cover.totalEndpoints + ' 个 endpoint · 按调用量覆盖率 ' + (cover.coverageRatio === null ? '—' : (cover.coverageRatio * 100).toFixed(2) + '%')"></dd>
+      </dl>
+      <strong>未覆盖（出账按空价目口径 priced=false 0 元不计应收）</strong>
+      <div style="margin: 8px 0">
+        <template x-for="(u, i) in cover.uncovered" :key="i">
+          <span class="tag mono" x-text="u.endpoint + ' × ' + u.calls"></span>
+        </template>
+        <span class="note" x-show="cover.uncovered.length === 0">无</span>
+      </div>
+      <strong>已覆盖</strong>
+      <div style="margin: 8px 0">
+        <template x-for="(c, i) in cover.covered" :key="'c' + i">
+          <span class="tag mono" x-text="c.endpoint + ' → ' + c.itemId"></span>
+        </template>
+        <span class="note" x-show="cover.covered.length === 0">无</span>
+      </div>
+      <div class="footnote">覆盖判据＝引擎同源生效窗谓词（billing_run.load_price 原式）；本报告只读，不动出账引擎。</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" type="button" @click="cover.open = false">关闭</button></div>
+  </div>
+</div>
+
+<script src="admin-gate.js"></script><!-- 无闸 shim（登录态注入 Authorization；401 自动跳登录） -->
+<script>
+/* 价目管理页组件（管理功能群一期 B 节）——业务内联真源（挂载/构建注册归收口批）。
+ * 分层：视图只编排；校验/口径以服务端为权威（422 人话 message 直出）。 */
+function pricingAdmin() {
+  return {
+    status: 'loading', statusMessage: '', items: [], total: 0, page: 1, pageSize: 50,
+    filter: { service: '', state: '' },
+    selector: [], selKind: 'service', bTypeOpen: false,   /* B 型创建开关＝selector 端点 bTypeOpen（缺省 false＝保守关闸） */
+    hit: { ok: false },
+    form: { serviceRef: '', model: 'per_call', effectiveFrom: '', effectiveTo: '', currency: 'CNY', remark: '' },
+    perCall: { price: '' }, pack: { quota: 10000, overage: '' },
+    tiers: [{ upper: '', price: '' }, { upper: '', price: '' }],
+    wizard: { open: false, step: 1, error: '' },
+    preview: { tiers: [], conflicts: [] },
+    detail: { open: false, item: null, tiers: [] },
+    retire: { open: false, stage: 1, itemId: '', serviceRef: '', stateLabel: '', effect: '', error: '', current: null },
+    cover: { open: false, period: '', empty: false, message: '', covered: [], uncovered: [],
+             coveredEndpoints: 0, totalEndpoints: 0, coverageRatio: null, windowFrom: '', windowToExclusive: '' },
+
+    headers() { return (window.AdminGate && AdminGate.adminHeaders()) || {}; },
+    canWrite() {
+      if (!window.AdminGate || !AdminGate.readOidcToken) return true;   // off/演示态：无令牌可用
+      var token = AdminGate.readOidcToken();
+      if (!token) return true;
+      try {
+        var part = String(token).split('.')[1] || '';
+        var b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+        var claims = JSON.parse(decodeURIComponent(escape(atob(b64)))) || {};
+        return String(claims.tag || '').toLowerCase() === 'admin';
+      } catch (e) { return true; }   // 坏令牌交给服务端裁决，不本地误伤
+    },
+    stateClass(s) { return s === 'in_window' ? 'badge-active' : (s === 'pending' ? 'badge-warn' : 'badge-muted'); },
+
+    boot() {
+      var self = this;
+      var next = new Date(); next.setDate(1); next.setMonth(next.getMonth() + 1);
+      self.form.effectiveFrom = next.toISOString().slice(0, 10);   // 缺省＝下月 1 日（月初约束口径）
+      self.load();
+      self.loadSelector();
+      if (location.hash === '#wizard') self.openWizard();   // 深链：直开新建向导（预览/演示用）
+    },
+    async load() {
+      var self = this;
+      var q = new URLSearchParams({ page: self.page, page_size: self.pageSize });
+      if (self.filter.service) q.set('service', self.filter.service);
+      if (self.filter.state) q.set('state', self.filter.state);
+      try {
+        var r = await fetch('/v1/admin/pricing/items?' + q.toString(), { headers: self.headers() });
+        var body = null;
+        try { body = await r.json(); } catch (e) { body = null; }   // 静态预览/网关错页＝非 JSON
+        if (!body) {
+          self.status = 'degraded';
+          self.statusMessage = '计费数据暂不可用：计费库未启用或未响应（compose.metadata.yml，项目名 oneserve-meta）。价目为空期间出账走空价目试运行口径，不受影响。';
+          self.items = []; self.total = 0; return;
+        }
+        if (body.status === 'degraded') {
+          self.status = 'degraded'; self.statusMessage = body.message || '';
+          self.items = []; self.total = 0; return;
+        }
+        self.status = 'ok'; self.items = body.items || []; self.total = body.total || 0;
+        self.page = body.page; self.pageSize = body.pageSize;
+      } catch (e) {
+        self.status = 'degraded'; self.statusMessage = '计费数据暂不可用：计费库未启用或未响应（compose.metadata.yml，项目名 oneserve-meta）。价目为空期间出账走空价目试运行口径，不受影响。';
+      }
+    },
+    async loadSelector() {
+      var self = this;
+      try {
+        var r = await fetch('/v1/admin/pricing/selector', { headers: self.headers() });
+        var body = await r.json();
+        self.selector = body.items || [];
+        self.bTypeOpen = body.bTypeOpen === true;   /* 开关消费：端点未下发/降级＝保守关闸 */
+      } catch (e) { self.selector = []; }
+    },
+    tierLower(i) { return i === 0 ? 0 : (this.tiers[i - 1].upper === '' || this.tiers[i - 1].upper === null ? null : Number(this.tiers[i - 1].upper)); },
+    addTier() { this.tiers.push({ upper: '', price: '' }); },
+    openWizard() {
+      this.wizard = { open: true, step: 1, error: '' };
+      this.hit = { ok: false };
+      this.loadSelector();
+    },
+    closeWizard() { this.wizard.open = false; },
+    async hitPreview() {
+      var self = this;
+      self.wizard.error = '';
+      try {
+        var r = await fetch('/v1/admin/pricing/hit-preview?service_ref=' + encodeURIComponent(self.form.serviceRef),
+                            { headers: self.headers() });
+        var body = await r.json();
+        if (!r.ok) { self.wizard.error = body.message || ('HTTP ' + r.status); self.hit = { ok: false }; return; }
+        body.ok = true; self.hit = body;
+      } catch (e) { self.wizard.error = '命中预演失败：' + e; }
+    },
+    buildPayload() {
+      var self = this;
+      var body = {
+        service_ref: self.form.serviceRef, target_kind: self.selKind, model: self.form.model,
+        currency: self.form.currency, effective_from: self.form.effectiveFrom,
+        effective_to: self.form.effectiveTo || null, remark: self.form.remark
+      };
+      if (self.form.model === 'per_call') body.unit_price = self.perCall.price;
+      else if (self.form.model === 'monthly_package') { body.included_quota = self.pack.quota; body.overage_price = self.pack.overage; }
+      else body.tiers = self.tiers.map(function (t, i) {
+        return { lower_bound: self.tierLower(i), upper_bound: (t.upper === '' || t.upper === null ? null : Number(t.upper)), unit_price: t.price };
+      });
+      return body;
+    },
+    async toPreview() {
+      var self = this;
+      self.wizard.error = '';
+      try {
+        var r = await fetch('/v1/admin/pricing/items', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, self.headers()),
+                                                          body: JSON.stringify(Object.assign(self.buildPayload(), { preview: true })) });
+        var body = await r.json();
+        if (!r.ok) { self.wizard.error = body.message || ('HTTP ' + r.status); return; }
+        self.preview = body; self.wizard.step = 3;
+      } catch (e) { self.wizard.error = '预览失败：' + e; }
+    },
+    async confirmCreate() {
+      var self = this;
+      self.wizard.error = '';
+      try {
+        var r = await fetch('/v1/admin/pricing/items', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, self.headers()),
+                                                          body: JSON.stringify(self.buildPayload()) });
+        var body = await r.json();
+        if (!r.ok) { self.wizard.error = body.message || ('HTTP ' + r.status); return; }
+        self.wizard.open = false; self.page = 1; self.load();
+      } catch (e) { self.wizard.error = '创建失败：' + e; }
+    },
+    async openDetail(id) {
+      var self = this;
+      try {
+        var r = await fetch('/v1/admin/pricing/items/' + encodeURIComponent(id), { headers: self.headers() });
+        var body = await r.json();
+        if (!r.ok) { alert(body.message || ('HTTP ' + r.status)); return; }
+        self.detail = { open: true, item: body.item, tiers: body.tiers || [] };
+      } catch (e) { alert('详情加载失败：' + e); }
+    },
+    askRetire(it) {
+      var effect = it.state === 'pending'
+        ? '未生效条目＝撤回删除（连同档位行；未生效零历史账耦合）'
+        : '在窗条目＝置生效止＝今日（单行事务）';
+      this.retire = { open: true, stage: 1, itemId: it.itemId, serviceRef: it.serviceRef,
+                      stateLabel: it.stateLabel, effect: effect, error: '', current: it };
+    },
+    async confirmRetire() {
+      var self = this;
+      self.retire.error = '';
+      try {
+        var r = await fetch('/v1/admin/pricing/items/' + encodeURIComponent(self.retire.itemId) + '/retire',
+                            { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, self.headers()), body: '{}' });
+        var body = await r.json();
+        if (!r.ok) { self.retire.error = body.message || ('HTTP ' + r.status); return; }
+        self.retire.open = false; self.load();
+      } catch (e) { self.retire.error = '停用失败：' + e; }
+    },
+    openCoverage() { this.cover.open = true; this.cover.period = ''; this.loadCoverage(); },
+    async loadCoverage() {
+      var self = this;
+      var q = self.cover.period ? ('?period=' + encodeURIComponent(self.cover.period)) : '';
+      try {
+        var r = await fetch('/v1/admin/pricing/coverage' + q, { headers: self.headers() });
+        var body = await r.json();
+        if (!r.ok) { self.cover.empty = true; self.cover.message = body.message || ('HTTP ' + r.status); return; }
+        self.cover.empty = (body.status === 'empty');
+        self.cover.message = body.message || '';
+        self.cover.period = body.period; self.cover.windowFrom = body.windowFrom;
+        self.cover.windowToExclusive = body.windowToExclusive;
+        self.cover.covered = body.covered || []; self.cover.uncovered = body.uncovered || [];
+        self.cover.coveredEndpoints = body.coveredEndpoints; self.cover.totalEndpoints = body.totalEndpoints;
+        self.cover.coverageRatio = body.coverageRatio;
+      } catch (e) { self.cover.empty = true; self.cover.message = '覆盖率查询失败：' + e; }
+    }
+  };
+}
+</script>
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs 自托管副本（同 portal） -->
+</body>
+</html>

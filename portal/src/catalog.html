@@ -1,0 +1,103 @@
+<!-- ══ 服务目录独立页（P-1R）：业务域分组＋页内搜索＋业务域筛选 chips；?q= 深链承接首页全局搜索 ══ -->
+<div class="os-container reveal" x-data="catalogPage" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">服务目录</div>
+    <h1 class="page-title">按业务域分组的在线 API</h1>
+    <div class="os-page-actions">
+      <a class="os-chip is-link" href="trial.html"><i class="bi bi-play-circle" aria-hidden="true"></i>去试用台</a>
+    </div>
+  </div>
+
+  <!-- 工具行：页内搜索＋业务域筛选（搜索词与 ?q= 深链同源，跨页传参只用 URL query） -->
+  <section class="catalog-toolbar" id="catalog-toolbar" aria-label="目录筛选">
+    <div class="search-box os-search-inline">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+      <input type="search" x-model="query" placeholder="在本页过滤：业务域 / 服务 / API 路径" aria-label="过滤服务目录">
+    </div>
+    <div class="os-chips" id="catalog-domain-chips" role="group" aria-label="业务域筛选">
+      <template x-if="st('catalog') === 'ok'">
+        <button class="os-chip" type="button" :class="{ 'is-active': domainFilter === 'all' }" @click="domainFilter = 'all'">
+          全部 <span class="n num" x-text="domainCount('all')"></span>
+        </button>
+      </template>
+      <template x-for="d in domains()" :key="d.id">
+        <button class="os-chip" type="button" :class="{ 'is-active': domainFilter === d.id }" @click="domainFilter = d.id">
+          <span x-text="d.name"></span> <span class="n num" x-text="domainCount(d.id)"></span>
+        </button>
+      </template>
+    </div>
+  </section>
+
+  <!-- 目录主体：业务域分组卡片墙（P-1 原区块迁入独立页，id 保留） -->
+  <section id="service-catalog" aria-label="服务目录">
+    <div class="section-head">
+      <h2 class="section-title">业务域分组</h2>
+      <span class="section-sub" x-text="st('catalog') === 'ok' ? catalogSummary() : ''"></span>
+    </div>
+
+    <template x-if="st('catalog') === 'loading'">
+      <div class="domain-grid">
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+        <div class="card domain-card"><div class="sk sk-line w40"></div><div class="sk sk-line w80"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+      </div>
+    </template>
+
+    <template x-if="st('catalog') === 'error'">
+      <div class="card">
+        <div class="error-box">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+          <span>数据暂不可用</span>
+          <button class="retry-btn" @click="retry('catalog')">重试</button>
+        </div>
+      </div>
+    </template>
+
+    <template x-if="st('catalog') === 'ok'">
+      <div>
+        <span class="demo-badge" style="margin-bottom: 8px;" x-show="isDemo('catalog')"><span class="dot"></span>演示数据</span>
+        <div class="domain-grid">
+          <template x-for="d in visibleDomains()" :key="d.id">
+            <div class="card domain-card">
+              <div class="card-head">
+                <h3 class="card-title" x-text="d.name"></h3>
+                <span class="spacer"></span>
+                <span class="status" :class="statusMeta(d.status).cls"><span class="dot"></span><span x-text="d.statusText || statusMeta(d.status).text"></span></span>
+              </div>
+              <div class="domain-meta">
+                <span class="m"><b class="num" x-text="d.fields"></b> 字段</span>
+                <span class="m"><b class="num" x-text="d.services"></b> 个服务</span>
+                <span class="m">同步于 <span x-text="fmtRel(d.lastSyncAt)"></span></span>
+              </div>
+              <div class="svc-list">
+                <!-- P0-2：卡片条目＝链接，可点进 API 详情页（div 不可点问题闭环，SPEC A2/A3） -->
+                <template x-for="it in d.items" :key="it.api">
+                  <a class="svc svc-link" :href="svcHref(it)">
+                    <div class="name" x-text="it.name"></div>
+                    <div class="api" x-text="it.api"></div>
+                    <div class="desc" x-text="it.desc"></div>
+                    <!-- 维护者 2026-10-15 批「按建议」：目录模板属性两件——更新频率/责任主体；
+                         真源 /v1/portal/catalog 恒非空下发，此处 || 兜底只为 mock 降级路径，缺值如实「未标注」 -->
+                    <div class="svc-meta">
+                      <span class="m">更新频率 <b x-text="it.updateFrequency || '未标注'"></b></span>
+                      <span class="m">责任主体 <b x-text="it.owner || '未标注'"></b></span>
+                    </div>
+                    <!-- #42-②（2026-10-15）：「查看详情」从弱化文字提级为明显按钮（样式见 portal.css .svc .svc-go） -->
+                    <span class="svc-go">查看详情 →</span>
+                  </a>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+        <!-- 空态：搜索无匹配／筛选无结果（非空白） -->
+        <div class="empty-state" x-show="visibleDomains().length === 0"
+             x-text="hasSearch() ? '未找到匹配「' + query.trim() + '」的服务，换个关键词试试' : '该业务域暂无在册服务——切回「全部」可查看所有业务域的在册服务'"></div>
+        <div class="src-note" x-text="endpoint('catalog') + (sections.catalog.updatedAt ? ' · 更新 ' + sections.catalog.updatedAt : '')"></div>
+      </div>
+    </template>
+  </section>
+
+</div>

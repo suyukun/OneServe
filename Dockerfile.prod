@@ -1,0 +1,54 @@
+# OneServe 服务层生产镜像（阶段一 1a 批「镜像生产化」2026-10-20）
+# 与 dev 形态（docker-compose.yml build: ./service + ./service rw 挂载 /app）分工：
+#   dev ＝ 镜像只做基线，/app 被源码树挂载覆盖（热改即生效）；
+#   prod ＝ 源码/配置/初始化脚本全部 COPY 进镜像，运行态零源码树依赖（上容器云口径）。
+# 构建（context＝仓库根，走 .dockerignore 压体积）：
+#   docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/service:prod .
+# dev 的 ./service 构建与本文件互不影响（context 不同，root .dockerignore 不参与）。
+# 依赖固化：service/requirements.lock＝运行中 dev 容器 pip freeze（已验证版本集），
+# 与 requirements.txt（区间口径，dev 用）并存；改依赖先更 txt，dev 验证后再重出 lock。
+# 注意：Dockerfile 不支持行内注释，COPY 行尾一律不写注释。
+# 基础镜像＝本地预构建加固底座（开源批 B2 去私仓）：官方 python:3.13-slim 打底，
+# 由 docker/python-base.Dockerfile 构建（curl＋postgresql-client＋apt/pip 升级固化）；
+# 预构建命令：docker build -f docker/python-base.Dockerfile -t oneserve-python-base:3.13-slim .
+# 原 digest 钉版随私仓退场（本地构建无跨仓 digest 可钉，升级经重建底座走）。
+FROM oneserve-python-base:3.13-slim
+
+WORKDIR /app
+
+# curl：压测梯子 run_ladder.sh 探针依赖（与 service/Dockerfile 同口径）；
+# postgresql-client（2026-10-21 前置卡·对抗复核 P0-1 根治）：meta_writer db 模式
+# 容器内直连通道（META_DB_HOST 五键注入即 psql -h 直连 meta 库；基镜像 trixie
+# 默认装 PG17 客户端，与 metadata-db postgres:17 同大版本）
+# 底座 apt/pip 均官方默认源（开源批 B2；国内网络可在底座构建时自行配置镜像加速）
+
+# 依赖层单独成层：锁文件不变则源码改动不触发重装（构建可重复＝版本全钉死）
+COPY service/requirements.lock /tmp/requirements.lock
+ENV PIP_PROGRESS_BAR=off PIP_DISABLE_PIP_VERSION_CHECK=1
+RUN pip install --no-cache-dir --progress-bar off -r /tmp/requirements.lock \
+    && rm -f /tmp/requirements.lock
+
+# ── 源码与配置进镜像（dev 靠挂载提供的部分，prod 全部固化）──
+# service/：源码＋services.yaml/upstreams.yaml/auth_matrix.yaml＋registry/＋static/
+COPY --chown=10001:10001 service/ /app/
+# 卡1：connections.yaml（非敏感参数，密钥走 env）
+COPY --chown=10001:10001 config/ /app/config/
+# 前置卡 2026-10-21：meta_writer db 模式容器内依赖（meta_snapshot.load_migrate 容器内
+# 回退路径 /app/scripts/meta_migrate.py；宿主仓内路径仍先命中不受影响）
+COPY scripts/meta_migrate.py /app/scripts/meta_migrate.py
+# A窗：压测梯子（results 经 .dockerignore 排除）
+COPY --chown=10001:10001 loadtest/ /app/loadtest/
+# 网关初始化脚本（dev 为 ro 挂载 /init，prod 进镜像同路径）
+COPY configs/apisix/ /init/
+# bootstrap admin 脚本（casdoor-init 服务复用本镜像，prod 去 bind）
+COPY configs/casdoor/ /opt/casdoor-init/
+
+# 非 root 运行：运行态写区归 oneserve（/app 签发写回/console 写区 + /data 三卷挂点）
+RUN useradd --system --uid 10001 --home /nonexistent --shell /usr/sbin/nologin oneserve \
+    && mkdir -p /data/audit /data/retention /data/batch-results \
+    && chown -R oneserve:oneserve /data /init /opt/casdoor-init
+
+USER oneserve
+
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

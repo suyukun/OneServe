@@ -1,0 +1,60 @@
+/* ============================================================
+ * OneServe 门户 · 报表专区一期样式（1b-9 · assets/reports.css，新增文件）
+ * 纪律：只引用 tokens.css 既有令牌（同 ops.css/audit.css 口径）；本页专属
+ * 类名 rpt-* 前缀防漂移。图表底座 echarts 由页面尾经典 script 引入（ops 惯例）。
+ * ============================================================ */
+
+/* ── 指标卡（总览四卡/趋势两卡） ── */
+.rpt-kpi-val { font-size: 30px; font-weight: 700; line-height: 1.2;
+  font-variant-numeric: tabular-nums; }
+.rpt-kpi-val.rpt-kpi-muted { color: var(--text-muted, #8c8c8c); }
+.rpt-kpi-name { font-size: 12px; color: var(--text-muted, #8c8c8c); margin-top: 4px; }
+.rpt-kpi-sub { font-size: 11px; color: var(--text-muted, #8c8c8c); margin-top: 2px; }
+.src-note { font-size: 11px; color: var(--text-muted, #8c8c8c); margin-top: 6px; }
+
+/* ── 三态横幅（空/降级；加载态在表格行内） ── */
+.rpt-state-banner { border: 1px dashed var(--border-light, #e2e6ee); border-radius: 6px;
+  padding: 18px 16px; text-align: center; color: var(--text-muted, #8c8c8c);
+  margin: 8px 0; }
+.rpt-state-banner.is-degraded { border-color: var(--warn, #d4760a); color: var(--warn, #d4760a); }
+
+/* ── 迷你柱（总览日趋势/主体行日趋势，纯 CSS 无 vendor 依赖） ── */
+.rpt-bars { display: flex; align-items: flex-end; gap: 3px; height: 32px; min-width: 96px; }
+.rpt-bar { width: 10px; min-height: 1px; background: var(--accent, var(--brand, #cb272d)); }
+.rpt-bar.is-zero { background: var(--border-light, #e2e6ee); }
+
+/* ── 登记状态徽标（已登记/未登记） ── */
+.rpt-badge { display: inline-block; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; line-height: 18px; }
+.rpt-badge.is-on { color: var(--ok, #2e7d32); background: color-mix(in srgb, var(--ok, #2e7d32) 12%, transparent); }
+.rpt-badge.is-off { color: var(--text-muted, #8c8c8c);
+  background: color-mix(in srgb, var(--text-muted, #99a) 14%, transparent); }
+
+/* ── 热门服务迷你榜/趋势图例榜 ── */
+.rpt-rank-list { list-style: none; margin: 0; padding: 0; }
+.rpt-rank-list li { display: flex; justify-content: space-between; gap: 8px;
+  padding: 3px 0; font-size: 12px; border-bottom: 1px dashed var(--border-light, #e2e6ee); }
+.rpt-rank-list li:last-child { border-bottom: 0; }
+.rpt-rank-num { font-variant-numeric: tabular-nums; color: var(--text-muted, #8c8c8c); }
+
+/* ── 工具条（时间窗/筛选/搜索） ── */
+.rpt-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.rpt-toolbar .form-label { margin-bottom: 2px; font-size: 11px;
+  color: var(--text-muted, #8c8c8c); }
+.rpt-window-group { display: flex; gap: 6px; }
+
+/* ── 分页条 ── */
+.rpt-pager { display: flex; align-items: center; gap: 10px; margin-top: 10px;
+  font-size: 12px; color: var(--text-muted, #8c8c8c); }
+
+/* ── 图表容器 ── */
+.rpt-chart { width: 100%; height: 300px; }
+.rpt-chart.rpt-chart-tall { height: 360px; }
+
+/* ── 服务明细展开行（主体页） ── */
+.rpt-svc-row { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px;
+  color: var(--text-muted, #8c8c8c); padding: 2px 0; }
+.rpt-svc-row .mono { color: var(--text-main, inherit); }
+
+/* ── 长窗置灰位（趋势页 30/90 天＝二期） ── */
+.rpt-btn-disabled { opacity: .45; cursor: not-allowed; }

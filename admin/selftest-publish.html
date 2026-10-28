@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>服务发布向导 selftest（运行中…）</title>
+<!-- 服务发布 · 五步向导断言页（卡3 流程② 验收口径）
+     断言对象：iframe 挂载的真实发布页（挡板 API 驱动：assets/schema）＋ window.WIZ 纯函数。
+     覆盖：加载序 / 五步 id / ①assets 表源 / ②版本默认线上＋非线上提示＋设为线上（三闸挡板） /
+           ③slug 机检 / ④schema 字段源＋勾选计数 / ⑤发布→完成页 curl(apikey)＋T10 引导 /
+           服务表数据版本列 / 下线 E 卡文案 / 文案扫描 / 构建同步。
+     打开方式：node scripts/m25_selftest_browser.mjs（headless）或 http.server 伺服仓库根。 -->
+<link rel="stylesheet" href="../portal/assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: var(--bg-page); color: var(--text-body);
+         padding: var(--space-5); font-size: var(--fs-body); }
+  h1 { font-size: var(--fs-heading); color: var(--text-strong); margin: 0 0 var(--space-4); }
+  table { border-collapse: collapse; width: 100%; max-width: 960px; }
+  th, td { border: 1px solid var(--border-light); padding: 8px; text-align: left; font-size: var(--fs-caption); }
+  th { color: var(--text-muted); font-weight: 600; }
+  .pass { color: var(--status-ok); font-weight: 600; }
+  .fail { color: var(--status-error); font-weight: 600; }
+  .skip { color: var(--status-warn); font-weight: 600; }
+  #summary { margin: var(--space-4) 0; font-size: var(--fs-body); }
+  #wiz-frame { width: 100%; height: 640px; border: 1px solid var(--border-strong);
+               border-radius: var(--radius); background: var(--bg-card); margin-bottom: var(--space-4); }
+  .mono { font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<h1>服务发布 · 五步向导断言页</h1>
+<div id="summary">运行中…</div>
+<iframe id="wiz-frame" src="publish.html" title="服务发布向导（挡板 API 驱动）"></iframe>
+<div id="results"></div>
+<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
+     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
+<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<script src="selftest-publish.js"></script>
+</body>
+</html>

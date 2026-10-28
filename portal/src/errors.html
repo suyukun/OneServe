@@ -1,0 +1,121 @@
+<!-- ══ A6 错误码中心（P1-2 · SPEC §2-A6/§4.4）：网关＋服务层单张错误码表 ══ -->
+<div class="os-container reveal" x-data="errorsCenterPage" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">错误码中心</div>
+    <h1 class="page-title">统一错误码表（网关 ＋ 服务层）</h1>
+    <div class="os-page-actions">
+      <a class="os-chip is-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i>出错了找谁</a>
+      <a class="os-chip is-link" href="my.html"><i class="bi bi-plug" aria-hidden="true"></i>我的调用日志</a>
+    </div>
+  </div>
+
+  <!-- 信封口径说明：§4.4 envelope 字段与反查深链 -->
+  <section class="card span-24" id="errors-envelope" aria-label="错误响应信封">
+    <div class="card-head"><h2 class="card-title">错误响应长什么样</h2></div>
+    <div class="card-body">
+      <p>平台所有失败响应统一为同一个信封（字段名向后兼容：<code>error</code>／<code>message</code> 不改名）：</p>
+      <pre class="err-sample">{"error": "invalid_key", "message": "键格式不合法", "param": "key",
+  "traceId": "8f1c…", "request_log_url": "my.html?trace_id=8f1c…",
+  "docs_url": "errors.html#invalid_key"}</pre>
+      <ul class="err-envelope-list">
+        <li><code>error</code>：机读错误码，与下表一一对应。</li>
+        <li><code>message</code>：人话说明，可直接展示给你方用户。</li>
+        <li><code>param</code>：哪个参数出错——照着改就行（仅适用时出现）。</li>
+        <li><code>traceId</code>：本次调用的追踪号；抱怨问题时附上它即可精确定位。</li>
+        <li><code>request_log_url</code>：点开就能看到这次调用（含被网关拦下的）。</li>
+        <li><code>docs_url</code>：本页该码的锚点（即你正在看的下表）。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- #46（2026-10-15 错误码到动作闭环）：码段规则块——系统级/服务级两段怎么分辨、各找谁 -->
+  <section class="card span-24" id="errors-code-ranges" aria-label="码段规则">
+    <div class="card-head"><h2 class="card-title">码段规则：系统级 vs 服务级</h2></div>
+    <div class="card-body">
+      <p class="field-hint">下表全部机读码分两段——看「来源」与「HTTP」两列即可分辨自己遇到的是哪段：</p>
+      <dl class="os-glossary">
+        <dt>系统级（HTTP 面码）</dt>
+        <dd>请求没走到业务逻辑就被挡下或失败：网关码（来源列＝网关，如 <code>auth_failed</code> 401——没带 apikey 头或凭证无效）与服务层 HTTP 面码（HTTP 列非 200，如 <code>invalid_key</code> 400、<code>rate_limited</code> 429）。特征＝HTTP 状态非 200，响应信封 <code>error</code> 字段就是错误码，照「解决方案」列处理。</dd>
+        <dt>服务级（结果行／任务级码）</dt>
+        <dd>请求本身成功（HTTP 200），是查询结果里单个键或单个任务出了状况：<code>kv_read_failed</code>（结果行）逐键看行内 <code>error</code> 字段；<code>kv_unavailable</code>、<code>job_state_inconsistent</code>（任务级）在批量任务记录里看。本表 HTTP 列显示「—」的即这一段（行内标注「结果行／任务级机读码，非 HTTP 信封」）。</dd>
+      </dl>
+      <p class="field-hint">对号入座：凭证/授权类（401/403）→ <a href="apply.html">去申请授权</a>；限流/配额类（429）→ <a href="my.html">查看配额</a>。也可用上方「网关／服务层」筛选只看一段。</p>
+    </div>
+  </section>
+
+  <!-- 工具行：搜索＋来源筛选 -->
+  <section class="card span-24" id="errors-toolbar" aria-label="错误码筛选">
+    <div class="card-body fd-toolbar">
+      <div class="search-box os-search-inline">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input type="search" x-model="query" placeholder="在本页过滤：错误码 / 含义" aria-label="搜索错误码">
+      </div>
+      <div class="os-chips" role="group" aria-label="来源筛选">
+        <button class="os-chip" type="button" :class="{ 'is-active': source === 'all' }" @click="source = 'all'">
+          全部 <span class="n num" x-text="center ? center.meta.total : ''"></span>
+        </button>
+        <button class="os-chip" type="button" :class="{ 'is-active': source === 'service' }" @click="source = 'service'">
+          服务层 <span class="n num" x-text="center ? center.meta.service : ''"></span>
+        </button>
+        <button class="os-chip" type="button" :class="{ 'is-active': source === 'gateway' }" @click="source = 'gateway'">
+          网关 <span class="n num" x-text="center ? center.meta.gateway : ''"></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 码表主体：每码一行，<tr id="<code>"> 即 API 错误体 docs_url 的锚点 -->
+  <section class="card span-24" id="errors-table-card" aria-label="错误码列表">
+    <div class="card-head">
+      <h2 class="card-title">错误码列表</h2>
+      <span class="section-sub" x-text="center ? '共 ' + center.meta.total + ' 码（网关 ' + center.meta.gateway + '）' : ''"></span>
+    </div>
+
+    <template x-if="state === 'loading'">
+      <div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+    </template>
+    <template x-if="state === 'error'">
+      <div class="card-body">
+        <div class="error-box"><span>错误码表暂不可用</span><button class="retry-btn" @click="load()">重试</button></div>
+      </div>
+    </template>
+    <template x-if="state === 'ok'">
+      <div class="card-body">
+        <div class="fd-table-wrap">
+          <table class="fd-table" id="errors-table">
+            <thead>
+              <tr>
+                <th>错误码</th>
+                <th>HTTP</th>
+                <th>含义</th>
+                <th>相关参数</th>
+                <th>解决方案</th>
+                <th>来源</th>
+                <th>涉及服务</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="c in visibleCodes()" :key="c.code">
+                <tr :id="c.code">
+                  <td class="mono fd-name" x-text="c.code"></td>
+                  <td class="num" x-text="statusText(c.http_status)"></td>
+                  <td><span x-text="c.meaning"></span>
+                    <span class="field-hint" x-show="c.scope !== 'http'" x-text="'（' + scopeLabel(c.scope) + '机读码，非 HTTP 信封）'"></span>
+                  </td>
+                  <td class="mono" x-text="paramText(c.param)"></td>
+                  <td x-text="c.solution"></td>
+                  <td><span class="badge" :class="c.source === 'gateway' ? 'fd-not' : 'fd-granted'" x-text="srcLabel(c.source)"></span></td>
+                  <td class="mono" x-text="serviceText(c.services)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" x-show="!visibleCodes().length" x-text="'未找到匹配「' + query.trim() + '」的错误码——换个关键词，或清空搜索回全部码表'"></div>
+        <div class="src-note" x-text="center ? center.source : ''"></div>
+      </div>
+    </template>
+  </section>
+
+</div>

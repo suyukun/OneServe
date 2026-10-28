@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>月账单 · 运营控制台 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<style>
+  /* ── 独立简化深色样式（同 admin/grants 页惯例；不依赖组件库） ── */
+  :root {
+    --admin-bg: #1c222b; --admin-card: #242b36; --admin-inset: #1b2029;
+    --admin-accent: #E85B6B; --admin-line: #35404d; --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE; --admin-note: #ACB8C4;
+    --admin-ok: #3FBE95; --admin-warn: #D89A3C; --admin-danger: #E05252; --admin-info: #7FA6C9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px); }
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  .hint { color: var(--admin-muted); font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-primary:disabled, .btn:disabled { background: var(--admin-inset); border-color: var(--admin-line);
+                          color: var(--admin-muted); cursor: not-allowed; opacity: .4; }
+  .btn-sm { padding: 3px 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-ok { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-info { color: var(--admin-info); border: 1px solid var(--admin-info); }
+  .badge-warn { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-danger { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+  .badge-muted { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .sep-l { border-left: 2px solid var(--admin-line); }   /* 双快照两组列的分隔（评审②） */
+  .muted { color: var(--admin-muted); }
+  .num { font-family: var(--font-mono, monospace); }
+  .toolbar { display: flex; gap: var(--space-1, 8px); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2, 16px); }
+  .toolbar select { background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+             gap: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .metric { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+            padding: var(--space-2, 16px); }
+  .metric .k { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); margin-bottom: 4px; }
+  .metric .v { font-size: var(--fs-title, 16px); font-weight: 600; }
+  .gate-ok { color: var(--admin-ok); }
+  .gate-bad { color: var(--admin-danger); }
+  .caller-cell .sub { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); }
+  .footnote { margin-top: var(--space-1, 8px); font-size: var(--fs-tiny, 11px); color: var(--admin-note); }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 12, 15, .72); display: flex;
+             align-items: center; justify-content: center; padding: var(--space-3, 24px); z-index: 50; }
+  .dlg { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+         max-width: 480px; width: 100%; padding: var(--space-3, 24px); }
+  .dlg input[type=text] { width: 100%; background: var(--admin-inset); border: 1px solid var(--admin-line);
+    color: var(--admin-text); border-radius: var(--radius, 8px); padding: 7px 10px;
+    font-size: var(--fs-small, 12px); font-family: inherit; }
+  .dlg input[type=text]:focus { outline: none; border-color: var(--admin-accent); }
+  .dlg label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  .req { color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  .modal-actions { display: flex; gap: var(--space-1, 8px); justify-content: flex-end; margin-top: var(--space-2, 16px); }
+  .banner { border: 1px dashed var(--admin-warn); color: var(--admin-warn); border-radius: var(--radius, 8px);
+            padding: 8px 12px; font-size: var(--fs-small, 12px); margin-bottom: var(--space-2, 16px); }
+  .empty { color: var(--admin-muted); padding: var(--space-3, 24px); text-align: center; }
+  .cli-card code { display: block; background: var(--admin-inset); border: 1px solid var(--admin-line);
+                   border-radius: var(--radius, 8px); padding: 8px 12px; margin: var(--space-1, 8px) 0;
+                   font-size: var(--fs-small, 12px); overflow-x: auto; }
+  .back-link { color: var(--admin-muted); font-size: var(--fs-small, 12px); cursor: pointer;
+               background: none; border: none; padding: 0; }
+  .back-link:hover { color: var(--admin-accent); }
+  .period-card { display: flex; gap: var(--space-3, 24px); flex-wrap: wrap; align-items: baseline; }
+  .period-card .kv { min-width: 150px; }
+  .period-card .k { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); }
+  .period-card .v { font-size: var(--fs-small, 12px); }
+  .pager { display: flex; gap: var(--space-1, 8px); align-items: center; margin-top: var(--space-2, 16px);
+           font-size: var(--fs-small, 12px); color: var(--admin-muted); flex-wrap: wrap; }
+  @media (max-width: 720px) {
+    /* 接壳契约（P0-12 防回归）：顶栏 .os-topbar 换行——收口批接线时补齐（同 tenants/grants 页口径） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="../site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="../site-gate.js?v=266daaf925e8"></script>
+<script defer src="../data-format.js?v=266daaf925e8"></script>
+<script defer src="../api.js?v=266daaf925e8"></script>
+<script defer src="../assets/app.js?v=266daaf925e8"></script>
+<script defer src="../assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="../assets/pages.js?v=266daaf925e8"></script>
+<script defer src="../assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+
+</head>
+<body class="os-layout" x-data="billingAdmin()" x-init="boot()">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="../index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="../catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="../trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="../my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="../apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="../docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="../errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="../reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link is-active" aria-current="page" href="billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="../grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 （admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="crumb" id="admin-crumb" aria-label="面包屑"><span>管理</span><span class="crumb-sep">›</span><span aria-current="page">月账单</span></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="../docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<div class="os-container">
+  <h1>月账单</h1>
+  <p class="hint">账期四态（草稿→已对账→已确认→已核销）＋三硬前置留痕＋双快照明细＋CSV 导出；读/导出全角色，确认/补录仅管理员。出账＝机器任务走命令行（页面不触发出账），确认＝人的决策点。</p>
+
+  <!-- ══ 降级/空态横幅（文案随端点下行，§3.8） ══ -->
+  <div class="banner" id="state-banner" x-show="stateMessage" x-cloak x-text="stateMessage"></div>
+
+  <!-- ══ 列表视图 ══ -->
+  <section aria-label="月账列表" x-show="view === 'list'">
+    <!-- 指标卡四张（§3.2） -->
+    <div class="metrics" id="billing-metrics" x-show="summary" x-cloak>
+      <div class="metric"><div class="k">最近账期状态</div>
+        <div class="v"><span x-text="summary ? (summary.latestPeriod + ' · ' + summary.latestStatusLabel) : '—'"></span></div></div>
+      <div class="metric"><div class="k">应收合计（Σ amount_due）</div>
+        <div class="v num" x-text="summary ? summary.amountDue + ' 元' : '—'"></div>
+        <div class="muted" style="font-size:var(--fs-tiny,11px)">空价目试运行恒 0（未计价行不计应收）</div></div>
+      <div class="metric"><div class="k">欠费账期数</div>
+        <div class="v num" x-text="summary ? summary.overdueCount : '—'"></div></div>
+      <div class="metric"><div class="k">已确认账期数</div>
+        <div class="v num" x-text="summary ? summary.confirmedCount : '—'"></div></div>
+    </div>
+
+    <!-- 出账引导卡（§3.1 拍板②：列表空或存在未出账期时显示） -->
+    <div class="card cli-card" id="cli-guide-card" x-show="showCliGuide" x-cloak>
+      <div class="card-head">
+        <h2 class="card-title">出账引导（命令行）</h2>
+        <div>
+          <button class="btn btn-sm" type="button" id="copy-cli-btn" @click="copyCli()">复制命令</button>
+          <button class="btn btn-sm" type="button" id="refresh-btn" @click="loadList()">刷新查看结果</button>
+        </div>
+      </div>
+      <p class="muted" style="font-size:var(--fs-small,12px);margin:0">
+        出账＝机器门禁任务（三硬前置逐条拦门：T+3 账期关闭／计费面对账清零／覆盖齐零，任一不过拒并人话报因）；页面只读＋确认，不触发出账（拍板②）。</p>
+      <code class="mono" id="cli-command" x-text="cliCommand"></code>
+      <p class="footnote">退出码：0 成功／1 环境／2 拒绝；确认后账单底数冻结（修正走调整单，ADR-0024 决定第 4 条）。</p>
+    </div>
+
+    <!-- 主表：行＝账期（三硬前置留痕三列 ✓✗＋核查时间） -->
+    <div class="card" style="padding:0">
+      <div class="card-head" style="padding:var(--space-2,16px) var(--space-2,16px) 0">
+        <h2 class="card-title">月账列表 <span class="muted num" x-text="'(' + total + ' 期)'"></span></h2>
+        <div class="toolbar" style="margin:0">
+          <label class="muted" style="font-size:var(--fs-small,12px)">每页</label>
+          <select id="page-size-select" aria-label="每页行数" x-model.number="pageSize" @change="loadList()">
+            <option value="20">20</option><option value="50">50</option><option value="100">100</option>
+          </select>
+        </div>
+      </div>
+      <table id="billing-list" aria-label="账期一览">
+        <thead><tr>
+          <th>账期</th><th>状态</th><th>①T+3 关闭</th><th>②对账清零</th><th>③覆盖齐零</th>
+          <th>应收合计</th><th>欠费</th><th>OA 单号</th><th>确认时间</th><th>操作</th>
+        </tr></thead>
+        <tbody>
+          <template x-for="it in items" :key="it.period">
+            <tr :data-testid="'period-row-' + it.period">
+              <td class="mono" x-text="it.period"></td>
+              <td><span class="badge" :class="statusClass(it.status)" :title="statusTip(it.status)"
+                         x-text="statusLabel(it.status)"></span></td>
+              <td><span :class="it.gates.t3Closed ? 'gate-ok' : 'gate-bad'" x-text="it.gates.t3Closed ? '✓' : '✗'"></span></td>
+              <td><span :class="it.gates.reconcileClean ? 'gate-ok' : 'gate-bad'" x-text="it.gates.reconcileClean ? '✓' : '✗'"></span></td>
+              <td><span :class="it.gates.lagZero ? 'gate-ok' : 'gate-bad'" x-text="it.gates.lagZero ? '✓' : '✗'"
+                        :title="'核查时间：' + (it.gates.checkedAt || '—')"></span></td>
+              <td class="num sep-l" x-text="it.amountDue + ' 元'"></td>
+              <td><span class="badge badge-danger" x-show="it.overdue"
+                        title="欠费只算不限：平台不做停服/降配/限流（ADR-0024 决定第 8 条）；标记动作走 CLI">欠费</span>
+                  <span class="muted" x-show="!it.overdue">—</span></td>
+              <td class="mono" x-text="it.oaTicket || '—'"></td>
+              <td class="mono" style="font-size:var(--fs-tiny,11px)" :title="it.confirmedAt || ''"
+                  x-text="fmtTime(it.confirmedAt) || '—'"></td>
+              <td style="white-space:nowrap">
+                <button class="btn btn-sm" type="button" @click="openDetail(it.period)">详情</button>
+                <button class="btn btn-sm" type="button" x-show="it.status === 'reconciled'"
+                        @click="openDialog(it.period, 'confirm')">确认</button>
+                <button class="btn btn-sm" type="button" @click="exportCsv(it.period)">导出 CSV</button>
+              </td>
+            </tr>
+          </template>
+          <tr x-show="!busy && items.length === 0"><td colspan="10" class="empty"
+              x-text="stateMessage || '暂无账期（出账走命令行，见上方引导卡；三硬前置未过会拒并说明原因）'"></td></tr>
+        </tbody>
+      </table>
+      <div class="pager" style="padding:0 var(--space-2,16px) var(--space-2,16px)" x-show="total > 0">
+        <button class="btn btn-sm" type="button" :disabled="page <= 1" @click="page--; loadList()">上一页</button>
+        <span class="num" x-text="'第 ' + page + ' 页 / 共 ' + Math.max(1, Math.ceil(total / pageSize)) + ' 页（' + total + ' 期）'"></span>
+        <button class="btn btn-sm" type="button" :disabled="page >= Math.ceil(total / pageSize)" @click="page++; loadList()">下一页</button>
+      </div>
+      <p class="footnote" style="padding:0 var(--space-2,16px) var(--space-2,16px)">
+        确认后账单底数冻结：账单行与该月用量不再可改，修正走调整单追加留痕（ADR-0024 决定第 4 条）；各状态释义悬停徽标可见。</p>
+    </div>
+  </section>
+
+  <!-- ══ 详情视图（点账期进入） ══ -->
+  <section aria-label="账期详情" x-show="view === 'detail'" x-cloak>
+    <div class="card" id="period-head-card" x-show="detail">
+      <div class="card-head">
+        <h2 class="card-title">账期 <span class="mono" x-text="detail ? detail.period.period : ''"></span></h2>
+        <button class="btn back-link" type="button" id="back-to-list" @click="view = 'list'; loadList()">← 返回月账列表</button>
+      </div>
+      <div class="period-card" x-show="detail">
+        <div class="kv"><div class="k">状态</div><div class="v"><span class="badge" :class="detail && statusClass(detail.period.status)"
+          x-text="detail ? statusLabel(detail.period.status) : ''"></span></div></div>
+        <div class="kv"><div class="k">三硬前置（①②③）</div><div class="v" x-show="detail">
+          <span :class="detail?.period.gates.t3Closed ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.t3Closed ? '✓' : '✗'"></span>
+          <span :class="detail?.period.gates.reconcileClean ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.reconcileClean ? '✓' : '✗'"></span>
+          <span :class="detail?.period.gates.lagZero ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.lagZero ? '✓' : '✗'"></span>
+          <span class="muted" style="font-size:var(--fs-tiny,11px)" :title="detail.period.gates.checkedAt || ''"
+                x-text="'（核查 ' + (detail ? fmtTime(detail.period.gates.checkedAt) : '') + '）'"></span>
+        </div></div>
+        <div class="kv"><div class="k">OA 单号</div><div class="v mono" x-text="detail ? (detail.period.oaTicket || '—') : ''"></div></div>
+        <div class="kv"><div class="k">金额合计（应收）</div><div class="v num" x-text="detail ? detail.period.amountDue + ' 元' : ''"></div></div>
+        <div class="kv"><div class="k">欠费</div><div class="v">
+          <span class="badge badge-danger" x-show="detail && detail.period.overdue"
+                title="欠费只算不限：平台不做停服/降配/限流（ADR-0024 决定第 8 条）；标记动作走 CLI">欠费</span>
+          <span class="muted" x-show="detail && !detail.period.overdue">—</span></div></div>
+        <div class="kv"><div class="k">操作</div><div class="v">
+          <button class="btn btn-sm" type="button" x-show="detail && detail.period.status === 'reconciled'"
+                  @click="openDialog(detail.period.period, 'confirm')">确认</button>
+          <button class="btn btn-sm" type="button" x-show="detail && detail.period.status === 'confirmed'"
+                  @click="openDialog(detail.period.period, 'register')">补录单号</button>
+          <button class="btn btn-sm" type="button" @click="exportCsv(detail.period.period)" x-show="detail">账期级 CSV</button>
+          <button class="btn btn-sm" type="button" @click="exportLines(detail.period.period)" x-show="detail">明细级 CSV</button>
+        </div></div>
+      </div>
+      <p class="footnote" x-text="detail ? detail.caliber : ''"></p>
+    </div>
+
+    <!-- 主表：bill_line 四键×双快照两列组（分页） -->
+    <div class="card" style="padding:0">
+      <div class="card-head" style="padding:var(--space-2,16px) var(--space-2,16px) 0">
+        <h2 class="card-title">账单明细 <span class="muted num" x-text="detail ? '(' + detail.total + ' 行)' : ''"></span></h2>
+      </div>
+      <table id="bill-lines" aria-label="账单行明细">
+        <thead><tr>
+          <th>租户</th><th>调用方</th><th>服务</th>
+          <th>调用量</th><th>成功量</th><th>失败量</th><th>平均耗时(ms)</th><th>事件条数</th>
+          <th class="sep-l">计价</th><th>成交单价</th><th>金额</th><th>价目 ID</th>
+        </tr></thead>
+        <tbody>
+          <template x-for="ln in detail ? detail.items : []" :key="ln.tenantId + '|' + ln.caller + '|' + ln.endpoint">
+            <tr>
+              <td><span class="mono" x-text="ln.tenantId"></span>
+                  <div class="muted" style="font-size:var(--fs-tiny,11px)" x-text="ln.tenantDisplayName || '—'" x-show="ln.tenantDisplayName"></div></td>
+              <td class="caller-cell"><span x-text="ln.callerName || '未登记'"></span>
+                  <div class="sub mono" x-text="ln.caller"></div></td>
+              <td class="mono" x-text="ln.endpoint"></td>
+              <td class="num" x-text="ln.usageSnapshot.calls"></td>
+              <td class="num" x-text="ln.usageSnapshot.success"></td>
+              <td class="num" x-text="ln.usageSnapshot.fail"></td>
+              <td class="num" x-text="ln.usageSnapshot.avgLatencyMs === null ? '—' : ln.usageSnapshot.avgLatencyMs"></td>
+              <td class="num" x-text="ln.usageSnapshot.sourceEventCount"></td>
+              <td class="sep-l"><span class="badge badge-ok" x-show="ln.priceSnapshot.priced">已计价</span>
+                  <span class="badge badge-muted" x-show="!ln.priceSnapshot.priced"
+                        title="未计价＝空价目试运行：金额 0 元且不计应收（ADR-0024 决定第 9 条），与真 0 元价区分">未计价</span></td>
+              <td class="num" x-text="ln.priceSnapshot.unitPrice === null ? '—' : ln.priceSnapshot.unitPrice"></td>
+              <td class="num" x-text="ln.priceSnapshot.amount"></td>
+              <td class="mono" x-text="ln.priceSnapshot.priceItemId || '—'"></td>
+            </tr>
+          </template>
+          <tr x-show="detail && detail.items.length === 0"><td colspan="12" class="empty">该账期无账单行。</td></tr>
+          <tr x-show="detail && detail.items.length > 0" style="background:var(--admin-inset)">
+            <td colspan="4" class="muted">汇总</td>
+            <td class="num" x-text="detail ? detail.summary.successSum : ''"></td>
+            <td colspan="3"></td>
+            <td class="muted">未计价 <span class="num" x-text="detail ? detail.summary.unpricedCount : ''"></span> 行</td>
+            <td class="muted">Σ金额</td>
+            <td class="num" x-text="detail ? detail.summary.amountSum : ''"></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pager" style="padding:0 var(--space-2,16px) var(--space-2,16px)" x-show="detail && detail.total > detail.items.length || (detail && detail.page > 1)">
+        <button class="btn btn-sm" type="button" :disabled="detailPage <= 1" @click="detailPage--; loadDetail(detail.period.period)">上一页</button>
+        <span class="num" x-text="detail ? ('第 ' + detail.page + ' 页 / 共 ' + Math.max(1, Math.ceil(detail.total / detail.pageSize)) + ' 页') : ''"></span>
+        <button class="btn btn-sm" type="button" :disabled="detail && detail.page >= Math.ceil(detail.total / detail.pageSize)"
+                @click="detailPage++; loadDetail(detail.period.period)">下一页</button>
+      </div>
+      <p class="footnote" style="padding:0 var(--space-2,16px) var(--space-2,16px)">
+        页面调用方为掩码；明细级 CSV 带完整凭证编号（拍板④，导出入 bill_export 留痕）。</p>
+    </div>
+  </section>
+
+  <!-- ══ 确认/补录对话框（必填 OA 单号，格式提醒纯登记——零系统集成） ══ -->
+  <div class="overlay" id="confirm-dialog" x-show="dialog.open" x-cloak @keydown.escape.window="dialog.open = false">
+    <div class="dlg" role="dialog" aria-modal="true" aria-label="确认账期">
+      <h2 class="card-title" x-text="dialog.mode === 'confirm' ? '确认账期（reconciled → confirmed）' : '补录 OA 单号（仅已确认账期）'"></h2>
+      <p class="muted" style="font-size:var(--fs-small,12px);color:var(--admin-note)">
+        账期 <span class="mono" x-text="dialog.period"></span>。审批已在 OA 完成，此处仅登记结果（ADR-0003）；
+        平台不做任何 OA 系统对接，单号纯手工登记<span class="req">必填</span>，格式提醒：<span class="mono">字母数字-_，4~64 位</span>（仅提醒不校真伪）。</p>
+      <label class="f" for="oa-ticket-input">OA 单号 <span class="req">*</span></label>
+      <input id="oa-ticket-input" type="text" x-model="dialog.ticket" placeholder="如 DEMO-2026-09-001"
+             @keydown.enter="submitDialog()">
+      <p class="err" id="dialog-error" x-text="dialog.error"></p>
+      <p class="footnote" x-show="dialog.mode === 'confirm'">确认后账单底数冻结：账单行与该月用量不再可改，修正走调整单追加留痕（ADR-0024 决定第 4 条）；此后 --rebill/改账永久拒绝。</p>
+      <div class="modal-actions">
+        <button class="btn" type="button" @click="dialog.open = false">取消</button>
+        <button class="btn btn-primary" type="button" id="confirm-submit-btn" :disabled="dialog.busy || !dialog.ticket.trim()"
+                x-text="dialog.mode === 'confirm' ? '确认冻结' : '登记单号'" @click="submitDialog()"></button>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+<script defer src="admin-gate.js?v=266daaf925e8"></script>
+<script>
+function billingAdmin() {
+  return {
+    view: 'list', busy: false, stateMessage: '',
+    items: [], total: 0, page: 1, pageSize: 50, summary: null,
+    detail: null, detailPage: 1,
+    dialog: { open: false, mode: 'confirm', period: '', ticket: '', error: '', busy: false },
+
+    get cliCommand() { return 'python3 scripts/billing_run.py --period ' + this.prevPeriod(); },
+    get showCliGuide() {
+      if (this.view !== 'list') return false;
+      if (!this.total) return true;                       // 列表空（§3.2）
+      return this.items.some(function (it) { return it.status === 'draft'; });   // 存在未出账期
+    },
+
+    prevPeriod() {
+      var d = new Date(); var y = d.getFullYear(); var m = d.getMonth();  // 上自然月
+      if (m === 0) { y -= 1; m = 12; }
+      return y + '-' + String(m).padStart(2, '0');
+    },
+    statusLabel(s) { return ({ draft: '草稿', reconciled: '已对账', confirmed: '已确认', written_off: '已核销' })[s] || s; },
+    statusTip(s) {
+      return ({ draft: '草稿＝未过对账自检（当前链路落库即 reconciled，draft 保留给人工流程）',
+                reconciled: '已对账＝三硬前置全过，待确认',
+                confirmed: '已确认＝账单底数冻结，修正走调整单（ADR-0024 决定第 4 条）',
+                written_off: '已核销（核销触发动作二期候选，0004 口径）' })[s] || '';
+    },
+    statusClass(s) { return ({ draft: 'badge-warn', reconciled: 'badge-info', confirmed: 'badge-ok', written_off: 'badge-muted' })[s] || 'badge-muted'; },
+    fmtTime(v) {
+      if (!v) return '';
+      const d = new Date(v);
+      if (isNaN(d)) return String(v);
+      const p = function (n) { return String(n).padStart(2, '0'); };
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    },
+
+    async boot() {
+      await this.loadList();
+      const p = new URLSearchParams(location.search).get('period');   // 深链：billing.html?period=YYYY-MM 直达详情（侧栏/列表外链入口）
+      if (p && /^\d{4}-\d{2}$/.test(p)) await this.openDetail(p);
+    },
+
+    async _get(url) {
+      const res = await fetch(url, { headers: (window.adminHeaders ? adminHeaders() : {}) });
+      let body = null;
+      try { body = await res.json(); } catch (e) { body = null; }
+      if (!res.ok) {
+        const msg = body && body.message ? body.message : ('请求失败（HTTP ' + res.status + '）');
+        const err = new Error(msg); err.status = res.status; err.body = body; throw err;
+      }
+      return body;
+    },
+
+    async loadList() {
+      this.busy = true; this.stateMessage = '';
+      try {
+        const d = await this._get('/v1/admin/billing/periods?page=' + this.page + '&page_size=' + this.pageSize);
+        this.items = d.items || []; this.total = d.total || 0;
+        this.summary = d.summary || null;
+        if (d.status === 'empty' && d.message) this.stateMessage = d.message;
+      } catch (e) {
+        this.items = []; this.total = 0; this.summary = null;
+        this.stateMessage = e.status === 503 ? '账单库（pg）暂不可达：账单真源在 pg usage schema（无 yaml 回落）——稍后重试或联系平台值班。' : e.message;
+      } finally { this.busy = false; }
+    },
+
+    async loadDetail(period) {
+      this.busy = true; this.stateMessage = '';
+      try {
+        this.detail = await this._get('/v1/admin/billing/periods/' + period + '?page=' + this.detailPage + '&page_size=20');
+        if (!this.detail.items.length && this.detail.total && this.detailPage > 1) {
+          this.detailPage = 1; await this.loadDetail(period);
+        }
+      } catch (e) {
+        this.stateMessage = e.message; this.view = 'list';
+      } finally { this.busy = false; }
+    },
+
+    async openDetail(period) { this.detailPage = 1; this.view = 'detail'; await this.loadDetail(period); },
+
+    openDialog(period, mode) {
+      this.dialog = { open: true, mode: mode, period: period, ticket: '', error: '', busy: false };
+      setTimeout(function () { const el = document.getElementById('oa-ticket-input'); if (el) el.focus(); }, 50);
+    },
+
+    ticketFormatOk(t) { return /^[A-Za-z0-9][A-Za-z0-9_-]{3,63}$/.test(t); },
+
+    async submitDialog() {
+      const t = this.dialog.ticket.trim();
+      if (!t) { this.dialog.error = 'OA 单号必填（确认结果与单号一并登记留痕）。'; return; }
+      if (!this.ticketFormatOk(t)) { this.dialog.error = '单号格式提醒：字母数字-_，4~64 位（纯登记不校真伪，可按贵司编号规则调整）。'; return; }
+      this.dialog.busy = true; this.dialog.error = '';
+      const path = this.dialog.mode === 'confirm' ? 'confirm' : 'register-oa';
+      try {
+        const res = await fetch('/v1/admin/billing/periods/' + this.dialog.period + '/' + path, {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, window.adminHeaders ? adminHeaders() : {}),
+          body: JSON.stringify({ oa_ticket: t })
+        });
+        const body = await res.json().catch(function () { return null; });
+        if (!res.ok) { this.dialog.error = (body && body.message) || ('请求失败（HTTP ' + res.status + '）'); this.dialog.busy = false; return; }
+        this.dialog.open = false;
+        if (this.view === 'detail' && this.detail) await this.loadDetail(this.dialog.period);
+        else await this.loadList();
+      } catch (e) { this.dialog.error = e.message || '网络异常'; this.dialog.busy = false; }
+    },
+
+    async _download(url) {
+      const res = await fetch(url, { headers: (window.adminHeaders ? adminHeaders() : {}) });
+      if (!res.ok) {
+        const body = await res.json().catch(function () { return null; });
+        this.stateMessage = (body && body.message) || ('导出失败（HTTP ' + res.status + '）');
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = url.split('/').pop() + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+    },
+    exportCsv(period) { return this._download('/v1/admin/billing/periods/' + period + '/export'); },
+    exportLines(period) { return this._download('/v1/admin/billing/periods/' + period + '/export-lines'); },
+
+    copyCli() {
+      const cmd = this.cliCommand;
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(cmd); }
+      else {
+        const ta = document.createElement('textarea'); ta.value = cmd;
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      }
+    }
+  };
+}
+</script>
+<script defer src="../assets/alpine.min.js?v=266daaf925e8"></script>
+</body>
+</html>

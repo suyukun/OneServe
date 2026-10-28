@@ -1,0 +1,4 @@
+[2026-09-20 21:34:29,060] devMacBook-Pro-2/INFO/locust.main: Starting Locust 2.46.6
+[2026-09-20 21:34:29,061] devMacBook-Pro-2/INFO/locust.main: Run time limit set to 70 seconds
+[2026-09-20 21:34:29,062] devMacBook-Pro-2/INFO/locust.runners: Ramping to 100 users at a rate of 10.00 per second
+[2026-09-20 21:34:38,078] devMacBook-Pro-2/INFO/locust.runners: All users spawned: {"TagQueryUser": 100} (100 total users)

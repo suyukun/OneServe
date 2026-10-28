@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="dark"><!-- P-1R：随全站切深色（仅令牌层生效，断言逻辑不变） -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneServe 门户 · data-format 断言页（P-1 自测）</title>
+<!-- 数字格式化单元自测：边界值断言（议题二 v1.1 必须级细节表）；无外部引用 -->
+<link rel="stylesheet" href="assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: var(--bg-page); color: var(--text-body); padding: 24px; font-size: 13px; }
+  h1 { font-size: 16px; color: var(--text-strong); margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 860px; background: var(--bg-card); }
+  th, td { border: 1px solid var(--border-strong); padding: 8px; text-align: left; font-size: 12px; }
+  th { background: var(--bg-subtle); color: var(--text-strong); }
+  td.mono { font-family: var(--font-mono); }
+  .pass { color: var(--status-ok); font-weight: 600; }
+  .fail { color: var(--status-error); font-weight: 600; }
+  #summary { margin: 16px 0; font-size: 14px; }
+  .group { margin: 16px 0 8px; font-weight: 600; color: var(--text-strong); }
+</style>
+</head>
+<body>
+<h1>data-format.js 断言页（数字格式化边界自测）</h1>
+<div id="summary">运行中…</div>
+<div id="results"></div>
+<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
+     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
+<script src="site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<script src="data-format.js"></script>
+<script>
+(function () {
+  var F = window.Fmt;
+  var NOW = Date.parse('2026-09-21T16:00:00+08:00'); // 注入基准时间，保证断言确定性
+  var CASES = [
+    // ── 组1：formatCompact 万/亿边界（≥1亿 x.xx亿 / ≥1万 x.x万 / 其余千分位） ──
+    ['compact', '不足万走千分位', function () { return F.formatCompact(9999); }, '9,999'],
+    ['compact', '万界 10000', function () { return F.formatCompact(10000); }, '1.0万'],
+    ['compact', '58921 → x.x万', function () { return F.formatCompact(58921); }, '5.9万'],
+    ['compact', 'mock 值 60000000', function () { return F.formatCompact(60000000); }, '6000.0万'],
+    ['compact', 'mock 值 1284650', function () { return F.formatCompact(1284650); }, '128.5万'],
+    ['compact', '亿界之下 99999999', function () { return F.formatCompact(99999999); }, '10000.0万'],
+    ['compact', '亿界 100000000', function () { return F.formatCompact(100000000); }, '1.00亿'],
+    ['compact', '601234567 → x.xx亿', function () { return F.formatCompact(601234567); }, '6.01亿'],
+    ['compact', '零与个位', function () { return F.formatCompact(0) + '/' + F.formatCompact(8); }, '0/8'],
+    ['compact', '缺失 → 禁假0', function () { return F.formatCompact(null); }, '—'],
+    // ── 组2：formatThousands 千分位 ──
+    ['thousands', 'mock 今日调用 48213', function () { return F.formatThousands(48213); }, '48,213'],
+    ['thousands', '同步条数 12847202', function () { return F.formatThousands(12847202); }, '12,847,202'],
+    ['thousands', '小数四舍五入 6.4', function () { return F.formatThousands(6.4); }, '6'],
+    ['thousands', '缺失 → 禁假0', function () { return F.formatThousands(undefined); }, '—'],
+    // ── 组3：formatPercent ──
+    ['percent', '成功率 0.996', function () { return F.formatPercent(0.996); }, '99.6%'],
+    ['percent', '满分 1', function () { return F.formatPercent(1); }, '100.0%'],
+    ['percent', '缺失', function () { return F.formatPercent(null); }, '—'],
+    // ── 组4：formatRelativeTime 时间相对化（now 注入，确定性） ──
+    ['reltime', '30 秒前 → 刚刚', function () { return F.formatRelativeTime(NOW - 30e3, NOW); }, '刚刚'],
+    ['reltime', '5 分钟前', function () { return F.formatRelativeTime(NOW - 5 * 60e3, NOW); }, '5 分钟前'],
+    ['reltime', '3 小时前', function () { return F.formatRelativeTime(NOW - 3 * 3600e3, NOW); }, '3 小时前'],
+    ['reltime', '26 小时前 → 昨天 HH:MM', function () { return F.formatRelativeTime(NOW - 26 * 3600e3, NOW); }, '昨天 14:00'],
+    ['reltime', '8 天前 → MM-DD HH:MM', function () { return F.formatRelativeTime(NOW - 8 * 86400e3, NOW); }, '09-13 16:00'],
+    ['reltime', '非法输入 → —', function () { return F.formatRelativeTime('not-a-date', NOW); }, '—'],
+    // ── 组5：formatClock（本地构造，免时区漂移） ──
+    ['clock', 'HH:mm:ss', function () { return F.formatClock(new Date(2026, 8, 21, 16, 0, 5)); }, '16:00:05']
+  ];
+  var pass = 0, groups = {};
+  var html = '';
+  // #36 XSS 全扫（2026-10-15）：actual＝断言返回值（异常 message/服务端回显均可能），
+  // 插值进 innerHTML 即注入面——escapeHtml 基线同款。
+  var _esc = function (s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  };
+  CASES.forEach(function (c, i) {
+    var actual;
+    try { actual = String(c[2]()); } catch (e) { actual = 'EXCEPTION: ' + e.message; }
+    var ok = actual === c[3];
+    if (ok) pass++;
+    groups[c[0]] = groups[c[0]] || { pass: 0, total: 0 };
+    groups[c[0]].total++; if (ok) groups[c[0]].pass++;
+    if (!groups[c[0]].shown) { html += '<div class="group">[' + _esc(c[0]) + ']</div><table><tr><th>#</th><th>用例</th><th>期望</th><th>实际</th><th>结果</th></tr>'; groups[c[0]].shown = true; }
+    html += '<tr><td>' + (i + 1) + '</td><td>' + _esc(c[1]) + '</td><td class="mono">' + _esc(c[3]) + '</td><td class="mono">' + _esc(actual) + '</td><td class="' + (ok ? 'pass' : 'fail') + '">' + (ok ? 'PASS' : 'FAIL') + '</td></tr>';
+  });
+  Object.keys(groups).forEach(function (g) { html += '</table>'; delete groups[g].shown; });
+  document.getElementById('results').innerHTML = html;
+  var all = CASES.length;
+  document.getElementById('summary').innerHTML =
+    (pass === all ? '<span class="pass">全部通过 ' + pass + '/' + all + '</span>' : '<span class="fail">失败 ' + (all - pass) + '/' + all + '</span>') +
+    ' · 边界组：' + Object.keys(groups).map(function (g) { return g + ' ' + groups[g].pass + '/' + groups[g].total; }).join('，');
+})();
+</script>
+</body>
+</html>

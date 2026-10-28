@@ -1,0 +1,25 @@
+# OneServe 网关配置（task-002，源自 task-001 POC 实测配置）
+# 两大坑（POC结论_v1.md §4）已处理：
+#   坑1：etcd 配置必须在 deployment.etcd 之下——顶层 etcd: 会被静默忽略；
+#   坑2：Admin API 的 ACL 键名是 deployment.admin.allow_admin（不是 allow_list）。
+deployment:
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+  etcd:
+    host:
+      - http://oneserve-etcd:2379
+    prefix: /apisix
+  admin:
+    admin_key:
+      - name: admin
+        key: ${{APISIX_ADMIN_KEY}}   # env 展开（APISIX 原生支持，2026-10-20 隔离实证：正确key=200/错key=401）；真值在 .env（9180 不发布宿主机）
+        role: admin
+    allow_admin:                      # 9180 未发布宿主机端口，ACL 只需覆盖内网来源
+      - 127.0.0.1
+      - 172.28.0.0/16                 # oneserve-net 网段（service 容器跑 init_routes.py 调 Admin API）
+      - 192.168.65.0/24               # Docker Desktop 宿主机网关段（POC 实测源 IP，留作直调兜底）
+
+apisix:
+  node_listen:
+    - 9080

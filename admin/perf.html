@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>性能测试 · OneServe</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * 性能测试页（P3 2026-10-08：压测管理台）
+ *   · 触发区：选已发布服务（GET /v1/admin/publish published）＋档位输入
+ *     （缺省 100,300,500,800）＋凭证在场性只读展示（ONESERVE_APPKEY 环境变量，
+ *     不回显值）＋「开始压测」；运行中再点 → 后端 409「压测进行中」如实提示
+ *   · 状态区：轮询 GET /v1/admin/perf/status（5s 一拍）：运行中否/最新 results
+ *     目录/报告是否已生成；服务重启后句柄丢失 → 如实「后台进程状态未知」
+ *   · 报告列表：GET /v1/admin/perf/reports 扫 results/（时间戳/服务/链接）；
+ *     容器态服务层看不到仓库根 → 回落门户静态镜像 ../perf-reports/（构建期同步）
+ *   · 报告查看：列表点开 → 页内 iframe 内嵌自包含 performance-report.html
+ * 数据面（本页后端，P3 新增）：
+ *   POST /v1/admin/perf/run        触发梯子（subprocess.Popen 后台起
+ *                                  loadtest/run_ladder.sh，env 继承 ONESERVE_APPKEY）
+ *   GET  /v1/admin/perf/status     运行状态（running/latest/appkey_configured/unknown）
+ *   GET  /v1/admin/perf/reports    历史报告聚合；GET /v1/admin/perf/report/… 伺服报告
+ * 加载序：admin-gate.js → perf.js → alpine.min.js（硬规矩）。本文件是唯一真源：
+ * 构建期抽取正文/样式/脚本拼进门户壳（scripts/build_portal.py ADMIN_PAGES.perf）。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  [x-cloak] { display: none !important; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-body);
+         font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.6; }
+  .page { max-width: 860px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+  .page-head h1 { font-size: var(--fs-heading); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .page-head .hint { color: var(--text-body); margin: 0; }
+  .muted { color: var(--text-muted); }
+  .mono { font-family: var(--font-mono); }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius);
+          padding: var(--space-5); margin-bottom: var(--space-5); }
+  .card-title { font-size: var(--fs-title); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .card-sub { color: var(--text-body); font-size: var(--fs-caption); margin: 0 0 var(--space-4); }
+
+  .btn { border: 1px solid var(--border-strong); background: var(--bg-subtle); color: var(--text-strong);
+         border-radius: var(--radius); height: 36px; padding: 4px 16px; font-size: var(--fs-body);
+         font-family: inherit; cursor: pointer;
+         transition: border-color var(--motion-duration) var(--motion-ease); }
+  .btn:hover:not(:disabled) { border-color: var(--brand-primary); }
+  .btn:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+  .btn:disabled { opacity: .38; cursor: not-allowed; }
+  .btn-primary { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+  .btn-primary:hover:not(:disabled) { border-color: var(--brand-primary); filter: brightness(1.05); }
+  /* 视觉评审修①：品牌红禁用态改为中性灰底（暗红 38% 透明＝难读；原因提示走 title） */
+  .btn-primary:disabled { background: var(--bg-subtle); border-color: var(--border-strong);
+                          color: var(--text-muted); opacity: 1; }
+  .btn-sm { height: 28px; padding: 4px 12px; font-size: var(--fs-caption); }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-full);
+           padding: 2px 8px; font-size: var(--fs-caption); flex: none; }
+  .badge .dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; flex: none; }
+  .badge-ok { color: var(--status-ok); background: color-mix(in srgb, var(--status-ok) 12%, transparent); }
+  .badge-muted { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 12%, transparent); }
+  .badge-warn { color: var(--status-warn, #b7791f); background: color-mix(in srgb, var(--status-warn, #b7791f) 14%, transparent); }
+  .badge-run { color: var(--brand-primary); background: color-mix(in srgb, var(--brand-primary) 12%, transparent); }
+
+  .result { display: flex; gap: 8px; align-items: flex-start; border-radius: var(--radius);
+            padding: 12px 16px; font-size: var(--fs-body); color: var(--text-strong); }
+  .result-bad { border: 1px solid var(--status-error);
+                background: color-mix(in srgb, var(--status-error) 8%, transparent); }
+  .result-ok { border: 1px solid var(--status-ok);
+                background: color-mix(in srgb, var(--status-ok) 8%, transparent); }
+  .result-warn { border: 1px solid var(--status-warn, #b7791f);
+                 background: color-mix(in srgb, var(--status-warn, #b7791f) 8%, transparent); }
+  .result .mark { font-weight: 600; flex: none; }
+
+  .field { margin-bottom: var(--space-4); }
+  .field label { display: block; font-size: var(--fs-caption); color: var(--text-body);
+                 font-weight: 600; margin-bottom: 6px; }
+  .field input, .field select { width: 100%; max-width: 620px; height: 36px; padding: 4px 10px;
+      border: 1px solid var(--border-strong); border-radius: var(--radius);
+      background: var(--bg-card); color: var(--text-strong); font-family: inherit;
+      font-size: var(--fs-body); }
+  .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 1px; }
+  .field .tip { font-size: var(--fs-caption); color: var(--text-muted); margin-top: 4px; }
+  .field input.bad, .field input[aria-invalid="true"] { border-color: var(--status-error); }
+
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; font-size: var(--fs-body); }
+  .kv dt { color: var(--text-muted); }
+  .kv dd { margin: 0; color: var(--text-strong); min-width: 0; overflow-wrap: anywhere; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: var(--fs-caption); color: var(--text-body); font-weight: 600; text-align: left;
+       padding: 8px 0; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  td { font-size: var(--fs-body); padding: 12px 12px 12px 0; border-bottom: 1px solid var(--border-light);
+       vertical-align: top; }
+  tbody tr:hover td { background: var(--bg-subtle); }
+  .empty-tip { text-align: center; color: var(--text-muted); padding: var(--space-6) 0; }
+
+  .report-frame-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius);
+                       background: #fff; overflow: hidden; }
+  .report-frame-wrap iframe { display: block; width: 100%; height: 720px; border: 0; }
+
+  /* 视觉评审修②：主按钮对齐字段列宽（620px），不再通栏；修③：操作列收缩贴内容 */
+  #perf-run-btn { width: 100%; max-width: 620px; }
+  #perf-reports-table th:last-child, #perf-reports-table td:last-child {
+    width: 1%; white-space: nowrap; text-align: right; }
+
+  /* 视觉评审修①（兜底，优先级最高口径）：空态可见性由「已渲染行」经 CSS :has 派生，
+     不依赖 Alpine effect 时序——虚拟时钟截图冻结在 effect 队列中段时（数据行与空态
+     并存的假象，CDP 实测运行态正确）也保持一致：有行→空态必不显示 */
+  #perf-reports-empty { display: none; }
+  #perf-reports-section:not(:has(tr[data-testid^="report-row-"])) #perf-reports-empty { display: block; }
+
+  @media (max-width: 720px) {
+    .page { padding: var(--space-4) var(--space-4); }
+    /* 接壳后顶栏＝门户 .os-topbar：窄屏允许换行，防 390px 横向溢出（P0-12） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); }
+    table { display: block; overflow-x: auto; }
+    .kv { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body x-data="perfConsole()" x-init="boot()">
+
+<main class="page">
+  <header class="page-head" id="page-head">
+    <h1 id="page-title">性能测试</h1>
+    <p class="hint" id="page-hint">梯子压测管理：选服务定档位触发（loadtest/run_ladder.sh 编排，授权/配额门禁内置），轮询进度，页内查看每次的 performance-report。</p>
+  </header>
+
+  <!-- ══ ① 触发区 ══ -->
+  <section class="card" id="perf-trigger-section" aria-label="触发压测">
+    <h2 class="card-title">开始压测</h2>
+    <p class="card-sub">凭证从<b>服务进程环境变量 ONESERVE_APPKEY</b> 读取（页面不收集、不回显明文）；梯子为重操作，同一时刻只允许一个压测进程。</p>
+
+    <div class="field">
+      <label for="perf-service-select" id="perf-service-label">被测服务（已发布）</label>
+      <select id="perf-service-select" data-action="select-service" x-model="serviceId" :disabled="servicesBusy">
+        <option value="">— 请选择 —</option>
+        <template x-for="s in services" :key="s.serviceId">
+          <option :value="s.serviceId" x-text="s.serviceName + '（' + s.serviceId + '）'"></option>
+        </template>
+      </select>
+      <p class="tip" id="perf-service-tip"
+         x-text="servicesBusy ? '正在读取已发布服务…'
+           : (servicesError ? servicesError
+           : (services.length ? '共 ' + services.length + ' 个已发布服务（聚合自发布台写区）' : '暂无已发布服务；先去「服务发布」发布一个服务'))"></p>
+    </div>
+
+    <div class="field">
+      <label for="perf-ladder-input" id="perf-ladder-label">档位（并发用户梯子）</label>
+      <input id="perf-ladder-input" data-action="edit-ladder" type="text" x-model="ladder"
+             :aria-invalid="ladderValid(ladder) ? null : 'true'" :class="ladderValid(ladder) ? '' : 'bad'"
+             placeholder="100,300,500,800">
+      <p class="tip" id="perf-ladder-tip">逗号分隔的并发档位：单档快测如 <span class="mono">20</span>；缺省四档 <span class="mono">100,300,500,800</span>（约 8-12 分钟，含预热/静置探针/审计对账）。</p>
+    </div>
+
+    <div class="field" id="perf-cred-note">
+      <label id="perf-cred-label">压测凭证</label>
+      <p style="margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span class="badge" id="perf-cred-badge" :class="appkeyOk ? 'badge-ok' : 'badge-muted'">
+          <span class="dot" x-show="appkeyOk"></span>
+          <span id="perf-cred-state" x-text="appkeyOk ? 'ONESERVE_APPKEY 已配置' : 'ONESERVE_APPKEY 未配置'"></span>
+        </span>
+        <span class="muted" id="perf-cred-hint">从服务进程环境变量读取，本页只读展示是否已配置（不回显值）；未配置时触发会被服务端拒绝。</span>
+      </p>
+    </div>
+
+    <button class="btn btn-primary" id="perf-run-btn" type="button" data-action="perf-run"
+            @click="startRun()" :disabled="runDisabled"
+            :title="runDisabled ? '需要：已选服务＋档位格式合法＋凭证已配置＋当前无压测在跑' : '后台起 run_ladder.sh（四档约 8-12 分钟）'"
+            x-text="runBusy ? '正在触发…' : (running ? '压测进行中…' : '开始压测')"></button>
+
+    <div class="result result-bad" id="perf-run-error" x-show="runError" x-cloak role="alert" style="margin-top: var(--space-4);">
+      <span class="mark" aria-hidden="true">!</span>
+      <span id="perf-run-error-text" x-text="runError"></span>
+    </div>
+    <div class="result result-ok" id="perf-run-ok" x-show="runOkNote" x-cloak role="status" style="margin-top: var(--space-4);">
+      <span class="mark" aria-hidden="true">✓</span>
+      <span id="perf-run-ok-text" x-text="runOkNote"></span>
+    </div>
+  </section>
+
+  <!-- ══ ② 运行状态（5s 轮询） ══ -->
+  <section class="card" id="perf-status-section" aria-label="压测运行状态">
+    <h2 class="card-title">运行状态
+      <span class="badge" id="perf-status-badge" :class="running ? 'badge-run' : 'badge-muted'" style="margin-left: 8px;">
+        <span class="dot" x-show="running"></span>
+        <span id="perf-status-state" x-text="running ? '压测进行中' : '空闲'"></span>
+      </span>
+    </h2>
+    <p class="card-sub">每 5 秒自动刷新（GET /v1/admin/perf/status）。</p>
+
+    <div class="result result-warn" id="perf-unknown-note" x-show="status && status.unknown" x-cloak role="alert" style="margin-bottom: var(--space-4);">
+      <span class="mark" aria-hidden="true">?</span>
+      <span id="perf-unknown-text" x-text="status && status.unknown && status.unknown.note"></span>
+    </div>
+
+    <dl class="kv" id="perf-status-kv">
+      <dt>当前批次</dt>
+      <dd class="mono" :class="status && status.run ? '' : 'muted'" id="perf-status-run" x-text="status && status.run ? status.run.run_id + ' · ' + status.run.service + ' · 档位 ' + status.run.ladder : '—'"></dd>
+      <dt>开始时间</dt>
+      <dd :class="status && status.run ? '' : 'muted'" id="perf-status-started" x-text="status && status.run ? status.run.started_at : '—'"></dd>
+      <dt>最新结果目录</dt>
+      <dd class="mono" :class="status && status.latest ? '' : 'muted'" id="perf-status-latest" x-text="status && status.latest ? status.latest.dir : '—'"></dd>
+      <dt>报告文件</dt>
+      <dd id="perf-status-report">
+        <span x-show="status && status.latest">
+          <span x-show="status && status.latest && status.latest.report_html">已生成（performance-report.html＋.md）</span>
+          <span class="muted" x-show="status && status.latest && !status.latest.report_html">尚未生成（梯子跑完由 report_gen.py 产出）</span>
+        </span>
+        <span class="muted" x-show="!status || !status.latest">—</span>
+      </dd>
+    </dl>
+    <p class="muted" id="perf-status-note" style="font-size: var(--fs-caption); margin: var(--space-3) 0 0;"
+       x-text="statusNote"></p>
+  </section>
+
+  <!-- ══ ③ 历史报告列表 ══ -->
+  <section class="card" id="perf-reports-section" aria-label="历史压测报告">
+    <h2 class="card-title">历史报告 <span class="muted" id="perf-reports-count" style="font-size: var(--fs-caption);"
+          x-text="reports.length ? '（' + reports.length + ' 次梯子）' : ''"></span>
+    </h2>
+    <p class="card-sub" id="perf-reports-note" x-show="reportsNote" x-text="reportsNote"></p>
+
+    <table id="perf-reports-table">
+      <thead><tr>
+        <th id="col-ts">时间戳</th>
+        <th id="col-svc">服务</th>
+        <th id="col-report">报告</th>
+        <th id="col-actions">操作</th>
+      </tr></thead>
+      <tbody id="perf-reports-tbody">
+        <template x-for="r in reports" :key="r.dir">
+          <tr :data-testid="'report-row-' + r.dir">
+            <td class="mono" x-text="r.ts"></td>
+            <td>
+              <div x-text="r.service_name"></div>
+              <!-- 视觉评审修③：名/ID 同值时不再重复两行（静态镜像缺 meta 名时如实单行） -->
+              <div class="muted mono" style="font-size: var(--fs-caption);"
+                   x-show="r.service && r.service !== r.service_name" x-text="r.service"></div>
+            </td>
+            <td>
+              <span class="badge" :class="r.report_html ? 'badge-ok' : 'badge-muted'">
+                <span class="dot" x-show="r.report_html"></span>
+                <span x-text="r.report_html ? '已生成' : '缺失'"></span>
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-sm" type="button" :id="'view-btn-' + r.dir" data-action="view-report"
+                      @click="viewReport(r)" :disabled="!r.report_html" x-text="'查看'"></button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+    <!-- 视觉评审修①（终版）：空态走 template x-if——元素存在与否由 Alpine 原子增删，
+         初态/freeze 态天然无元素（fail-safe），杜绝 x-show 样式滞后导致的数据行与空态并存
+         （CDP 实测运行态正确、虚拟时钟截图滞后，故改结构不改变量） -->
+    <template x-if="!reportsBusy && reports.length === 0">
+      <div class="empty-tip" id="perf-reports-empty">
+        <div>还没有历史报告</div>
+        <div>触发一次梯子（或本机 CLI：<span class="mono">bash loadtest/run_ladder.sh --service &lt;服务ID&gt; --ladder 20</span>）后，这里会列出每次跑的报告</div>
+      </div>
+    </template>
+  </section>
+
+  <!-- ══ ④ 报告查看（页内 iframe 内嵌） ══ -->
+  <section class="card" id="perf-report-panel" x-show="activeReport" x-cloak aria-label="压测报告查看">
+    <h2 class="card-title">报告：<span class="mono" id="perf-report-dir" x-text="activeReport && activeReport.dir"></span></h2>
+    <p class="card-sub">
+      <a id="perf-report-open" :href="activeReport && activeReport.href" target="_blank" rel="noopener">新窗口打开</a>
+      <button class="btn btn-sm" id="perf-report-close" type="button" style="margin-left: 12px;" @click="closeReport()">收起</button>
+    </p>
+    <div class="report-frame-wrap">
+      <iframe id="perf-report-frame" title="压测报告（performance-report.html）"
+              :src="activeReport && activeReport.href"></iframe>
+    </div>
+  </section>
+</main>
+
+<script src="admin-gate.js"></script><!-- 管理页共享闸（加载序硬规矩：先业务 js 后 alpine） -->
+<script src="perf.js"></script><!-- 性能测试页组件（先定义后加载 Alpine，硬规矩） -->
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs@3.14.9 自托管副本 -->
+</body>
+</html>

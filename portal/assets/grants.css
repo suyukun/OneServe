@@ -1,0 +1,67 @@
+/* ============================================================
+ * OneServe 门户 · 授权登记全景页样式（P1-8 · assets/grants.css，新增文件）
+ * 仅引用既有令牌（tokens.css）；只定义本页私有结构类，不动全局。
+ * ============================================================ */
+
+/* 口径说明块 */
+.gr-about p { margin: 0 0 6px; font-size: 13px; color: var(--text-body, #434343); }
+.gr-about p:last-child { margin-bottom: 0; }
+
+/* 汇总卡 */
+.gr-kpi-val { font-size: 26px; font-weight: 700; color: var(--text-strong, #262626); line-height: 1.2; }
+.gr-kpi-name { font-size: 13px; color: var(--text-muted, #8c8c8c); margin-top: 2px; }
+.gr-kpi-warn { color: var(--status-warn, #D4760A); }
+
+/* 筛选条 */
+.gr-readonly-badge { font-size: 11px; }
+.gr-filter-body { display: flex; flex-direction: column; gap: var(--space-1, 8px); }
+.gr-filter-row { display: flex; gap: var(--space-1, 8px); align-items: flex-end; flex-wrap: wrap; }
+.gr-filter-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 190px; }
+.gr-filter-field .form-label { font-size: 12px; color: var(--text-muted, #8c8c8c); margin: 0; }
+.gr-filter-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+/* 行内控件高度统一（2026-10-16）：form-control-sm(28) 与 form-select-sm(32) 变体混用——统一到 2rem，按钮同高（DESIGN §3.3） */
+.gr-filter-row .form-control { height: 2rem; }
+.gr-filter-actions .btn-sm { height: 2rem; }
+
+/* 全景表：容器内滚动（P0-12 窄屏口径——宽表不撑破布局） */
+.gr-table-wrap { display: block; overflow-x: auto; }
+.gr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gr-table th { text-align: left; font-weight: 600; color: var(--text-muted, #8c8c8c);
+  padding: 6px 8px; border-bottom: 1px solid var(--border-strong, #d9d9d9); white-space: nowrap; }
+.gr-table td { padding: 7px 8px; border-bottom: 1px solid var(--border-light, #f0f0f0);
+  vertical-align: top; }
+.gr-tenant { white-space: nowrap; }
+.gr-appkey { white-space: nowrap; }
+.gr-svc { word-break: break-all; }
+.gr-endpoint { word-break: break-all; color: var(--text-muted, #8c8c8c); font-size: 12px; }
+.gr-fields { max-width: 360px; }
+/* #58 配额水电表（2026-10-15）：超额凭证今日已用列转警告色 */
+.gr-quota-warn { color: var(--status-warn, #D4760A); font-weight: 600; }
+.gr-field-chip { font-size: 11px; margin: 0 4px 4px 0; cursor: pointer; }
+.gr-oa { white-space: nowrap; word-break: break-all; }
+
+/* OA 状态徽标：绿=已登记单号 / 黄=占位待回填 / 红=缺失（语义色只作语义，如实不美化） */
+.gr-oa-badge { font-size: 11px; }
+.gr-oa-present { background: var(--status-ok, #009423); color: #fff; }
+.gr-oa-placeholder { background: var(--status-warn, #D4760A); color: #fff; }
+.gr-oa-missing { background: var(--status-error, #CB272D); color: #fff; }
+
+/* 反查/溯源 */
+.gr-lookup-bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.gr-lookup-bar .form-control { min-width: 200px; flex: 1 1 200px; }
+.gr-lookup-current { padding: 6px 10px; border-radius: 4px; background: var(--bg-subtle, #f5f5f5);
+  font-size: 13px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.gr-clear { padding: 0; font-size: 13px; }
+.gr-lookup-summary { font-size: 13px; color: var(--text-body, #434343); margin: 8px 0 4px; }
+.gr-lookup-list { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.gr-lookup-list li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+  padding: 4px 0; border-bottom: 1px dashed var(--border-light, #f0f0f0); }
+.gr-oa-index { margin-top: 10px; }
+.gr-oa-index-title { font-size: 12px; color: var(--text-muted, #8c8c8c); margin-bottom: 4px; }
+.gr-oa-use { padding: 0; font-size: 12px; word-break: break-all; text-align: left; }
+
+/* 窄屏（≤720px）：筛选行天然换行（flex-wrap），输入收窄至整行 */
+@media (max-width: 720px) {
+  .gr-filter-field { flex: 1 1 130px; }
+  .gr-lookup-bar .form-control { flex: 1 1 100%; }
+}

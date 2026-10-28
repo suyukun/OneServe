@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>已发布服务 · OneServe</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * 已发布服务页（P3 二批 2026-10-08 维护者 六条③：从发布页拆出）
+ *   · 列表：全部已发布服务（名称/地址/数据版本/状态/字段数）
+ *   · 详情：点入视图——出参字段中文名列表（schema 联查）、授权租户数、
+ *     关联凭证与配额（grants 全景 × appkeys 联 join，全部现成只读端点）
+ *   · 下线：两段式确认（E 卡文案：数据保留，可随时重新发布）
+ * 发布向导归 publish.html（页头「← 去发布新服务」回链）。
+ * 三批（2026-10-08 修五·维护者 反馈「孤立」）：接入门户壳——注册进
+ * scripts/build_portal.py 的 ADMIN_PAGES＋NAV_KEYS（sidebar/topbar 完整风格，
+ * 侧栏「已发布服务」行构建期注入 active）。页内逻辑（published.js）保持不变，
+ * 仅外壳统一。本文件是唯一真源：构建期抽取正文/样式/脚本拼进门户壳。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  [x-cloak] { display: none !important; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-body);
+         font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.6; }
+  .page { max-width: 860px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+  .page-head h1 { font-size: var(--fs-heading); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .page-head .hint { color: var(--text-body); margin: 0; }
+  .muted { color: var(--text-muted); }
+  .mono { font-family: var(--font-mono); }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius);
+          padding: var(--space-5); margin-bottom: var(--space-5); }
+  .card-title { font-size: var(--fs-title); color: var(--text-strong); font-weight: 600; margin: 0 0 4px; }
+  .card-sub { color: var(--text-body); font-size: var(--fs-caption); margin: 0 0 var(--space-4); }
+
+  .btn { border: 1px solid var(--border-strong); background: var(--bg-subtle); color: var(--text-strong);
+         border-radius: var(--radius); height: 36px; padding: 4px 16px; font-size: var(--fs-body);
+         font-family: inherit; cursor: pointer;
+         transition: border-color var(--motion-duration) var(--motion-ease); }
+  .btn:hover:not(:disabled) { border-color: var(--brand-primary); }
+  .btn:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+  .btn:disabled { opacity: .38; cursor: not-allowed; }
+  .btn-danger { background: transparent; border-color: var(--status-error); color: var(--status-error); }
+  .btn-danger:hover:not(:disabled) { border-color: var(--status-error);
+               background: color-mix(in srgb, var(--status-error) 10%, transparent); }
+  .btn-sm { height: 28px; padding: 4px 12px; font-size: var(--fs-caption); }
+  .wizard-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: var(--space-4); }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-full);
+           padding: 2px 8px; font-size: var(--fs-caption); flex: none; }
+  .badge .dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; flex: none; }
+  .badge-ok { color: var(--status-ok); background: color-mix(in srgb, var(--status-ok) 12%, transparent); }
+  .badge-muted { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 12%, transparent); }
+
+  .result { display: flex; gap: 8px; align-items: flex-start; border-radius: var(--radius);
+            padding: 12px 16px; font-size: var(--fs-body); color: var(--text-strong); }
+  .result-bad { border: 1px solid var(--status-error);
+                background: color-mix(in srgb, var(--status-error) 8%, transparent); }
+  .result .mark { font-weight: 600; flex: none; }
+  .err-text { font-size: var(--fs-caption); color: var(--status-error); margin: 4px 0 0; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: var(--fs-caption); color: var(--text-body); font-weight: 600; text-align: left;
+       padding: 8px 0; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  td { font-size: var(--fs-body); padding: 12px 12px 12px 0; border-bottom: 1px solid var(--border-light);
+       vertical-align: top; }
+  tbody tr:hover td { background: var(--bg-subtle); }
+  tr.is-selected td { background: color-mix(in srgb, var(--brand-primary) 6%, transparent); }
+  .empty-tip { text-align: center; color: var(--text-muted); padding: var(--space-6) 0; }
+  .empty-guide a { color: var(--status-info); }
+
+  /* 详情卡：字段/租户/凭证聚合视图 */
+  .chip { display: inline-flex; align-items: center; border: 1px solid var(--border-light);
+          background: var(--bg-subtle); border-radius: var(--radius-full); padding: 2px 10px;
+          font-size: var(--fs-caption); margin: 0 6px 6px 0; }
+  .chip .cn { color: var(--text-strong); }
+  .chip .en { color: var(--text-muted); font-family: var(--font-mono); }
+  .detail-grid { display: grid; grid-template-columns: 96px 1fr; row-gap: 8px; margin: 0; }
+  .detail-grid dt { color: var(--text-muted); font-size: var(--fs-caption); }
+  .detail-grid dd { margin: 0; font-size: var(--fs-body); }
+  .cred-line { font-size: var(--fs-caption); color: var(--text-body); }
+  .detail-note { font-size: var(--fs-caption); color: var(--text-muted); margin: 4px 0 0; }
+
+  .overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg-page) 72%, transparent);
+             display: flex; align-items: center; justify-content: center; padding: var(--space-5); z-index: 50; }
+  /* P3 弹窗卡（2026-10-08）：面板类名 .modal → .dlg——门户壳注入的 bootstrap/tabler 自带
+     .modal{display:none;position:fixed}，同名碰撞致「遮罩现、面板隐」下线确认锁死
+     （复现截图 /tmp/fix-shots/09-before-offline-confirm.png：overlay=flex / panel=none）。 */
+  .dlg { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius);
+         max-width: 520px; width: 100%; padding: var(--space-5); }
+  /* ── 详情主体＝接口文档（P3 弹窗卡 维护者 ③：入参表＋出参表＋curl；授权压成末行状态） ── */
+  .doc-h { font-size: var(--fs-title); color: var(--text-strong); font-weight: 600;
+           margin: var(--space-4) 0 6px; }
+  .doc-meta { display: flex; gap: 6px 18px; flex-wrap: wrap; align-items: center;
+              font-size: var(--fs-body); margin: 0 0 var(--space-3); }
+  .doc-meta .addr { font-family: var(--font-mono); color: var(--text-strong); word-break: break-all; }
+  pre.doc-curl { background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius);
+                 padding: 12px 16px; font-family: var(--font-mono); font-size: var(--fs-caption);
+                 overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-all; }
+  .auth-status { margin-top: var(--space-4); padding-top: 10px; border-top: 1px dashed var(--border-light);
+                 font-size: var(--fs-caption); color: var(--text-muted); }
+  .switch-line { display: flex; align-items: center; gap: 8px; font-size: var(--fs-body); }
+  input[type="checkbox"] { accent-color: var(--brand-primary); width: 16px; height: 16px; }
+
+  @media (max-width: 720px) {
+    .page { padding: var(--space-4) var(--space-4); }
+    /* 接壳后顶栏＝门户 .os-topbar（修五）：窄屏允许换行，防 390px 横向溢出（P0-12） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body x-data="publishedConsole()" x-init="boot()">
+
+<main class="page">
+  <header class="page-head" id="page-head">
+    <h1 id="page-title">已发布服务</h1>
+    <p class="hint" id="page-hint">全部已发布数据服务一览：名称/地址/数据版本/状态/字段数；点「详情」看字段与授权，下线走两段式确认。</p>
+    <p style="margin: 8px 0 0;"><a class="btn btn-sm" id="go-publish-link" href="publish.html">← 去发布新服务</a></p>
+  </header>
+
+  <section class="card" id="published-section" aria-label="已发布服务列表">
+    <h2 class="card-title">服务列表 <span class="muted" id="service-count" style="font-size: var(--fs-caption);"
+          x-text="'（' + services.length + '）'"></span></h2>
+
+    <div class="result result-bad" id="services-error" x-show="servicesError" x-cloak role="alert" style="margin-bottom: var(--space-4);">
+      <span class="mark" aria-hidden="true">!</span>
+      <span>
+        <strong x-text="servicesError && servicesError.title"></strong><br>
+        <span x-text="servicesError && servicesError.message"></span>
+        <button class="btn btn-sm" id="services-retry-btn" type="button" style="margin-left: 8px;"
+                @click="loadServices()" :disabled="servicesBusy"
+                x-text="servicesBusy ? '正在读取…' : '重试'"></button>
+      </span>
+    </div>
+    <p class="muted" id="services-loading" x-show="servicesBusy && !servicesError" x-cloak>正在读取已发布服务…</p>
+
+    <table id="published-table">
+      <thead><tr>
+        <th id="col-svc-name">服务名</th>
+        <th id="col-svc-route">访问地址</th>
+        <th id="col-svc-version">数据版本</th>
+        <th id="col-svc-status">状态</th>
+        <th id="col-svc-fields">字段数</th>
+        <th id="col-svc-actions">操作</th>
+      </tr></thead>
+      <tbody id="published-tbody">
+        <template x-for="(s, i) in services" :key="s.id + '-' + i">
+          <tr :data-testid="'service-row-' + i" :class="selected === i ? 'is-selected' : ''">
+            <td x-text="s.serviceName"></td>
+            <td class="mono" x-text="s.routePath"></td>
+            <td class="mono" x-text="s.dataVersion || '—'"></td>
+            <td>
+              <span class="badge" :class="s.status === 'published' ? 'badge-ok' : 'badge-muted'"
+                    :data-testid="'svc-status-' + i">
+                <span class="dot" x-show="s.status === 'published'"></span>
+                <span x-text="s.status === 'published' ? '已发布' : '已下线'"></span>
+              </span>
+            </td>
+            <td x-text="s.fields.length + ' 个'"></td>
+            <td>
+              <button class="btn btn-sm" type="button" :id="'detail-btn-' + i"
+                      @click="showDetail(i)" x-text="selected === i ? '收起' : '详情'"></button>
+              <button class="btn btn-sm btn-danger" type="button" :id="'offline-btn-' + i"
+                      data-action="offline" x-show="s.status === 'published'"
+                      @click="askOffline(i)">下线</button>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="!servicesBusy && !servicesError && services.length === 0"><td colspan="6" class="empty-tip">
+          <div>还没有已发布的服务</div>
+          <div class="empty-guide">去 <a id="go-publish-empty" href="publish.html">服务发布</a> 完成五步发布后，已上线的服务会列在这里</div>
+        </td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══ 详情视图（点入）＝接口文档主体（P3 弹窗卡 维护者 ③重排：服务名/地址/版本/状态＋
+       入参表＋出参表（字段名/类型/中文释义·schema 联查）＋curl 调用示例；授权租户/关联
+       凭证压成末尾一行小字状态，不再渲染 403 恐吓文案） ══ -->
+  <section class="card" id="svc-detail" x-show="selected >= 0 && services[selected]" x-cloak aria-label="接口文档">
+    <h2 class="card-title">接口文档：<span x-text="services[selected] && services[selected].serviceName"></span></h2>
+    <p class="card-sub" id="doc-address" x-text="(detailOf(selected) || {}).address || (services[selected] && services[selected].routePath) || '—'"></p>
+
+    <template x-if="detailOf(selected)">
+      <div>
+        <div class="doc-meta" id="doc-meta">
+          <span class="addr mono" x-text="'POST ' + ((detailOf(selected) || {}).address || '—')"></span>
+          <span>数据版本 <span class="mono" x-text="(services[selected] && services[selected].dataVersion) || '—'"></span></span>
+          <span>状态 <span class="badge" :class="(services[selected] && services[selected].status) === 'published' ? 'badge-ok' : 'badge-muted'"
+                x-text="(services[selected] && services[selected].status) === 'published' ? '已发布' : '已下线'"></span></span>
+          <span>键型 <span class="mono" x-text="(services[selected] && services[selected].keyType) || '—'"></span></span>
+        </div>
+
+        <h3 class="doc-h" id="doc-input-head">入参（查询键）</h3>
+        <table id="doc-input-table">
+          <thead><tr><th>字段名</th><th>说明</th><th>示例值</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono">key</td>
+              <td x-text="(detailOf(selected) || {}).inputDesc"></td>
+              <td class="mono" id="doc-input-example" x-text="(detailOf(selected) || {}).exampleKey || '（见下方调用示例）'"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 class="doc-h" id="doc-output-head">出参字段</h3>
+        <table id="doc-output-table">
+          <thead><tr><th>字段名</th><th>类型</th><th>中文释义</th></tr></thead>
+          <tbody>
+            <template x-for="f in (detailOf(selected) || {}).outFields" :key="f.name">
+              <tr>
+                <td class="mono" x-text="f.name"></td>
+                <td class="mono" x-text="f.type || '—'"></td>
+                <td x-text="f.cn || '—'"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <p class="detail-note" x-show="(detailOf(selected) || {}).fieldsNote"
+           x-text="(detailOf(selected) || {}).fieldsNote"></p>
+
+        <h3 class="doc-h" id="doc-curl-head">调用示例（curl）</h3>
+        <pre class="doc-curl" id="doc-curl-block" x-text="(detailOf(selected) || {}).curl"></pre>
+
+        <!-- 授权状态一行小字：有则「授权租户：A、B · 关联凭证 N 个」；无则「暂无授权」 -->
+        <p class="auth-status" id="auth-status-line" x-text="(detailOf(selected) || {}).authText"></p>
+        <p class="detail-note" x-show="(detailOf(selected) || {}).grantsNote"
+           x-text="(detailOf(selected) || {}).grantsNote"></p>
+      </div>
+    </template>
+
+    <div class="wizard-actions">
+      <button class="btn" id="detail-close-btn" type="button" @click="closeDetail()">收起详情</button>
+    </div>
+  </section>
+
+  <!-- ══ 两段式确认弹窗（下线；E 卡文案：数据保留，可随时重新发布） ══ -->
+  <div class="overlay" id="offline-modal" x-show="offlineModal.open" x-cloak role="dialog" aria-modal="true"
+       aria-labelledby="offline-modal-title">
+    <div class="dlg">
+      <h2 class="card-title" id="offline-modal-title">下线数据服务</h2>
+      <p class="muted" id="offline-modal-detail"
+         x-text="'下线「' + (offlineModal.name || '') + '」后，调用方将立即无法访问该服务。数据保留，可随时重新发布。'"></p>
+      <p class="err-text" x-show="offlineModal.stage === 2">请再次确认：勾选下方确认项后才会真正执行。数据保留，可随时重新发布。</p>
+      <p class="err-text" id="offline-error" x-show="offlineError" x-cloak x-text="offlineError"></p>
+      <div class="switch-line" x-show="offlineModal.stage === 2" x-cloak style="margin: var(--space-4) 0;">
+        <input type="checkbox" id="offline-auth-switch" x-model="offlineModal.armed">
+        <label for="offline-auth-switch">我确认下线该服务（数据保留，可随时重新发布）</label>
+      </div>
+      <div class="wizard-actions" style="margin-top: 0;">
+        <button class="btn btn-danger" id="offline-step-btn" type="button" @click="confirmOffline()"
+                :disabled="offlineModal.stage === 2 && !offlineModal.armed"
+                x-text="offlineModal.stage === 1 ? '继续' : '确认下线'"></button>
+        <button class="btn" id="offline-cancel-btn" type="button" @click="offlineModal.open = false">取消</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="admin-gate.js"></script><!-- 管理页共享闸（加载序硬规矩：先业务 js 后 alpine） -->
+<script src="publish-hbase-adapter.js"></script><!-- 后端契约适配层（列表/下线端点常量与归一；须先于 published.js） -->
+<script src="published.js"></script><!-- 已发布服务页组件（先定义后加载 Alpine，硬规矩） -->
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs@3.14.9 自托管副本 -->
+</body>
+</html>

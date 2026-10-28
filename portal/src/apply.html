@@ -1,0 +1,118 @@
+<!-- ══ 申请接入页（P0-10 · SPEC A10 · D10 引 ADR-0003）：审批走工单系统，平台只做授权登记与状态可观察 ══ -->
+<div class="os-container reveal">
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">申请接入</div>
+    <h1 class="page-title">申请接入与授权进度</h1>
+  </div>
+
+  <!-- ① 申请入口（#44 · 2026-10-15 占位回填，维护者 口径：申请授权请联系平台运营组；
+       不提 OA、不编造流程细节，流程与时效以平台运营组为准。区块 id 沿用 apply-oa-entry 防断构建契约） -->
+  <section class="card span-24" id="apply-oa-entry" aria-label="申请授权入口">
+    <div class="card-head">
+      <h2 class="card-title">第一步：申请授权</h2>
+    </div>
+    <div class="card-body">
+      <p class="apply-lead" id="apply-contact-line">申请授权请联系<b>平台运营组</b>——流程与时效以平台运营组为准。</p>
+      <p class="apply-lead">批下来后，平台管理员按批件完成授权登记并发放凭证（登记了什么、批了哪些字段，见下方第三步）。</p>
+      <div class="apply-contact">
+        <a class="btn btn-primary" href="docs.html#docs-channels" id="apply-contact-link">联系方式与支持入口</a>
+        <span class="field-hint" id="apply-oa-url-note">申请材料与审批时效以平台运营组口径为准，本页不代答流程细节</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid-24">
+
+    <!-- ② 授权进度可视：四态时间线（演示条目＋如实文案；P1 运营写接真后换真状态机） -->
+    <section class="card span-16" id="apply-progress" aria-label="授权进度">
+      <div class="card-head">
+        <h2 class="card-title">第二步：看审批到哪一步了</h2>
+        <span class="demo-badge"><span class="dot"></span>演示数据</span>
+      </div>
+      <div class="card-body">
+        <ol class="apply-timeline is-demo" id="apply-timeline">
+          <li class="apply-step is-done" id="apply-step-reviewing">
+            <span class="apply-step-dot" aria-hidden="true"></span>
+            <div class="apply-step-body">
+              <div class="apply-step-name"><span class="num">Step 1 · </span>评审中</div>
+              <p class="apply-step-desc">平台运营组在评审你申请的数据范围和用途——有疑问会通过 OA 或电话找申请人核实。</p>
+            </div>
+          </li>
+          <li class="apply-step" id="apply-step-approving">
+            <span class="apply-step-dot" aria-hidden="true"></span>
+            <div class="apply-step-body">
+              <div class="apply-step-name"><span class="num">Step 2 · </span>审批中</div>
+              <p class="apply-step-desc">评审通过后流转审批环节，审批通过会生成 OA 审批单号（进度在 OA 系统里可查）。</p>
+            </div>
+          </li>
+          <li class="apply-step" id="apply-step-issuing">
+            <span class="apply-step-dot" aria-hidden="true"></span>
+            <div class="apply-step-body">
+              <div class="apply-step-name"><span class="num">Step 3 · </span>待发放凭证</div>
+              <p class="apply-step-desc">审批通过后，平台管理员按批件登记授权并发放 AppKey——拿到后到「我的接入」页查看状态。</p>
+            </div>
+          </li>
+          <li class="apply-step" id="apply-step-active">
+            <span class="apply-step-dot" aria-hidden="true"></span>
+            <div class="apply-step-body">
+              <div class="apply-step-name"><span class="num">Step 4 · </span>已生效</div>
+              <p class="apply-step-desc">登记即时生效：凭证可真实过网关调用，授权范围以批下来的字段清单为准。</p>
+            </div>
+          </li>
+        </ol>
+        <div class="apply-demo-row">
+          <div class="apply-demo-note">
+            <span class="demo-badge"><span class="dot"></span>演示数据</span>
+            <span>下面是模拟条目，只演示四步长什么样。你的申请进度请咨询平台运营组（OA 系统里也能查审批记录）。</span>
+          </div>
+          <div class="apply-demo-item">
+            <span class="apply-demo-ticket mono">OA-PENDING-TASK008</span>
+            <span class="apply-demo-tenant">demo_bank</span>
+            <span class="badge apply-demo-state">评审中</span>
+          </div>
+          <div class="apply-demo-item">
+            <span class="apply-demo-ticket mono">OA-PENDING-TASKM23</span>
+            <span class="apply-demo-tenant">demo_sec</span>
+            <span class="badge apply-demo-state">评审中</span>
+          </div>
+        </div>
+        <div class="src-note">进度查询接真实 OA 登记后上线（P1 运营写接真）：按审批单号显示每一步的实际时间；当前为演示条目＋咨询口径，不显示任何真实申请状态</div>
+      </div>
+    </section>
+
+    <!-- ③ 已批字段清单：读 auth_matrix 真源演示租户示例（构建期人工核对注入；不是假数据） -->
+    <section class="card span-8" id="apply-approved" aria-label="已批字段清单示例">
+      <div class="card-head"><h2 class="card-title">第三步：批下来后你有什么</h2></div>
+      <div class="card-body">
+        <p class="apply-lead">OA 审批通过后，平台管理员按批件把授权登记成「哪个服务、哪些字段、哪把凭证」，立即生效（字段级白名单＝能调的就这些，不在清单里的字段不会出现在返回结果里）。</p>
+        <p class="apply-lead">下面是授权登记里演示租户的已批条目，用来看「批下来」长什么样：</p>
+        <div class="apply-grant" id="apply-grant-demo-bank">
+          <div class="apply-grant-head">
+            <span class="mono">demo_bank</span>
+            <span class="field-hint">演示租户（授权登记真实示例）</span>
+          </div>
+          <table class="apply-grant-table">
+            <thead><tr><th>已批服务</th><th>字段数</th><th>已批字段（前 5 个）</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="apply-grant-svc mono">v1-svc-usr-basic-info</td>
+                <td class="num">12</td>
+                <td class="apply-grant-fields">gender_cd、age_band、city_code、open_date、cust_level 等 12 个</td>
+              </tr>
+              <tr>
+                <td class="apply-grant-svc mono">v1-svc-usr-asset-tag</td>
+                <td class="num">16</td>
+                <td class="apply-grant-fields">active_m3_flag、aum_band、churn_risk_band、credit_limit_band、cross_sell_cnt_band 等 16 个</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="field-hint">完整清单随凭证发放；每个服务实际开放的字段可在其 API 详情页（服务目录 → 服务名）查出参表。</p>
+        </div>
+        <div class="src-note">数据来自授权登记文件（service/auth_matrix.yaml，2026-10-14 核对）——凭证状态与轮转请到「我的接入」页按凭证查询</div>
+      </div>
+    </section>
+
+  </div>
+
+</div>

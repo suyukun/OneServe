@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>授权管理 · OneServe 运营控制台</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * OneServe 运营控制台 · 授权管理（1b-8 一期；docs/design/授权管理页设计_v1.md 已拍板）
+ *
+ * 【走位】两级一流：租户列表 → 租户详情（服务∪整路由代理混排授权清单）→ 编辑流：
+ *   ① 列表：搜索＋状态过滤；行＝租户（状态/类型徽标、在用凭证数、在册授权数）
+ *   ② 详情：租户卡（沙箱整卡只读）＋授权清单（kind 徽标；单号/生效区间/行状态）
+ *     ＋名下凭证级只读摘要（凭证编辑归 AppKey 发放页）
+ *   ③ 编辑流（拍板·混合形态）：新增＝三步向导（选服务→字段勾选→预览确认）；
+ *     变更/停用＝行内直编＋确认弹窗；两态均强制变更预览；停用两段式（服务端 confirm 双保险）
+ *
+ * 【口径】审批已在 OA 完成，此处仅登记结果（ADR-0003）；平台不做任何 OA 系统对接，
+ *   单号只做格式提醒。写操作仅管理员；只读详情全角色可达（viewer 地板）。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css"><!-- 仅取令牌（间距/字号/字体/圆角） -->
+<style>
+  /* ── 独立简化深色样式（同 admin/appkeys 页惯例；不依赖组件库） ── */
+  :root {
+    --admin-bg: #1c222b; --admin-card: #242b36; --admin-inset: #1b2029;
+    --admin-accent: #E85B6B; --admin-line: #35404d; --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE; --admin-note: #ACB8C4;
+    --admin-ok: #3FBE95; --admin-warn: #D89A3C; --admin-danger: #E05252;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px); }
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  .hint { color: var(--admin-muted); font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-secondary { background: var(--admin-inset); }
+  .btn-primary:disabled, .btn:disabled { background: var(--admin-inset); border-color: var(--admin-line);
+                          color: var(--admin-muted); cursor: not-allowed; }
+  .btn-sm { padding: 3px 10px; }
+  .btn-danger { border-color: var(--admin-danger); color: var(--admin-danger); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .tag { display: inline-block; background: var(--admin-inset); border: 1px solid var(--admin-line);
+         border-radius: 999px; padding: 0 8px; margin: 1px 4px 1px 0; font-size: var(--fs-tiny, 11px); color: var(--admin-muted); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-active { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-warn { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-danger { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+  .badge-muted { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .badge-plain { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .badge-sandbox { color: var(--admin-warn); border: 1px dashed var(--admin-warn); background: rgba(216,154,60,.08); }
+  .badge-proxy { color: var(--admin-note); border: 1px dashed var(--admin-note); }
+  .badge-svc { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .muted { color: var(--admin-muted); }
+  .num { font-family: var(--font-mono, monospace); }
+  .toolbar { display: flex; gap: var(--space-1, 8px); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2, 16px); }
+  .toolbar input, .toolbar select { background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .toolbar input:focus, .toolbar select:focus, .dlg input:focus, .dlg select:focus { outline: none; border-color: var(--admin-accent); }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2, 16px); }
+  label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  .dlg input[type=text], .dlg input[type=date], .dlg select {
+    width: 100%; background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .checks label { color: var(--admin-text); font-size: var(--fs-small, 12px); cursor: pointer; }
+  .req { color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  .footnote { margin-top: var(--space-1, 8px); font-size: var(--fs-tiny, 11px); color: var(--admin-note); }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 12, 15, .72); display: flex;
+             align-items: center; justify-content: center; padding: var(--space-3, 24px); z-index: 50; }
+  .dlg { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+         max-width: 680px; width: 100%; max-height: 88vh; overflow: auto; padding: var(--space-3, 24px); }
+  .modal-actions { display: flex; gap: var(--space-1, 8px); flex-wrap: wrap; margin-top: var(--space-2, 16px); }
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small, 12px); }
+  .steps { display: flex; gap: 8px; align-items: center; margin-bottom: var(--space-2, 16px); }
+  .step-dot { width: 22px; height: 6px; border-radius: 999px; background: var(--admin-line); display: inline-block; }
+  .step-dot.on { background: var(--admin-accent); }
+  .step-label { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); margin-left: 4px; }
+  .diff-box { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+              padding: var(--space-2, 16px); font-size: var(--fs-small, 12px); margin: var(--space-1, 8px) 0; }
+  .diff-add { color: var(--admin-ok); }
+  .diff-del { color: var(--admin-danger); }
+  .trace-bar { display: flex; align-items: center; gap: var(--space-1, 8px); flex-wrap: wrap;
+               background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+               padding: 8px 12px; margin-bottom: var(--space-2, 16px); font-size: var(--fs-small, 12px); }
+  .trace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-ok); flex: none; }
+  .readonly-banner { border: 1px dashed var(--admin-warn); color: var(--admin-warn); border-radius: var(--radius, 8px);
+                     padding: 8px 12px; font-size: var(--fs-small, 12px); margin-bottom: var(--space-2, 16px); }
+  .tenant-card { display: flex; gap: var(--space-3, 24px); flex-wrap: wrap; align-items: baseline; }
+  .tenant-card .kv { min-width: 160px; }
+  .tenant-card .k { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); }
+  .tenant-card .v { font-size: var(--fs-small, 12px); }
+  .back-link { color: var(--admin-muted); font-size: var(--fs-small, 12px); cursor: pointer; background: none; border: none; padding: 0; }
+  .back-link:hover { color: var(--admin-accent); }
+  /* ── 窄屏（≤720px）：宽列表格容器内滚动＋门户顶栏可换行，布局不撑破 ── */
+  @media (max-width: 720px) {
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    table { display: block; overflow-x: auto; }
+    .tenant-card { gap: var(--space-2, 16px); }
+  }
+</style>
+</head>
+<body x-data="grantsAdmin()" x-init="boot()">
+
+<main class="page">
+  <h1>授权管理</h1>
+  <p class="hint">租户级授权登记：审批已在 OA 完成，此处仅登记结果。单号只做格式提醒，平台不做任何审批系统对接。写操作仅管理员；只读查看全角色可达。</p>
+
+  <!-- ══ 生效与留痕条 ══ -->
+  <div class="trace-bar" id="trace-bar" x-show="lastTrace" x-cloak>
+    <span class="trace-dot"></span>
+    <span id="trace-text" x-text="lastTrace"></span>
+  </div>
+
+  <!-- ══ 租户列表（一级视图）══ -->
+  <section class="card" id="tenant-list-section" aria-label="租户列表" x-show="view === 'list'">
+    <div class="card-head">
+      <h2 class="card-title">租户 <span class="muted num" x-text="'(' + tenants.length + ' 个)'"></span>
+        <span class="muted" style="font-size:var(--fs-tiny,11px)">
+          数据源：<span id="list-source" x-text="source === 'live' ? '基线 · 在线读取' : '演示数据 · 内置副本'"></span></span>
+      </h2>
+    </div>
+    <div class="toolbar" id="tenant-toolbar">
+      <input id="tenant-search" type="text" placeholder="搜索租户名称或显示名" x-model="search" aria-label="搜索租户">
+      <select id="tenant-status-filter" x-model="statusFilter" aria-label="按状态过滤">
+        <template x-for="opt in statusOptions()" :key="opt.value">
+          <option :value="opt.value" x-text="opt.label"></option>
+        </template>
+      </select>
+    </div>
+    <div class="table-scroll">
+    <table id="tenant-list" aria-label="租户一览">
+      <thead><tr>
+        <th>租户</th><th>显示名</th><th>状态</th><th>类型</th><th>在用凭证</th><th>授权登记</th><th>操作</th>
+      </tr></thead>
+      <tbody>
+        <template x-for="t in filteredTenants()" :key="t.tenant">
+          <tr :data-testid="'tenant-row-' + t.tenant">
+            <td class="mono" x-text="t.tenant"></td>
+            <td x-text="t.displayName"></td>
+            <td><span class="badge" :class="G8.statusBadgeClass(t.status)" x-text="G8.statusLabel(t.status)"></span></td>
+            <td><span class="badge" :class="G8.typeBadgeClass(t.tenantType)" x-text="G8.typeLabel(t.tenantType)"></span></td>
+            <td class="num" x-text="t.activeKeys"></td>
+            <td class="num" x-text="t.grantsCount"></td>
+            <td><button class="btn btn-sm" type="button" id="open-detail-btn" @click="openDetail(t.tenant)"
+                        x-text="t.readonly ? '查看（只读）' : '查看详情'"></button></td>
+          </tr>
+        </template>
+        <tr x-show="filteredTenants().length === 0"><td colspan="7" class="muted">没有符合条件的租户——调整搜索或状态过滤。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="footnote">租户四态（在册/已冻结/停用中/已注销）与类型（内部/外部/沙箱）随租户登记完善逐步启用；当前清单由授权登记与凭证记录汇总生成。</p>
+  </section>
+
+  <!-- ══ 租户详情（二级视图：授权清单）══ -->
+  <section class="card" id="grant-detail-section" aria-label="租户授权详情" x-show="view === 'detail'" x-cloak>
+    <div class="card-head">
+      <h2 class="card-title">授权登记 · <span class="mono" x-text="detail ? detail.displayName : ''"></span></h2>
+      <button class="btn back-link" type="button" id="back-to-list" @click="backToList()">← 返回租户列表</button>
+    </div>
+    <p class="err" id="page-error" x-show="pageError" x-text="pageError" x-cloak></p>
+
+    <!-- 租户卡 -->
+    <div class="diff-box" id="tenant-card" x-show="detail">
+      <div class="tenant-card">
+        <div class="kv"><div class="k">租户</div><div class="v mono" x-text="detail ? detail.tenant : ''"></div></div>
+        <div class="kv"><div class="k">状态</div><div class="v"><span class="badge" :class="detail && G8.statusBadgeClass(detail.status)" x-text="detail ? G8.statusLabel(detail.status) : ''"></span></div></div>
+        <div class="kv"><div class="k">类型</div><div class="v"><span class="badge" :class="detail && G8.typeBadgeClass(detail.tenantType)" x-text="detail ? G8.typeLabel(detail.tenantType) : ''"></span></div></div>
+        <div class="kv"><div class="k">开通审批单号</div><div class="v mono" x-text="detail && detail.oaTicket ? detail.oaTicket : '—'"></div></div>
+        <div class="kv"><div class="k">联系人</div><div class="v muted">待登记</div></div>
+      </div>
+    </div>
+    <div class="readonly-banner" id="sandbox-banner" x-show="detail && detail.readonly" x-cloak>
+      沙箱租户为平台演示模板：授权只读，不可新增、变更或停用（与正式租户登记互不影响）。
+    </div>
+
+    <!-- 授权清单（服务∪整路由代理混排；kind 徽标区分） -->
+    <div class="card-head">
+      <h3 class="card-title" style="font-size:var(--fs-small,13px)">授权登记 <span class="muted num" x-text="detail ? '(' + detail.grants.length + ' 条)' : ''"></span></h3>
+      <button class="btn" type="button" id="open-add-grant" @click="openWizard()"
+              x-show="detail && !detail.readonly && canWrite()" x-cloak
+              :class="detail && !detail.readonly && canWrite() ? 'btn-primary' : 'btn-secondary'">新增授权</button>
+    </div>
+    <div class="table-scroll">
+    <table id="grant-matrix" aria-label="授权登记清单">
+      <thead><tr>
+        <th>服务</th><th>字段白名单</th><th>审批单号</th><th>生效区间</th><th>状态</th><th>操作</th>
+      </tr></thead>
+      <tbody>
+        <template x-for="(g, i) in (detail ? detail.grants : [])" :key="g.service">
+          <tr :data-testid="'grant-row-' + i">
+            <td>
+              <div><span x-text="g.serviceName"></span>
+                <span class="badge" :class="isProxyRow(g) ? 'badge-proxy' : 'badge-svc'"
+                      :title="isProxyRow(g) ? '整路由授权：代理无字段投影，整条路由开放' : '字段服务：按白名单投影'"
+                      x-text="g.kindLabel"></span></div>
+              <div class="muted mono" style="font-size:var(--fs-tiny,11px)" x-text="g.route || g.service"></div>
+            </td>
+            <td data-testid="fields-cell">
+              <!-- 行内编辑（字段服务）：白名单勾选；整路由行无字段勾选区 -->
+              <div x-show="editIndex === i && !isProxyRow(g)" x-cloak>
+                <div class="checks" id="edit-fields">
+                  <template x-for="f in editAvailable(g)" :key="f">
+                    <label><input type="checkbox" :value="f" x-model="editModel.fields[f]"> <span x-text="f"></span></label>
+                  </template>
+                </div>
+              </div>
+              <div x-show="isProxyRow(g)" class="muted" id="proxy-no-fields-note">整条路由开放（无字段勾选）</div>
+              <div x-show="editIndex !== i && !isProxyRow(g)">
+                <span class="muted" x-show="!g.fields.length">—</span>
+                <template x-for="f in g.fields" :key="f"><span class="tag" x-text="f"></span></template>
+              </div>
+            </td>
+            <td>
+              <span class="mono" x-show="editIndex !== i" x-text="oaText(g)"></span>
+              <span class="muted" style="font-size:var(--fs-tiny,11px);display:block" x-show="editIndex !== i" x-text="oaSourceText(g)"></span>
+              <div x-show="editIndex === i" x-cloak>
+                <input id="edit-oa-ticket" type="text" placeholder="审批单号（必填）" x-model="editModel.oaTicket">
+              </div>
+            </td>
+            <td>
+              <span class="mono" x-show="editIndex !== i" x-text="effText(g)"></span>
+              <div x-show="editIndex === i" x-cloak class="form-grid">
+                <div><label class="f" for="edit-effective-from">起始（可空）</label>
+                  <input id="edit-effective-from" type="date" x-model="editModel.effectiveFrom"></div>
+                <div><label class="f" for="edit-effective-to">截止（可空）</label>
+                  <input id="edit-effective-to" type="date" x-model="editModel.effectiveTo"></div>
+              </div>
+            </td>
+            <td><span class="badge" :class="rowStatusClass(g)" x-text="rowStatusText(g)"></span></td>
+            <td style="white-space:nowrap">
+              <!-- 只读（沙箱）行：编辑/停用禁用并说明原因 -->
+              <button class="btn btn-sm" type="button" data-action="edit" x-show="editIndex !== i"
+                      :disabled="rowReadonly(g)"
+                      :title="rowReadonly(g) ? '沙箱演示模板：授权只读' : '变更字段白名单／单号／生效区间'"
+                      @click="startEdit(i)">编辑</button>
+              <button class="btn btn-sm" type="button" data-action="save-edit" x-show="editIndex === i" x-cloak
+                      :class="editIndex === i ? 'btn-primary' : ''"
+                      @click="askSaveEdit()">保存</button>
+              <button class="btn btn-sm btn-secondary" type="button" data-action="cancel-edit" x-show="editIndex === i" x-cloak
+                      @click="cancelEdit()">取消</button>
+              <button class="btn btn-sm btn-danger" type="button" data-action="disable"
+                      x-show="editIndex !== i && g.status === 'active'"
+                      :disabled="rowReadonly(g)"
+                      :title="rowReadonly(g) ? '沙箱演示模板：授权只读' : '停用即时收权；登记保留可再启用'"
+                      @click="askDisable(i)">停用</button>
+              <button class="btn btn-sm" type="button" data-action="enable"
+                      x-show="editIndex !== i && g.status !== 'active'" x-cloak
+                      :disabled="rowReadonly(g)" title="恢复在册生效"
+                      @click="askEnable(i)">启用</button>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="detail && detail.grants.length === 0"><td colspan="6" class="muted">该租户暂无授权登记——点「新增授权」开始。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="footnote">停用即时收权（调用即刻被拒），登记保留可溯源、可再启用；「长期有效」＝未登记生效区间。</p>
+    <p class="err" id="edit-error" x-show="editError" x-text="editError" x-cloak></p>
+
+    <!-- 名下凭证级授权（只读摘要；凭证编辑归 AppKey 发放页） -->
+    <h3 class="card-title" style="font-size:var(--fs-small,13px);margin-top:var(--space-2,16px)">名下凭证 <span class="muted">（只读摘要）</span></h3>
+    <div class="table-scroll">
+    <table id="cred-summary" aria-label="名下凭证只读摘要">
+      <thead><tr><th>凭证（掩码）</th><th>类型</th><th>状态</th><th>可调服务</th></tr></thead>
+      <tbody>
+        <template x-for="c in (detail ? detail.credentials : [])" :key="c.appkeyMasked">
+          <tr>
+            <td class="mono" x-text="c.appkeyMasked"></td>
+            <td x-text="c.keyType === 'formal' ? '正式' : '沙箱'"></td>
+            <td x-text="c.status === 'active' ? '在用' : '停用'"></td>
+            <td><span class="muted" x-show="!c.services.length">未授权</span>
+                <template x-for="s in c.services" :key="s"><span class="tag" x-text="s"></span></template></td>
+          </tr>
+        </template>
+        <tr x-show="detail && detail.credentials.length === 0"><td colspan="4" class="muted">名下暂无凭证。</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="footnote">凭证的签发、禁用、续期请到「AppKey 发放」页；本页仅展示凭证级授权摘要。</p>
+  </section>
+
+  <!-- ══ 新增授权 · 三步向导 ══ -->
+  <div class="overlay" id="wizard-modal" x-show="wizard.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="wizard-title">
+    <div class="dlg">
+      <h2 class="card-title" id="wizard-title">新增授权登记</h2>
+      <nav class="steps" id="wizard-steps" aria-label="向导步骤">
+        <span class="step-dot" id="step-ind-1" :class="wizard.step === 1 ? 'on' : ''"></span><span class="step-label">选服务</span>
+        <span class="step-dot" id="step-ind-2" :class="wizard.step === 2 ? 'on' : ''"></span><span class="step-label">勾字段</span>
+        <span class="step-dot" id="step-ind-3" :class="wizard.step === 3 ? 'on' : ''"></span><span class="step-label">预览确认</span>
+      </nav>
+
+      <!-- ① 选服务（租户已定；存在性门＝下拉只出在册服务） -->
+      <div id="wizard-step-1" x-show="wizard.step === 1">
+        <div class="form-grid">
+          <div><label class="f" for="wizard-tenant">租户</label>
+            <input id="wizard-tenant" type="text" :value="detail ? detail.tenant : ''" disabled></div>
+          <div><label class="f" for="wizard-service-select">选择服务 <span class="req">*</span></label>
+            <select id="wizard-service-select" x-model="wizard.service">
+              <option value="">请选择…</option>
+              <template x-for="s in (detail ? detail.availableServices : [])" :key="s.id">
+                <option :value="s.id" x-text="s.name + '（' + s.kindLabel + '）'"></option>
+              </template>
+            </select></div>
+        </div>
+        <p class="err" id="wizard-step-1-error" x-text="wizardErr()"></p>
+      </div>
+
+      <!-- ② 字段勾选（整路由代理无字段列，出整路由提示） -->
+      <div id="wizard-step-2" x-show="wizard.step === 2" x-cloak>
+        <div id="wizard-fields" class="checks" x-show="wizardSvc() && wizardSvc().kind !== 'proxy'">
+          <template x-for="f in (wizardSvc() ? wizardSvc().fields : [])" :key="f">
+            <label><input type="checkbox" :value="f" x-model="wizard.fields[f]"> <span x-text="f"></span></label>
+          </template>
+        </div>
+        <p class="muted" id="wizard-proxy-note" x-show="wizardSvc() && wizardSvc().kind === 'proxy'" x-cloak>
+          整路由授权：该服务为代理转发，无字段勾选，整条路由开放。</p>
+        <p class="err" id="wizard-step-2-error" x-text="wizardErr()"></p>
+      </div>
+
+      <!-- ③ 预览确认（审批单号、生效区间、变更预览） -->
+      <div id="wizard-step-3" x-show="wizard.step === 3" x-cloak>
+        <div class="form-grid">
+          <div><label class="f" for="wizard-oa-ticket">审批单号 <span class="req">*</span></label>
+            <input id="wizard-oa-ticket" type="text" placeholder="如 DEMO-2026-000123" x-model="wizard.oaTicket">
+            <p class="err" id="wizard-ticket-hint" x-text="ticketHintLive()"></p></div>
+          <div><label class="f" for="wizard-effective-from">生效起始（可空＝即日）</label>
+            <input id="wizard-effective-from" type="date" x-model="wizard.effectiveFrom"></div>
+          <div><label class="f" for="wizard-effective-to">生效截止（可空＝长期）</label>
+            <input id="wizard-effective-to" type="date" x-model="wizard.effectiveTo"></div>
+        </div>
+        <div class="diff-box" id="wizard-diff">
+          <div>登记预览：<span x-text="detail ? detail.tenant : ''"></span> ×
+            <span class="mono" x-text="wizard.service"></span>
+            <span class="badge badge-svc" x-text="wizardSvc() ? wizardSvc().kindLabel : ''"></span></div>
+          <div class="diff-add" x-show="wizardSvc() && wizardSvc().kind !== 'proxy'"
+               x-text="'新增字段：' + (wizardFields().join('、') || '—')"></div>
+          <div x-show="wizardSvc() && wizardSvc().kind === 'proxy'">整条路由开放（无字段投影）</div>
+          <div>审批单号：<span class="mono" x-text="wizard.oaTicket || '（未填）'"></span></div>
+          <div>生效区间：<span x-text="G8.effectiveText(wizard.effectiveFrom, wizard.effectiveTo)"></span></div>
+        </div>
+        <p class="footnote">提交前请确认审批已在 OA 完成——此处仅登记结果，平台不向审批系统核对。</p>
+      </div>
+
+      <p class="err" id="wizard-error" x-text="wizard.err"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="wizard-prev" type="button" @click="wizardPrev()"
+                x-show="wizard.step > 1" x-cloak>上一步</button>
+        <button class="btn" id="wizard-next" type="button" @click="wizardTouchedNext()"
+                x-show="wizard.step < 3"
+                :class="wizard.step < 3 ? 'btn-primary' : ''">下一步</button>
+        <button class="btn" id="wizard-submit" type="button" @click="submitWizard()"
+                x-show="wizard.step === 3" x-cloak :disabled="wizardSubmitDisabled()"
+                :class="wizard.step === 3 && !wizardSubmitDisabled() ? 'btn-primary' : 'btn-secondary'"
+                title="审批单号为空时无法提交">提交登记</button>
+        <button class="btn btn-secondary" id="wizard-cancel" type="button" @click="closeWizard()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 确认弹窗（变更保存／停用／启用：两段式＋diff 预览）══ -->
+  <div class="overlay" id="confirm-modal" x-show="confirmModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+    <div class="dlg">
+      <h2 class="card-title" id="confirm-modal-title" x-text="confirmModal.title"></h2>
+      <p class="muted" id="confirm-modal-detail" x-text="confirmModal.detail"></p>
+      <div class="diff-box" id="confirm-diff">
+        <div class="diff-add" x-show="confirmModal.diff && confirmModal.diff.addedFields.length"
+             x-text="'+ ' + (confirmModal.diff ? confirmModal.diff.addedFields.join('、') : '')"></div>
+        <div class="diff-del" x-show="confirmModal.diff && confirmModal.diff.removedFields.length"
+             x-text="'− ' + (confirmModal.diff ? confirmModal.diff.removedFields.join('、') : '')"></div>
+        <div class="muted" x-show="confirmModal.diff && !confirmModal.diff.addedFields.length && !confirmModal.diff.removedFields.length">
+          字段白名单不变</div>
+      </div>
+      <p class="err" x-show="confirmModal.stage === 2">第二段确认：勾选下方确认开关后，才会真正执行。</p>
+      <div class="switch-row" x-show="confirmModal.stage === 2" x-cloak>
+        <input type="checkbox" id="confirm-switch" x-model="confirmModal.armed" @change="confirmModal.hint = ''">
+        <label for="confirm-switch" id="confirm-switch-label"
+               x-text="confirmModal.kind === 'disable' ? '我确认停用该授权（调用即刻被拒，登记保留可再启用）' : '我确认执行本次登记变更'"></label>
+      </div>
+      <p class="err" id="confirm-hint" x-show="confirmModal.hint" x-text="confirmModal.hint"></p>
+      <div class="modal-actions">
+        <button class="btn" id="confirm-step-btn" type="button" @click="confirmStep()"
+                x-text="confirmModal.stage === 1 ? '继续（进入二次确认）' : '确认执行'"></button>
+        <button class="btn btn-secondary" id="confirm-cancel-btn" type="button" @click="closeConfirm()">取消</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="admin-gate.js"></script><!-- 无闸 shim（登录态注入 Authorization；401 自动跳登录） -->
+<script src="grants.js"></script><!-- 业务脚本必须先于 alpine 加载：本仓 alpine 构建在自身执行后 queueMicrotask 即 start()。 -->
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs 自托管副本（同 portal） -->
+</body>
+</html>

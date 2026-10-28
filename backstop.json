@@ -1,0 +1,133 @@
+{
+  "id": "oneserve_visual_baseline",
+  "viewports": [
+    {
+      "label": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "label": "tablet",
+      "width": 992,
+      "height": 800
+    }
+  ],
+  "onBeforeScript": "puppet/onBefore.js",
+  "onReadyScript": "puppet/onReady.js",
+  "scenarios": [
+    {
+      "label": "portal-index",
+      "url": "http://localhost:8000/index.html"
+    },
+    {
+      "label": "portal-apply",
+      "url": "http://localhost:8000/apply.html"
+    },
+    {
+      "label": "portal-audit",
+      "url": "http://localhost:8000/audit.html"
+    },
+    {
+      "label": "portal-catalog",
+      "url": "http://localhost:8000/catalog.html"
+    },
+    {
+      "label": "portal-detail",
+      "url": "http://localhost:8000/detail.html"
+    },
+    {
+      "label": "portal-docs",
+      "url": "http://localhost:8000/docs.html"
+    },
+    {
+      "label": "portal-errors",
+      "url": "http://localhost:8000/errors.html"
+    },
+    {
+      "label": "portal-grants",
+      "url": "http://localhost:8000/grants.html"
+    },
+    {
+      "label": "portal-my",
+      "url": "http://localhost:8000/my.html"
+    },
+    {
+      "label": "portal-ops",
+      "url": "http://localhost:8000/ops.html"
+    },
+    {
+      "label": "portal-trial",
+      "url": "http://localhost:8000/trial.html"
+    },
+    {
+      "label": "login",
+      "url": "http://localhost:8000/login.html"
+    },
+    {
+      "label": "admin-accounts",
+      "url": "http://localhost:8000/admin/accounts.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-appkeys",
+      "url": "http://localhost:8000/admin/appkeys.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-load",
+      "url": "http://localhost:8000/admin/load.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-monitor",
+      "url": "http://localhost:8000/admin/monitor.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-perf",
+      "url": "http://localhost:8000/admin/perf.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-publish",
+      "url": "http://localhost:8000/admin/publish.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-published",
+      "url": "http://localhost:8000/admin/published.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-upstreams",
+      "url": "http://localhost:8000/admin/upstreams.html",
+      "onReadyScript": "backstop_onready.js"
+    },
+    {
+      "label": "admin-versions",
+      "url": "http://localhost:8000/admin/versions.html",
+      "onReadyScript": "backstop_onready.js"
+    }
+  ],
+  "paths": {
+    "bitmaps_reference": "tests/evidence/backstop-baseline-20261015/bitmaps_reference",
+    "bitmaps_test": "tests/evidence/backstop-baseline-20261015/bitmaps_test",
+    "engine_scripts": "scripts",
+    "html_report": "tests/evidence/backstop-baseline-20261015/html_report",
+    "ci_report": "tests/evidence/backstop-baseline-20261015/ci_report"
+  },
+  "report": [
+    "browser"
+  ],
+  "engine": "puppeteer",
+  "engineOptions": {
+    "args": [
+      "--no-sandbox"
+    ],
+    "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  },
+  "asyncCaptureLimit": 3,
+  "asyncCompareLimit": 5,
+  "debug": false,
+  "debugWindow": false
+}

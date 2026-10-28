@@ -1,0 +1,27 @@
+# OneServe 同步链路演练 Redis（task-006 · SPEC §4.1 配置规范）
+# 端口隔离：宿主 16379（避开并行任务占用 9080/9180/8000/6379）；项目名 oneserve-sync。
+# 配置对齐 SPEC：noeviction（写满拒写不淘汰）＋ AOF everysec。
+name: oneserve-sync
+services:
+  redis:
+    image: library/redis:7-alpine
+    container_name: oneserve-sync-redis
+    ports:
+      - "16379:6379"
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - oneserve-sync-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+volumes:
+  oneserve-sync-data:

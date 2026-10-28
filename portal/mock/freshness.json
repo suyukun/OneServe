@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-09-21T06:30:00+08:00",
+  "domains": [
+    { "id": "basic",      "name": "基本信息域", "lastSyncAt": "2026-09-21T06:30:00+08:00", "rows": 12847202, "status": "ok" },
+    { "id": "behavior",   "name": "行为域",     "lastSyncAt": "2026-09-21T06:30:00+08:00", "rows": 38204515, "status": "ok" },
+    { "id": "channel",    "name": "渠道域",     "lastSyncAt": "2026-09-21T06:30:00+08:00", "rows": 9412033,  "status": "ok" },
+    { "id": "risk",       "name": "风险域",     "lastSyncAt": "2026-09-21T06:30:00+08:00", "rows": 11268490, "status": "ok" },
+    { "id": "marketing",  "name": "营销域",     "lastSyncAt": "2026-09-21T06:30:00+08:00", "rows": 7951884,  "status": "ok" },
+    { "id": "subsidiary", "name": "合作方域",   "lastSyncAt": "2026-09-20T23:40:00+08:00", "rows": 5366270,  "status": "warn" }
+  ]
+}

@@ -1,0 +1,53 @@
+# ============================================================
+# OneServe 授权矩阵（唯一权威文件：service/auth_matrix.yaml）
+# SPEC §5-② / ADR-0003：审批走工单系统；平台只做授权登记，缺 OA 单号拒绝登记。
+# 结构（task-003 基底 ＋ task-008 管理面可选扩展；服务读取方只认基底字段）：
+#   matrix[] -> tenant 租户ID / appkey 网关consumer凭证 / oa_ticket OA单号(必填)
+#              / display_name、secret_hash(仅sha256摘要,无明文)、status(active|revoked) 可选
+#              / grants[] -> service 服务ID / fields 字段白名单(必填,投影红线)
+#                           / endpoint、oa_ticket 可选（计量映射 / 单次授权溯源）
+# 规则：同租户×同服务唯一；appkey 全局唯一；secret 明文永不落盘；
+#       白名单字段须真实存在于标签宽表结构（tests/test_kv_executor.py 守卫）。
+# 管理：python3 scripts/auth_admin.py register ... / validate
+#       （本文件可手编，改后请跑 validate；脚本改写会重新生成本头注释，
+#         行内注释不保留——字段级说明写进头注释或提交说明）
+# ============================================================
+meta:
+  updated: '2026-09-18T00:00:00+00:00'
+  updated_by: task-008-fixture
+matrix:
+- tenant: tenant-alpha
+  display_name: 样例甲合作方
+  appkey: ak_a1a1a1a1a1a1a1a1
+  secret_hash: sha256:6f4a603ec466e508c941c181e5a506195ceb266683f59860f4907600dbef2a69
+  oa_ticket: OA-2026-0001
+  grants:
+  - service: user_tag_query
+    endpoint: /v1/tags/query
+    oa_ticket: OA-2026-0001
+    fields:
+    - phone_sm3
+    - age_band
+    - aum_band
+  - service: news_tag_query
+    endpoint: /v1/news/query
+    oa_ticket: OA-2026-0002
+    fields:
+    - news_tags
+- tenant: tenant-beta
+  display_name: 样例乙合作方
+  appkey: ak_b2b2b2b2b2b2b2b2
+  secret_hash: sha256:f4de3fa6b6d2b0110931d5a51427a977624660d964c803b53fe93ddcca7c8543
+  oa_ticket: OA-2026-0003
+  grants:
+  - service: user_tag_query
+    endpoint: /v1/tags/query
+    oa_ticket: OA-2026-0003
+    fields:
+    - phone_sm3
+    - education_level
+  - service: news_tag_query
+    endpoint: /v1/news/query
+    oa_ticket: OA-2026-0004
+    fields:
+    - news_tags

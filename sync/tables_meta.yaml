@@ -1,0 +1,19 @@
+# 表级元数据（发布台重设计 SPEC v1.1 §七 B5）：表全名 → {cn_name, desc}。
+# 用途：discovery（GET /v1/admin/publish/hbase/discovery）渲染 tableCnName/tableDesc——
+# 发布向导①表卡片标题与服务名自动建议的中文名来源。
+# 纪律：缺登记的表 discovery 返回空串（如实，不猜、不编造）；新增表先在此登记。
+# 表全名口径＝discovery 的 full（default namespace 表不带前缀，其余 ns:table）。
+
+usr_basic_info:
+  cn_name: 用户基本信息
+  desc: 客户人口属性与开户信息（性别/年龄段/城市/客户等级等 12 列，4 列敏感）
+
+usr_asset_tag:
+  cn_name: 用户资产标签
+  desc: 资产与负债分档标签（AUM/存款/理财/信贷等 18 列，2 列敏感）
+
+card_acct_summary:
+  cn_name: 卡账户汇总
+  desc: 卡账户状态与交易汇总（卡状态/开户时长/交易分档等 14 列，3 列敏感）
+
+# oneserve_demo（演示宽表·旧）条目已随该表删除一并清理（P3-数据工程 2026-10-08）

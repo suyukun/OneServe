@@ -1,0 +1,24 @@
+# ============================================================
+# OneServe 外部数据源连接配置（卡1：配置/密钥双轨，2026-09-30）
+# 设计依据：docs/plans/装载与发布流程拆分设计_v1.md §五（维护者 质询后修正版）
+#
+# 双轨口径：
+#   - 本文件只放**非敏感连接参数**（结构化、可注释、可校验、进仓）；
+#   - 密钥类（密码/keytab/CA 内容）**永不落仓**——经环境变量注入
+#     （开发态 .env、生产态 K8s Secret/Vault），本文件只存密钥文件**路径引用**；
+#   - 优先级链（每键三级）：环境变量 HBASE_* > 本文件 > 代码默认值
+#     （装配逻辑＝service/app/connections.py；环境变量空串＝不覆盖）；
+#   - 文件在场即全量校验：缺段/缺键/坏值/疑似密钥键＝启动如实报错，不静默回退。
+# ============================================================
+
+sources:
+  # 当前唯一数据源＝HBase；未来数仓等其他源在此平级扩展（认证方式＝源适配器接口）
+  hbase:
+    host: oneserve-hbase       # Thrift 网关地址：开发态＝compose.hbase.yml 容器名；
+                               #   生产态＝示例 HBase 集群地址（换实例只改这里＋密钥注入，不动代码）
+    port: 9090                 # Thrift1 端口（happybase 兼容口径）
+    auth_mode: none            # none | basic | kerberos | tls（生产集群按安全模式改）
+    user: ""                   # basic 认证用户名（auth_mode=basic 时必填）
+    principal: ""              # kerberos 主体（auth_mode=kerberos 时必填，如 hbase/_HOST@CORP.COM）
+    secret_file: ""            # 密钥文件**路径引用**（绝对路径，如 /run/secrets/hbase-pass）；
+                               #   basic 密码/kerberos keytab/tls CA 的文件位；密钥值永不写进本文件

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>O-3 selftest（运行中…）</title>
+<!-- OneServe 运营版 O-3 自测页：断言 appkeys.js 纯函数＋appkeys.html 区块 id/表单态。
+     无外网引用；Alpine 复用 portal 自托管副本（../assets/alpine.min.js）。 -->
+<link rel="stylesheet" href="../assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: #171B21; color: #E6E9EE; padding: 24px; font-size: 13px; }
+  h1 { font-size: 16px; margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 860px; }
+  th, td { border: 1px solid #2C333D; padding: 8px; text-align: left; font-size: 12px; }
+  th { color: #98A2AE; font-weight: 500; }
+  .pass { color: #3FBE95; font-weight: 600; }
+  .fail { color: #E05252; font-weight: 600; }
+  #summary { margin: 16px 0; font-size: 14px; }
+  [x-cloak] { display: none !important; }
+</style>
+</head>
+<body>
+<h1>OneServe 运营版 O-3 · AppKey 自助发放 断言页</h1>
+<div id="summary">运行中…</div>
+<div id="results"></div>
+
+<!-- DOM 探针：真实挂载 appkeys.js 的 Alpine 组件（隐藏），供 C3/F1/E1 断言读取。
+     x-init 里预置「已选调用方＋应用名＋标签集＋双确认」但 OA 批件号留空，
+     验证 v0.1 修正①：批件号空 → 生成按钮 disabled。 -->
+<div id="dom-probe" data-mount-probe="" style="display:none" x-data="appkeyAdmin()" x-init="boot(); callers=[{id:'x',name:'X'}]; form.callerId='x'; form.appName='probe'; form.tagSets=['基本信息域']; form.purposeOk=true; form.riskOk=true;">
+  <section class="card" id="appkey-list-section"><table id="appkey-table"></table>
+    <span id="appkey-count"></span><button id="export-yaml-btn"></button><button id="open-issue-btn"></button>
+    <p id="caller-limit-note"></p>
+  </section>
+  <div id="trace-bar"><span id="trace-text"></span><button id="trace-view-diff"></button></div>
+  <section id="issue-form-section"><form id="issue-form">
+    <select id="caller-select"></select><input id="app-name-input"><input id="oa-ticket-input">
+    <input id="quota-qps-input" type="number" :value="form.quotaQps">
+    <input id="quota-daily-input" type="number" :value="form.quotaDaily">
+    <input id="expires-input"><div id="tagset-checks"></div>
+    <input id="purpose-declare-check" type="checkbox"><input id="risk-ack-check" type="checkbox">
+    <div id="issue-error"></div>
+    <button id="generate-btn" type="button" :disabled="!canGenerate()"></button>
+    <span id="generate-hint"></span>
+    <span id="mount-probe" x-text="'mounted:' + keys.length"></span>
+    <button id="dom-probe-generate" type="button" :disabled="!canGenerate()">probe</button>
+  </form></section>
+  <div id="admin-topbar"></div>
+  <!-- P0-6 闸探针：banner 文案与锁定态镜像（断言用） -->
+  <div id="gate-banner" x-show="gateLocked()" x-cloak><span id="gate-banner-text" x-text="gateBannerText()"></span></div>
+  <span id="probe-token-state" x-text="tokenState"></span>
+  <div id="secret-modal"><div id="secret-appkey-value"></div><div id="secret-value"></div><div id="secret-trial-url"></div>
+    <button id="copy-secret-btn"></button><button id="download-cred-btn"></button><button id="secret-saved-btn"></button></div>
+  <div id="confirm-modal"><div id="confirm-modal-title"></div><div id="confirm-auth-switch"></div>
+    <button id="confirm-step-btn"></button><button id="confirm-cancel-btn"></button></div>
+  <div id="quota-modal"><input id="quota-edit-qps"><input id="quota-edit-daily">
+    <button id="quota-save-btn"></button><button id="quota-cancel-btn"></button></div>
+  <div id="yaml-modal"><pre id="yaml-code"></pre><button id="yaml-copy-btn"></button>
+    <button id="yaml-download-btn"></button><button id="yaml-close-btn"></button></div>
+</div>
+
+<script>/* P0-6 门禁自测种子：会话令牌预置（探针流程可写；锁定态断言在用例内另行置空） */try { sessionStorage.setItem('oneserve-admin-token', 'selftest-seed'); } catch (e) {}</script>
+<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
+     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
+<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<script src="admin-gate.js"></script><!-- P0-6 管理令牌闸共享模块（appkeys.js 组件依赖它） -->
+<script src="appkeys.js"></script><!-- 顺序纪律：业务 js 先于 alpine（alpine 构建 microtask 即 start） -->
+<script src="selftest-admin.js"></script>
+<script src="../assets/alpine.min.js"></script>
+</body>
+</html>

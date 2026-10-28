@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneServe 运营版 · B7 异常与批量监控</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * OneServe 运营版 B7「异常与批量监控」（P1-6 · 前台重造 SPEC §5-P1-6／§2-B7）
+ * 依据：docs/plans/前台产品重造-SPEC_v0.md §5-P1-6 行、§2-B7；评估报告 UX-F5/B4。
+ *
+ * 【范围】只做「可看」：异常列表＋按调用方/API 下钻＋错误样本＋trace 详情
+ *   ＋批量运行视角（队列/进度/失败/积压）。**不做告警通道／值班送达**（归后续阶段）。
+ *
+ * 【接真走位】（代码头注释，机检要求）
+ *   ⓪ 页头填管理令牌（X-Admin-Token；同 appkeys/publish/upstreams 三页同一闸）
+ *   ① 异常列表读 GET /v1/admin/monitor/errors（审计 JSONL 真源，筛 4xx/5xx）
+ *   ② 下钻：点「按调用方」/「按 API」行 → 把该键填进过滤条件就地重查（前缀下钻）
+ *   ③ 错误样本：行内展开参数摘要/响应摘要（明文与完整凭证永不落盘、不出端点）
+ *   ④ trace 详情：点追踪号 → GET /v1/admin/monitor/trace 精确反查（服务侧＋批量任务级）
+ *   ⑤ 批量运行视角读 GET /v1/admin/monitor/batch（真源＝Redis 任务结构 JobStore：
+ *      队列深度 LLEN／执行中 running+cancelling／五态计数／积压最长等待／最近任务）
+ *   ⑥ 未接入项如实标注（见页面「未接入」说明），无异常时如实「暂无异常」——不填假数据
+ *
+ * 【口径一致性】异常筛选/掩码/时间窗/状态类与「合规审计」页（audit.html）同函数同口径
+ *   （服务端 app/monitor.error_query 复用 app/my_access 的掩码与时间解析实现）。
+ *
+ * 【视觉】与 appkeys/publish/upstreams 三页同款独立深色样式（Tabler 不在场）；
+ *   零外网引用；Alpine 复用 portal 自托管副本。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css"><!-- 仅取 --font-sans/--font-mono/间距刻度等令牌 -->
+<style>
+  :root {
+    --admin-bg: #1c222b; --admin-card: #242b36; --admin-inset: #1b2029;
+    --admin-accent: #E85B6B; --admin-line: #35404d; --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE; --admin-ok: #3FBE95; --admin-warn: #D89A3C; --admin-danger: #E05252;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .topbar { height: var(--topbar-height, 56px); display: flex; align-items: center; gap: var(--space-2, 16px);
+            padding: 0 var(--space-3, 24px); border-bottom: 1px solid var(--admin-line); background: var(--admin-card); }
+  .brand { font-weight: 600; letter-spacing: .5px; }
+  .brand-sub { color: var(--admin-muted); font-size: var(--fs-small, 12px); }
+  .env-chip { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small, 12px);
+              color: var(--admin-text); border: 1px solid var(--admin-warn); border-radius: 999px;
+              padding: 1px 10px; line-height: 18px; }
+  .env-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--admin-warn); }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px); }
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  .hint { color: var(--admin-muted); font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-primary:disabled { opacity: .38; cursor: not-allowed; }
+  .btn-sm { padding: 3px 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  /* 宽表横滚容器（2026-10-15 走查 P1-2 修复）：桌面宽 1280 数据就绪后 6 张表固有宽度
+     撑破页面（sw=1587）。.table-scroll 为仓库既有模式（portal.css 同款）；本页独立深色
+     样式不载 portal.css，故自带同值定义——壳产物（EXTRA_CSS 注入 portal.css 之后）与
+     独立打开两态行为一致。 */
+  .table-scroll { overflow-x: auto; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-demo { color: var(--admin-warn); border: 1px dashed var(--admin-warn); background: rgba(216,154,60,.08); }
+  .badge-4xx { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-5xx { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+  .badge-ok { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-run { color: #6ea8fe; border: 1px solid #6ea8fe; }
+  .badge-warn { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .crumb { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small, 12px);
+           color: var(--admin-muted); white-space: nowrap; }
+  .crumb a { color: var(--admin-text); text-decoration: none; }
+  .crumb a:hover { color: var(--admin-accent); }
+  .crumb-sep { opacity: .55; }
+  label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  input[type=text], input[type=number], input[type=password], input[type=datetime-local], select {
+    width: 100%; height: 36px; background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  .muted { color: var(--admin-muted); }
+  .num { font-family: var(--font-mono, monospace); }
+  .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-2, 16px); }
+  /* 按钮列：包一层与字段同构容器（label 占位），按钮列 stretch 等高 input（DESIGN §3.3 铁律，2026-10-16） */
+  .filter-actions { display: flex; flex-direction: column; }
+  .filter-actions-row { display: flex; gap: var(--space-1, 8px); flex: 1 1 auto; }
+  .cond-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--admin-line);
+               background: var(--admin-inset); border-radius: 999px; padding: 2px 10px; font-size: var(--fs-tiny, 11px);
+               color: var(--admin-text); margin: 2px 4px 2px 0; }
+  .cond-chip button { background: none; border: none; color: var(--admin-muted); cursor: pointer; font-size: 12px; }
+  /* 异常摘要四卡（真值；无异常＝0 如实展示，不做「大数字」装点） */
+  .mon-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-2, 16px); }
+  .mon-kpi-val { font-size: 24px; font-weight: 600; color: var(--admin-text); font-variant-numeric: tabular-nums; }
+  .mon-kpi-name { color: var(--admin-muted); font-size: var(--fs-small, 12px); }
+  /* 异常数非零＝警告色（零则维持正文色——不放大装点，只在该警觉时提示） */
+  .mon-kpi-alert { color: var(--admin-danger); }
+  .mon-src { color: var(--admin-muted); font-size: var(--fs-tiny, 11px); margin-top: 4px; }
+  .drill-row { cursor: pointer; }
+  .drill-row:hover { background: rgba(232,91,107,.08); }
+  /* 批量运行视角：状态卡＋进度条＋最近任务表 */
+  .batch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-2, 16px); }
+  .bar { height: 6px; background: var(--admin-inset); border-radius: 999px; overflow: hidden; margin-top: 4px; }
+  .bar > span { display: block; height: 100%; background: var(--admin-ok); }
+  .sample-box { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+                padding: 8px 12px; margin-top: 6px; font-size: var(--fs-tiny, 11px); }
+  .empty-tags { color: var(--admin-muted); font-size: var(--fs-small, 12px); padding: 8px 0; }
+  .callout { border: 1px dashed var(--admin-line); border-radius: var(--radius, 8px); padding: 8px 12px;
+             font-size: var(--fs-tiny, 11px); color: var(--admin-muted); margin-top: var(--space-1, 8px); }
+  /* ── P0-12 窄屏（≤720px）：宽列表格容器内滚动＋顶栏可换行 ── */
+  @media (max-width: 720px) {
+    /* 本页顶栏＝门户 shell 的 .os-topbar（P2c 2026-10-14 接入门户壳后由 .topbar 改名；同 appkeys 口径） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    .token-row { margin-left: 0; width: 100%; }
+    .token-row input { width: 100%; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body x-data="monitorAdmin()" x-init="boot()">
+
+<header class="topbar" id="admin-topbar">
+  <span class="brand">OneServe 运营控制台</span>
+  <span class="brand-sub">B7 异常与批量监控 · 管理（仅管理员可见）</span>
+  <!-- P0-6 面包屑回链（首级＝门户首页；同门户 os-crumb 语义） -->
+  <nav class="crumb" id="admin-crumb" aria-label="面包屑">
+    <a href="../portal/index.html">首页</a><span class="crumb-sep">›</span><span>运营控制台</span><span class="crumb-sep">›</span><span aria-current="page">异常与批量监控</span>
+  </nav>
+  <span class="env-chip" title="当前部署环境"><span class="dot"></span>测试环境</span>
+
+  <!-- 2026-09-23：管理令牌机制已彻底拆除（维护者 原话：完全拆掉，现在用不上，等以后再加）；本机/内网阶段授权边界＝网络层可达，写操作不再校验任何令牌，故顶栏「管理令牌」输入框、开发占位提示、只读锁定 banner 一并移除。未来接入公司内网统一做认证（属 M3）。 -->
+</header>
+
+<main class="page">
+  <h1>异常与批量监控</h1>
+  <p class="hint">本页只做「<b>可看</b>」：异常列表＋按调用方/API 下钻＋错误样本＋追踪号详情，以及批量任务运行视角（队列/进度/失败/积压）。<b>不做告警通道与值班送达</b>（归后续阶段）；异常口径与「审计查询」页同源同函数（审计台账八元组）。</p>
+
+  <!-- 2026-09-23：管理令牌机制已彻底拆除（维护者 原话：完全拆掉，现在用不上，等以后再加）；本机/内网阶段授权边界＝网络层可达，写操作不再校验任何令牌，故只读锁定 banner 与token-error 提示一并移除（gateLocked()/canWrite() 在 admin-gate.js 中恒放行，避免运行时报错）。 -->
+
+  <!-- ══ 通用「生效与留痕条」（与 appkeys/publish 同款；本页只读，动作＝刷新/下钻） ══ -->
+  <div class="trace-bar" id="trace-bar" x-show="lastTrace" x-cloak
+       style="display:flex;align-items:center;gap:8px;background:var(--admin-inset);border:1px solid var(--admin-line);border-radius:8px;padding:8px 12px;margin-bottom:16px;font-size:12px">
+    <span id="trace-text" x-text="lastTrace"></span>
+  </div>
+
+  <!-- ══ 异常摘要（按当前筛选窗口全量命中行聚合；无异常＝0 如实展示） ══ -->
+  <section class="card" id="monitor-summary" aria-label="异常摘要">
+    <div class="card-head">
+      <h2 class="card-title">异常摘要</h2>
+      <span class="muted num" x-text="'窗口：' + rangeLabel() + ' · 生成 ' + (generatedAt || '—')"></span>
+    </div>
+    <div class="mon-summary">
+      <div>
+        <div class="mon-kpi-val num" x-show="errorSummary" x-text="errorSummary ? errorSummary.windowTotal : '—'"></div>
+        <div class="mon-kpi-name">窗口内调用总量</div>
+        <div class="mon-src">当前条件命中的全部审计记录（含成功；与翻页无关）</div>
+      </div>
+      <div>
+        <div class="mon-kpi-val num" :class="errorSummary && errorSummary.errorCount ? 'mon-kpi-alert' : ''"
+             x-show="errorSummary" x-text="errorSummary ? errorSummary.errorCount : '—'"></div>
+        <div class="mon-kpi-name">异常调用数 <span class="muted">（4xx＋5xx）</span></div>
+        <div class="mon-src">
+          <span x-text="errorSummary ? ('4xx ' + (errorSummary.byClass['4xx'] || 0) + ' · 5xx ' + (errorSummary.byClass['5xx'] || 0)) : '—'"></span>
+        </div>
+      </div>
+      <div>
+        <div class="mon-kpi-val num" x-show="errorSummary" x-text="errorRateText()"></div>
+        <div class="mon-kpi-name">异常率</div>
+        <div class="mon-src" x-text="rateNote()"></div>
+      </div>
+      <div>
+        <div class="mon-kpi-val num" x-show="errorSummary"
+             x-text="errorSummary && errorSummary.codes.length ? ('HTTP ' + errorSummary.codes[0].status) : '—'"></div>
+        <div class="mon-kpi-name">最多异常状态码</div>
+        <div class="mon-src" x-text="codesText()"></div>
+      </div>
+    </div>
+    <div class="callout" id="monitor-not-connected">
+      未接入（如实标注，不在本卡造数）：异常阈值告警／告警通道与值班送达（后续阶段）、上游上游健康度、按键级失败明细。
+      本页只呈现审计台账与批量任务状态的真实值。
+    </div>
+  </section>
+
+  <!-- ══ 常驻容器健康一屏（蓝图 1a 监控最小集 2026-10-20；真探活＝healthz 原语，无探针者如实 off） ══ -->
+  <section class="card" id="monitor-containers" aria-label="常驻容器健康">
+    <div class="card-head">
+      <h2 class="card-title">常驻容器健康</h2>
+      <span class="muted num">整体 <span class="badge" :class="containerBadge(containers ? containers.overall : '')"
+            x-text="containers ? containers.overall : '—'"></span>
+        · <button type="button" class="btn btn-sm" @click="loadContainers()">刷新</button></span>
+    </div>
+    <template x-if="containersError"><div class="err" x-text="containersError" x-cloak></div></template>
+    <template x-if="containers && !containersError">
+      <div class="table-scroll">
+        <table id="monitor-containers-table" aria-label="常驻容器健康一览">
+          <thead><tr><th>容器</th><th>角色</th><th>探针</th><th>状态</th><th>明细</th></tr></thead>
+          <tbody>
+            <template x-for="row in containers.containers" :key="row.container">
+              <tr>
+                <td class="mono" x-text="row.container"></td>
+                <td x-text="row.role"></td>
+                <td class="muted" x-text="row.probe"></td>
+                <td><span class="badge" :class="containerBadge(row.status)" x-text="containerStatusText(row.status)"></span></td>
+                <td class="muted" x-text="row.detail"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div><!-- /.table-scroll -->
+    </template>
+    <template x-if="!containers && !containersError"><div class="empty-tags">探活中…</div></template>
+    <div class="mon-src">数据来源：GET /v1/admin/monitor/containers · 探活判据与各容器 compose healthcheck 同源（casdoor＝OIDC 发现端点 HTTP；redis＝PING；其余＝TCP）；oneserve-batch-worker 无网络探针＝如实 off（进程级判据归 compose healthcheck）；hbase 未配置＝off 不参与评级</div>
+  </section>
+
+  <!-- ══ 检索条件（与审计查询同口径：时间窗/caller/endpoint/状态/追踪号；多条件 AND） ══ -->
+  <section class="card" id="monitor-toolbar-card" aria-label="异常检索条件">
+    <div class="card-head">
+      <h2 class="card-title">检索条件</h2>
+      <span class="badge badge-ok" title="本页只读：只查台账与任务状态，不改数据。">只读</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" role="group" aria-label="时间窗快捷选择">
+      <button type="button" class="btn btn-sm" id="mon-range-today" :class="range === 'today' ? 'btn-primary' : ''" @click="setRange('today')">今日</button>
+      <button type="button" class="btn btn-sm" id="mon-range-24h" :class="range === '24h' ? 'btn-primary' : ''" @click="setRange('24h')">近 24 小时</button>
+      <button type="button" class="btn btn-sm" id="mon-range-7d" :class="range === '7d' ? 'btn-primary' : ''" @click="setRange('7d')">近 7 天</button>
+      <button type="button" class="btn btn-sm" id="mon-range-all" :class="range === 'all' ? 'btn-primary' : ''" @click="setRange('all')">全部</button>
+    </div>
+    <div class="filter-grid">
+      <div>
+        <label class="f" for="mon-ts-from">起始时间（自定义）</label>
+        <input id="mon-ts-from" type="datetime-local" x-model="tsFromInput" @change="onCustomChange()">
+      </div>
+      <div>
+        <label class="f" for="mon-ts-to">结束时间</label>
+        <input id="mon-ts-to" type="datetime-local" x-model="tsToInput" @change="onCustomChange()">
+      </div>
+      <div>
+        <label class="f" for="mon-caller">调用方</label>
+        <input id="mon-caller" class="mono" type="text" autocomplete="off" spellcheck="false"
+               x-model="callerInput" @keydown.enter="query(0)" placeholder="凭证片段，如 sb_aaaa（部分匹配）">
+      </div>
+      <div>
+        <label class="f" for="mon-endpoint">API / 端点</label>
+        <input id="mon-endpoint" class="mono" type="text" autocomplete="off" spellcheck="false"
+               x-model="endpointInput" @keydown.enter="query(0)" placeholder="如 tags/query（部分匹配）">
+      </div>
+      <div>
+        <label class="f" for="mon-error-class">异常类</label>
+        <select id="mon-error-class" x-model="errorClassInput" @change="query(0)">
+          <option value="">4xx＋5xx 全部</option>
+          <option value="4xx">仅 4xx 客户端错误</option>
+          <option value="5xx">仅 5xx 服务端错误</option>
+        </select>
+      </div>
+      <div>
+        <label class="f" for="mon-status">状态码</label>
+        <select id="mon-status" x-model="statusInput" @change="query(0)">
+          <option value="">全部</option>
+          <option value="400">400</option>
+          <option value="401">401</option>
+          <option value="403">403</option>
+          <option value="404">404</option>
+          <option value="429">429</option>
+          <option value="500">500</option>
+          <option value="503">503</option>
+        </select>
+      </div>
+      <div>
+        <label class="f" for="mon-trace">追踪号</label>
+        <input id="mon-trace" class="mono" type="text" autocomplete="off" spellcheck="false"
+               x-model="traceInput" @keydown.enter="query(0)" placeholder="X-Trace-Id 精确匹配">
+      </div>
+      <div>
+        <label class="f" for="mon-limit">每页</label>
+        <select id="mon-limit" x-model.number="limitSel" @change="query(0)">
+          <option value="20">20 条</option>
+          <option value="30">30 条</option>
+          <option value="50">50 条</option>
+          <option value="100">100 条</option>
+        </select>
+      </div>
+      <div class="filter-actions">
+        <label class="f" aria-hidden="true">&nbsp;</label>
+        <div class="filter-actions-row">
+          <button class="btn btn-sm btn-primary" id="mon-submit" type="button" @click="query(0)"
+                  :disabled="readState === 'loading'" x-text="readState === 'loading' ? '查询中…' : '查询异常'"></button>
+          <button class="btn btn-sm" id="mon-reset" type="button" @click="resetAll()">重置</button>
+        </div>
+      </div>
+    </div>
+    <p class="err" id="monitor-query-error" x-text="queryError" x-show="queryError" x-cloak></p>
+    <div x-show="activeConds().length" x-cloak style="margin-top:8px">
+      <span class="muted" style="font-size:11px">当前条件：</span>
+      <template x-for="c in activeConds()" :key="c.key">
+        <span class="cond-chip"><span x-text="c.label"></span>
+          <button type="button" @click="clearCond(c.key)" title="清除该条件">✕</button></span>
+      </template>
+    </div>
+  </section>
+
+  <!-- ══ 下钻：按调用方 / 按 API（同一遍扫描聚合；点行＝就地加该过滤条件重查） ══ -->
+  <section class="card" id="monitor-drill" aria-label="下钻聚合">
+    <div class="card-head">
+      <h2 class="card-title">按调用方 / 按 API 下钻</h2>
+      <span class="muted" style="font-size:11px">点任一行＝把该键填进检索条件就地重查（前缀匹配）</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+      <div>
+        <div class="muted" style="font-size:12px;margin-bottom:4px">异常最多的调用方</div>
+        <div class="table-scroll"><!-- 横滚容器（2026-10-15 走查 P1-2，同 appkeys 卡2 模式） -->
+        <table id="monitor-drill-caller" aria-label="按调用方下钻">
+          <thead><tr><th>调用方（掩码）</th><th>调用量</th><th>异常</th><th>异常率</th><th>主要状态</th></tr></thead>
+          <tbody>
+            <template x-for="row in drillCallers" :key="row.callerMasked">
+              <tr class="drill-row" @click="drillCaller(row)" :title="'按前缀 ' + row.callerQuery + ' 下钻'">
+                <td class="mono" x-text="row.callerMasked"></td>
+                <td class="num" x-text="row.total"></td>
+                <td class="num" x-text="row.errors"></td>
+                <td class="num" x-text="fmtRate(row.errorRate)"></td>
+                <td class="mono" x-text="row.topStatus != null ? ('HTTP ' + row.topStatus) : '—'"></td>
+              </tr>
+            </template>
+            <tr x-show="!drillCallers.length"><td colspan="5" class="empty-tags">当前条件下暂无异常调用方——点「重置」清除条件可看全窗口。</td></tr>
+          </tbody>
+        </table>
+        </div><!-- /.table-scroll -->
+      </div>
+      <div>
+        <div class="muted" style="font-size:12px;margin-bottom:4px">异常最多的 API</div>
+        <div class="table-scroll"><!-- 横滚容器（2026-10-15 走查 P1-2，同 appkeys 卡2 模式） -->
+        <table id="monitor-drill-api" aria-label="按 API 下钻">
+          <thead><tr><th>API / 端点</th><th>调用量</th><th>异常</th><th>异常率</th><th>主要状态</th></tr></thead>
+          <tbody>
+            <template x-for="row in drillApis" :key="row.endpoint">
+              <tr class="drill-row" @click="drillApi(row)" :title="'按 ' + row.endpoint + ' 下钻'">
+                <td class="mono" x-text="row.endpoint"></td>
+                <td class="num" x-text="row.total"></td>
+                <td class="num" x-text="row.errors"></td>
+                <td class="num" x-text="fmtRate(row.errorRate)"></td>
+                <td class="mono" x-text="row.topStatus != null ? ('HTTP ' + row.topStatus) : '—'"></td>
+              </tr>
+            </template>
+            <tr x-show="!drillApis.length"><td colspan="5" class="empty-tags">当前条件下暂无异常 API——点「重置」清除条件可看全窗口。</td></tr>
+          </tbody>
+        </table>
+        </div><!-- /.table-scroll -->
+      </div>
+    </div>
+    <div class="mon-src" x-show="dimTruncated" x-cloak>维度键超上限，其余已并入「（其余）」展示（不静默丢弃）</div>
+    <div class="mon-src">数据来源：GET /v1/admin/monitor/errors · 同一遍扫描审计台账（掩码调用方；异常率小基数不出比率）</div>
+  </section>
+
+  <!-- ══ 异常列表＋错误样本＋trace 入口（八元组真源；调用方掩码） ══ -->
+  <section class="card" id="monitor-errors" aria-label="异常列表">
+    <div class="card-head">
+      <h2 class="card-title">异常列表</h2>
+      <span class="muted num" x-text="pageText()"></span>
+    </div>
+    <template x-if="readState === 'loading'"><div><div class="mon-src">读取中…</div></div></template>
+    <template x-if="readState === 'error'">
+      <div><div class="err" x-text="readError || '异常列表暂不可用'"></div>
+        <button class="btn btn-sm" id="mon-retry" type="button" @click="query(offset)">重试</button></div>
+    </template>
+    <template x-if="readState === 'ok'">
+      <div>
+        <div class="table-scroll"><!-- 横滚容器（2026-10-15 走查 P1-2，同 appkeys 卡2 模式） -->
+        <table id="monitor-table" aria-label="异常明细">
+          <thead><tr>
+            <th>时间</th><th>调用方</th><th>API / 端点</th><th>状态</th><th>耗时</th>
+            <th title="请求参数的 sha256 摘要（平台不留存参数明文）">参数摘要</th>
+            <th title="响应体的 sha256 摘要（脱敏后口径）">响应摘要</th><th>追踪号</th><th>样本</th>
+          </tr></thead>
+          <tbody>
+            <template x-for="(row, i) in items" :key="offset + '-' + i">
+              <tr>
+                <td class="mono" x-text="fmtTs(row.ts)"></td>
+                <td class="mono">
+                  <button class="btn btn-sm" type="button" :title="'按前缀 ' + row.callerQuery + ' 下钻'"
+                          @click="drillCaller(row)" x-text="row.callerMasked || '—'"></button>
+                </td>
+                <td class="mono"><button class="btn btn-sm" type="button" @click="drillApi(row)"
+                        x-text="row.endpoint || '—'"></button></td>
+                <td><span class="badge" :class="row.errorClass === '5xx' ? 'badge-5xx' : 'badge-4xx'"
+                          x-text="'HTTP ' + row.status"></span></td>
+                <td class="mono" x-text="row.latencyMs != null ? row.latencyMs + 'ms' : '—'"></td>
+                <td class="mono" :title="row.paramsDigest" x-text="digestShort(row.paramsDigest)"></td>
+                <td class="mono" :title="row.responseDigest" x-text="digestShort(row.responseDigest)"></td>
+                <td class="mono">
+                  <template x-if="row.traceId">
+                    <button class="btn btn-sm" type="button" data-trace-use="1"
+                            title="查该追踪号的详情（服务侧＋批量任务级审计）"
+                            @click="useTrace(row.traceId)" x-text="row.traceId"></button>
+                  </template>
+                  <span x-show="!row.traceId" class="muted">未记录</span>
+                </td>
+                <td><button class="btn btn-sm" type="button" :data-sample-for="offset + '-' + i"
+                            @click="toggleSample(offset + '-' + i)"
+                            x-text="isSampleOpen(offset + '-' + i) ? '收起' : '展开'"></button></td>
+              </tr>
+            </template>
+            <template x-for="(row, i) in items" :key="'sample-' + offset + '-' + i">
+              <tr x-show="isSampleOpen(offset + '-' + i)" x-cloak>
+                <td colspan="9">
+                  <div class="sample-box" :id="'monitor-sample-' + (offset + i)">
+                    <div>错误样本（脱敏口径；明文参数与响应体不落盘）</div>
+                    <div>参数摘要 sha256：<span class="mono" x-text="row.paramsDigest || '—'"></span></div>
+                    <div>响应摘要 sha256：<span class="mono" x-text="row.responseDigest || '—'"></span></div>
+                    <div>状态 HTTP <span class="mono" x-text="row.status"></span> · 异常类 <span class="mono" x-text="row.errorClass"></span>
+                      · 耗时 <span class="mono" x-text="row.latencyMs != null ? row.latencyMs + 'ms' : '—'"></span>
+                      · 调用方 <span class="mono" x-text="row.callerMasked || '—'"></span> · 端点 <span class="mono" x-text="row.endpoint || '—'"></span></div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        </div><!-- /.table-scroll -->
+        <div class="empty-tags" id="monitor-empty" x-show="!items.length" x-cloak>暂无异常 —— 当前窗口/条件下未发现 4xx/5xx 记录（如实空白，不填示例数据）</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          <button class="btn btn-sm" id="mon-prev" type="button" @click="prevPage()" :disabled="offset <= 0">上一页</button>
+          <span class="muted num" x-text="pageText()"></span>
+          <button class="btn btn-sm" id="mon-next" type="button" @click="nextPage()" :disabled="offset + limitSel >= total">下一页</button>
+        </div>
+        <div class="mon-src">数据来源：GET /v1/admin/monitor/errors · 审计台账（八元组：ts／调用方／端点／参数摘要／状态／耗时／响应摘要／追踪号）；调用方按掩码口径展示，完整凭证不出本页</div>
+        <div class="mon-src">被网关拦下的调用（未过认证）不落这份台账——用「我的接入 → 追踪号反查」可查</div>
+      </div>
+    </template>
+  </section>
+
+  <!-- ══ trace 详情（按 trace_id 精确反查；服务侧＋批量任务级两来源分列） ══ -->
+  <section class="card" id="monitor-trace" aria-label="追踪详情">
+    <div class="card-head">
+      <h2 class="card-title">追踪号详情</h2>
+      <span class="muted" style="font-size:11px">GET /v1/admin/monitor/trace?trace_id=…</span>
+    </div>
+    <div class="filter-grid" style="grid-template-columns:1fr auto">
+      <div>
+        <label class="f" for="monitor-trace-id">追踪号（X-Trace-Id）</label>
+        <input id="monitor-trace-id" class="mono" type="text" x-model="traceIdLookup" @keydown.enter="lookupTrace()"
+               placeholder="点上方列表追踪号自动填入，或手动粘贴精确值">
+      </div>
+      <div class="filter-actions">
+        <label class="f" aria-hidden="true">&nbsp;</label>
+        <div class="filter-actions-row">
+          <button class="btn btn-sm btn-secondary" id="monitor-trace-submit" type="button" @click="lookupTrace()">反查</button>
+        </div>
+      </div>
+    </div>
+    <p class="err" id="monitor-trace-error" x-text="traceError" x-show="traceError" x-cloak></p>
+    <template x-if="traceResult">
+      <div>
+        <div class="muted num" x-text="'追踪号 ' + (traceResult.traceId || '—') + ' · 命中 ' + traceResult.entries.length + ' 条'
+          + (traceResult.sources.length ? '（来源：' + traceResult.sources.join('、') + '）' : '')"></div>
+        <div class="muted" style="font-size:11px;margin:4px 0 8px">
+          深链：本页支持 <span class="mono">&lt;monitor.html&gt;?trace_id=…</span> 直达；同一追踪号也可在
+          <!-- 生产路径：portal/admin/monitor.html → ../audit.html（portal/audit.html，C 面合规审计） -->
+          <a :href="'../audit.html?trace_id=' + encodeURIComponent(traceResult.traceId)"
+             :class="traceResult.found ? '' : 'muted'" id="monitor-trace-audit-link">合规审计页</a> 打开。
+        </div>
+        <div class="table-scroll"><!-- 横滚容器（2026-10-15 走查 P1-2，同 appkeys 卡2 模式） -->
+        <table id="monitor-trace-table" aria-label="追踪详情明细">
+          <thead><tr><th>来源</th><th>时间</th><th>调用方</th><th>端点</th><th>状态</th><th>耗时</th><th>参数摘要</th><th>响应摘要</th></tr></thead>
+          <tbody>
+            <template x-for="(e, i) in traceResult.entries" :key="'tr-' + i">
+              <tr>
+                <td><span class="badge" :class="e.source === 'batch' ? 'badge-warn' : 'badge-ok'" x-text="e.source === 'batch' ? '批量任务级' : '服务侧'"></span></td>
+                <td class="mono" x-text="fmtTs(e.ts)"></td>
+                <td class="mono" x-text="e.callerMasked || '—'"></td>
+                <td class="mono" x-text="e.endpoint || '—'"></td>
+                <td><span class="badge" :class="e.errorClass === '5xx' ? 'badge-5xx' : (e.errorClass === '4xx' ? 'badge-4xx' : 'badge-ok')"
+                          x-text="'HTTP ' + e.status"></span></td>
+                <td class="mono" x-text="e.latencyMs != null ? e.latencyMs + 'ms' : '—'"></td>
+                <td class="mono" :title="e.paramsDigest" x-text="digestShort(e.paramsDigest)"></td>
+                <td class="mono" :title="e.responseDigest" x-text="digestShort(e.responseDigest)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        </div><!-- /.table-scroll -->
+        <div class="empty-tags" id="monitor-trace-empty" x-show="!traceResult.found" x-cloak>该追踪号在两份审计台账中都没有命中（服务侧／批量任务级）——如实空白，不编造链路</div>
+      </div>
+    </template>
+    <div class="mon-src">两处真源：服务侧审计（请求链路八元组）与批量任务级审计（任务终态，独立 trace_id）</div>
+  </section>
+
+  <!-- ══ 批量运行视角（真源＝Redis 任务结构 JobStore；队列/进度/失败/积压） ══ -->
+  <section class="card" id="monitor-batch" aria-label="批量运行视角">
+    <div class="card-head">
+      <h2 class="card-title">批量运行视角</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="muted num" x-text="'生成 ' + (batchGeneratedAt || '—')"></span>
+        <button class="btn btn-sm" id="mon-batch-refresh" type="button" @click="loadBatch()">刷新</button>
+      </div>
+    </div>
+    <template x-if="batchError">
+      <div><div class="err" x-text="batchError"></div>
+        <button class="btn btn-sm" id="mon-batch-retry" type="button" @click="loadBatch()">重试</button></div>
+    </template>
+    <template x-if="batch">
+      <div>
+        <div class="batch-grid">
+          <div>
+            <div class="mon-kpi-val num" x-text="batch.queueDepth"></div>
+            <div class="mon-kpi-name">队列深度</div>
+            <div class="mon-src">LLEN oneserve:batch:queue（真实队列长度）</div>
+          </div>
+          <div>
+            <div class="mon-kpi-val num" x-text="batch.inFlight"></div>
+            <div class="mon-kpi-name">执行中</div>
+            <div class="mon-src">running＋cancelling 任务数（queued 不占并发位）</div>
+          </div>
+          <div>
+            <div class="mon-kpi-val num" x-text="batch.counts.failed"></div>
+            <div class="mon-kpi-name">失败任务</div>
+            <div class="mon-src">任务记录 status=failed 计数（可重试）</div>
+          </div>
+          <div>
+            <div class="mon-kpi-val num" x-text="backlogText()"></div>
+            <div class="mon-kpi-name">积压（最长等待）</div>
+            <div class="mon-src" x-text="backlogNote()"></div>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="muted" style="font-size:12px;margin-bottom:4px">五态任务计数（全量任务记录）</div>
+          <div class="table-scroll"><!-- 横滚容器（2026-10-15 走查 P1-2，同 appkeys 卡2 模式） -->
+          <table id="monitor-batch-counts" aria-label="任务状态计数">
+            <thead><tr><th>queued 排队</th><th>running 执行中</th><th>cancelling 取消中</th><th>succeeded 成功</th><th>failed 失败</th><th>cancelled 已取消</th></tr></thead>
+            <tbody><tr>
+              <td class="num" x-text="batch.counts.queued"></td>
+              <td class="num" x-text="batch.counts.running"></td>
+              <td class="num" x-text="batch.counts.cancelling"></td>
+              <td class="num" x-text="batch.counts.succeeded"></td>
+              <td class="num" x-text="batch.counts.failed"></td>
+              <td class="num" x-text="batch.counts.cancelled"></td>
+            </tr></tbody>
+          </table>
+          </div><!-- /.table-scroll -->
+        </div>
+        <div style="margin-top:16px">
+          <div class="muted" style="font-size:12px;margin-bottom:4px">最近任务（按提交时间降序，最多 50 条）</div>
+          <div class="table-scroll"><!-- 横滚容器（2026-10-15 走查 P1-2，同 appkeys 卡2 模式） -->
+          <table id="monitor-batch-recent" aria-label="最近任务">
+            <thead><tr><th>任务</th><th>调用方租户</th><th>范围</th><th>状态</th><th>进度</th><th>失败原因</th><th>提交时间</th></tr></thead>
+            <tbody>
+              <template x-for="(j, i) in batch.recent" :key="j.jobId || i">
+                <tr>
+                  <td class="mono" :title="j.jobId" x-text="shortId(j.jobId)"></td>
+                  <td class="mono" x-text="j.tenant || '—'"></td>
+                  <td class="mono" x-text="j.scope"></td>
+                  <td><span class="badge" :class="jobBadge(j.status)" x-text="jobStatusText(j.status)"></span></td>
+                  <td style="min-width:120px">
+                    <div class="mono" x-text="progressText(j)"></div>
+                    <div class="bar"><span :style="'width:' + (j.progress != null ? j.progress : 0) + '%'"></span></div>
+                  </td>
+                  <td class="mono" x-text="j.error || '—'"></td>
+                  <td class="mono" x-text="fmtTs(j.createdAt)"></td>
+                </tr>
+              </template>
+              <tr x-show="!batch.recent.length"><td colspan="7" class="empty-tags">暂无批量任务（尚未提交任何任务即为空，如实展示）</td></tr>
+            </tbody>
+          </table>
+          </div><!-- /.table-scroll -->
+        </div>
+        <div class="callout" x-show="batch.degraded" x-cloak>
+          批量任务状态读取失败：<span class="mono" x-text="batch.degraded"></span> —— 以下数字已零值降级，<b>非真实状态</b>，请重试。
+        </div>
+        <div class="mon-src">数据来源：GET /v1/admin/monitor/batch · 真源＝Redis 任务结构（JobStore：任务 hash＋FIFO 队列 list）；口径：<span x-text="caliberText()"></span></div>
+        <div class="callout">
+          未接入（如实标注，不造数）：<span x-text="(batch.caliber.notConnected || []).join('、')"></span>。本卡只做运行状态可见。
+        </div>
+      </div>
+    </template>
+    <template x-if="!batch && !batchError"><div class="empty-tags">读取中…</div></template>
+  </section>
+</main>
+
+<script src="admin-gate.js"></script><!-- P0-6 管理令牌闸共享模块（四页同款；令牌存取/后端校验/canWrite 切片） -->
+<script src="monitor.js"></script><!-- 业务脚本必须先于 alpine 加载：本仓 alpine 构建在自身执行后 queueMicrotask 即 start() -->
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs@3.14.9 自托管副本（同 portal） -->
+</body>
+</html>

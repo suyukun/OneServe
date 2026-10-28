@@ -1,0 +1,1565 @@
+# ============================================================
+# OneServe 服务注册配置（task-003）——SPEC §3.3「配置驱动＋少量胶水」的第一次真实化
+# 本文件即 SPEC §3.3 YAML 示例落成的真配置：注册一个服务＝填一份声明式配置。
+# KV 执行器（service/app/kv_executor.py）按此配置驱动，不含任何服务名硬编码。
+#
+# 服务注册（卡4 ADR-0008 §Decision.2）：注册表索引＝service_id 单键（服务修订号已删）；
+# 同 service_id 再发布＝原地覆盖更新（发布史见条目 trace.history，不追加条目）。
+# 「版本」只剩两类（门槛稿 §〇三分法）：URL /v1/ API 大版本与表数据版本
+# （backend.load.version/Redis {version} 插槽＝YYYYMMDD tabver，均不经注册表）。
+# 数据源类型（TASK-M2-3 / AC-1）：backend.source = redis | hbase，缺省 redis
+# （向后兼容，存量服务零改动）；hbase 型带 backend.hbase{table,cf,key_type}。
+#   · 多列族扩展位（TASK-M2-7-a，维护者 2026-09-23 口径）：backend.hbase.cf 契约允许
+#     字符串（本阶段单列族）或字符串列表（未来「rowkey＝key、其余大量列族＝字段」
+#     的扩展位）。本阶段只实现单列族语义：cf 登记多个列族时执行器启动即拒（不做
+#     静默取首个）；多列族按列族分组投影归 M2-4 之后，不改本节现有注册条目结构。
+# 字段空间（TASK-M2-3.8 修复）：field_space = wide297 | news | proxy——
+#   schema 漂移判定只对 wide297（引用字段须真实存在于 sync/schema_usr_label_wide_297.csv）；
+#   news（tags:news 独立键空间）与 proxy（B 型整体透传，无字段投影语义）不参与宽表漂移。
+#   TODO(卡2): 297 宽表字典换源为表级 schema 元数据（装载副产品）；CSV 缓删至卡2 交接（卡5 2026-09-30）。
+#   缺省 wide297（向后兼容：存量单域服务零改动，防漏判）。
+# 目录模板属性：条目可带 update_frequency（表数据装载节奏事实——现役表口径＝
+#   每日 T+1 批量直写 HBase、次日 06:00 前放数；平台按版本装载，无固定 cron）与
+#   owner（责任主体——示例口径＝平台运营组，占位真值，接入正式工单系统后订正）。
+#   取不到实值如实「未标注」。两属性经 /v1/portal/catalog 下发、目录卡展示；
+#   发布重发重建条目时从前条目继承（ops_config.publish_service 保持逻辑，
+#   「重建丢 desc」边界同款收口）。
+# ============================================================
+services:    # 2026-09-29 维护者: all services offline for mainline focus; code and flow assets kept
+  - name: 用户资产标签查询
+    route: /v1/svc/usr-asset-tag
+    method: POST
+    key: usr_id 的 phone_sm3
+    update_frequency: 每日（T+1）   # 2026-10-15 目录模板属性（口径见文件头注）
+    owner: 平台运营组
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261008'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: E
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: E
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-08T05:40:38+00:00'
+    published_at: '2026-10-08T05:40:38+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-08T05:40:38+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-08T05:40:38+00:00'
+        by: console
+        delta: '+16'
+    service_id: v1-svc-usr-asset-tag
+    archetype: kv_lookup
+    response:
+      projection: auth_matrix
+      meta:
+      - data_as_of
+      - live_version
+    guard:
+      timeout_ms: 3000
+      max_items_per_call: 1
+    audit:
+      enabled: true
+      log_params: hash_only
+      log_response_digest: sha256_of_desensitized_body
+  - name: 卡账户汇总查询
+    route: /v1/svc/card-acct-summary
+    method: POST
+    key: usr_id 的 phone_sm3
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    backend:
+      kv:
+        namespace: tags:card_acct_summary
+        alias_key: tags:card_acct_summary:latest
+        data_key: tags:card_acct_summary:{version}:{sm3}
+        version_meta_key: sync:ver:card_acct_summary:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: card_acct_summary
+        cf: cf
+        key_type: phone_sm3
+        version: '20261008'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: acct_sts
+      sample: '2'
+      desc: ''
+      desensitize: ''
+    - name: annual_fee_waived_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: bal_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: card_age_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: card_sts
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: cash_adv_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: install_cnt_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: last_txn_days
+      sample: '631'
+      desc: ''
+      desensitize: ''
+    - name: open_days
+      sample: '134'
+      desc: ''
+      desensitize: ''
+    - name: overseas_txn_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: points_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: qpay_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: txn_amt_m1_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: txn_cnt_m1_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-08T06:29:48+00:00'
+    published_at: '2026-10-08T06:29:48+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-08T06:29:48+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-08T06:29:48+00:00'
+        by: console
+        delta: '+14'
+    service_id: v1-svc-card-acct-summary
+    archetype: kv_lookup
+    response:
+      projection: auth_matrix
+      meta:
+      - data_as_of
+      - live_version
+    guard:
+      timeout_ms: 3000
+      max_items_per_call: 1
+    audit:
+      enabled: true
+      log_params: hash_only
+      log_response_digest: sha256_of_desensitized_body
+  - name: 用户资产标签查询（1013 测试）   # 2026-10-14 存量重名治理：原「用户资产标签查询」，route 不动
+    route: /v1/svc/usr-asset-tag1
+    method: POST
+    key: usr_id 的 phone_sm3
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261008'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: salary_in_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: wealth_hold_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-08T07:50:14+00:00'
+    published_at: '2026-10-08T07:50:14+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-08T07:50:14+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-08T07:50:14+00:00'
+        by: console
+        delta: '+18'
+    service_id: v1-svc-usr-asset-tag1
+    archetype: kv_lookup
+    response:
+      projection: auth_matrix
+      meta:
+      - data_as_of
+      - live_version
+    guard:
+      timeout_ms: 3000
+      max_items_per_call: 1
+    audit:
+      enabled: true
+      log_params: hash_only
+      log_response_digest: sha256_of_desensitized_body
+  - name: 用户资产标签查询 1014   # 2026-10-14 存量重名治理：原「用户资产标签查询」，route 不动
+    route: /v1/svc/usr-asset-tag1014
+    method: POST
+    key: usr_id 的 phone_sm3
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261014'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: salary_in_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: wealth_hold_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-14T09:00:54+00:00'
+    published_at: '2026-10-14T09:00:54+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-14T09:00:54+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-14T09:00:54+00:00'
+        by: console
+        delta: '+18'
+    service_id: v1-svc-usr-asset-tag1014
+    archetype: kv_lookup
+    response:
+      projection: auth_matrix
+      meta:
+      - data_as_of
+      - live_version
+    guard:
+      timeout_ms: 3000
+      max_items_per_call: 1
+    audit:
+      enabled: true
+      log_params: hash_only
+      log_response_digest: sha256_of_desensitized_body
+  - name: 用户基本信息查询
+    route: /v1/svc/usr-basic-info
+    method: POST
+    key: usr_id 的 phone_sm3
+    backend:
+      kv:
+        namespace: tags:usr_basic_info
+        alias_key: tags:usr_basic_info:latest
+        data_key: tags:usr_basic_info:{version}:{sm3}
+        version_meta_key: sync:ver:usr_basic_info:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_basic_info
+        cf: cf
+        key_type: phone_sm3
+        version: '20261016'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: age_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: blacklist_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: channel_cd
+      sample: APP
+      desc: ''
+      desensitize: ''
+    - name: city_code
+      sample: '4401'
+      desc: ''
+      desensitize: ''
+    - name: cust_level
+      sample: L2
+      desc: ''
+      desensitize: ''
+    - name: edu_level
+      sample: '2'
+      desc: ''
+      desensitize: ''
+    - name: gender_cd
+      sample: '2'
+      desc: ''
+      desensitize: ''
+    - name: marital_sts
+      sample: '20'
+      desc: ''
+      desensitize: ''
+    - name: occupation_cd
+      sample: '31'
+      desc: ''
+      desensitize: ''
+    - name: open_date
+      sample: '2024-09-18'
+      desc: ''
+      desensitize: ''
+    - name: risk_level
+      sample: R5
+      desc: ''
+      desensitize: ''
+    - name: vip_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-16T04:18:38+00:00'
+    published_at: '2026-10-16T04:18:38+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-16T04:18:38+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - v: ''
+      - v: V1
+        status: published
+        at: '2026-09-29T10:48:38+00:00'
+        by: console
+        delta: '+3'
+      - v: V2
+        status: published
+        at: '2026-09-30T07:51:58+00:00'
+        by: console
+        delta: '-2'
+      - v: V2
+        status: offline
+        at: '2026-09-30T07:53:07+00:00'
+        by: console
+        delta: ±0
+      - v: V4
+        status: published
+        at: '2026-09-30T07:55:32+00:00'
+        by: console
+        delta: '+2'
+      - v: V5
+        status: published
+        at: '2026-09-30T07:56:01+00:00'
+        by: console
+        delta: ±0
+      - v: V6
+        status: published
+        at: '2026-09-30T09:16:43+00:00'
+        by: console
+        delta: '+9'
+      - status: published
+        at: '2026-09-30T14:50:29+00:00'
+        by: rose-e2e
+        delta: '+9'
+      - status: published
+        at: '2026-09-30T14:50:35+00:00'
+        by: rose-e2e
+        delta: ±0
+      - status: published
+        at: '2026-10-08T06:14:41+00:00'
+        by: console
+        delta: ±0
+      - status: published
+        at: '2026-10-08T06:15:07+00:00'
+        by: console
+        delta: ±0
+      - status: published
+        at: '2026-10-08T06:15:20+00:00'
+        by: console
+        delta: '-2'
+      - status: published
+        at: '2026-10-08T10:58:26+00:00'
+        by: console
+        delta: '+2'
+      - status: published
+        at: '2026-10-16T03:17:24+00:00'
+        by: console
+        delta: ±0
+      - status: published
+        at: '2026-10-16T04:18:38+00:00'
+        by: console
+        delta: ±0
+    desc: 按查询键返回用户基础画像：年龄段、学历、婚姻、职业、客户等级与风险标识等基本信息。
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    service_id: v1-svc-usr-basic-info
+    archetype: kv_lookup
+    response:
+      projection: auth_matrix
+      meta:
+      - data_as_of
+      - live_version
+    guard:
+      timeout_ms: 3000
+      max_items_per_call: 1
+    audit:
+      enabled: true
+      log_params: hash_only
+      log_response_digest: sha256_of_desensitized_body
+  - name: 用户资产标签查询1020
+    route: /v1/svc/usr-asset-tag1020
+    method: POST
+    key: usr_id 的 phone_sm3
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261014'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: salary_in_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: wealth_hold_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-20T01:13:55+00:00'
+    published_at: '2026-10-20T01:13:55+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-20T01:13:55+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-20T01:13:55+00:00'
+        by: console
+        delta: '+18'
+    service_id: v1-svc-usr-asset-tag1020
+    archetype: kv_lookup
+    response:
+      projection: auth_matrix
+      meta:
+      - data_as_of
+      - live_version
+    guard:
+      timeout_ms: 3000
+      max_items_per_call: 1
+    audit:
+      enabled: true
+      log_params: hash_only
+      log_response_digest: sha256_of_desensitized_body
+# ==== console_services（运营控制台写区 · /v1/admin/publish 维护；手编请改上方运行时区，本区整体重写） ====
+console_services:
+  - id: v1-svc-usr-basic-info
+    name: 用户基本信息查询
+    route: /v1/svc/usr-basic-info
+    method: POST
+    key: usr_id 的 phone_sm3
+    backend:
+      kv:
+        namespace: tags:usr_basic_info
+        alias_key: tags:usr_basic_info:latest
+        data_key: tags:usr_basic_info:{version}:{sm3}
+        version_meta_key: sync:ver:usr_basic_info:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_basic_info
+        cf: cf
+        key_type: phone_sm3
+        version: '20261016'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: age_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: blacklist_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: channel_cd
+      sample: APP
+      desc: ''
+      desensitize: ''
+    - name: city_code
+      sample: '4401'
+      desc: ''
+      desensitize: ''
+    - name: cust_level
+      sample: L2
+      desc: ''
+      desensitize: ''
+    - name: edu_level
+      sample: '2'
+      desc: ''
+      desensitize: ''
+    - name: gender_cd
+      sample: '2'
+      desc: ''
+      desensitize: ''
+    - name: marital_sts
+      sample: '20'
+      desc: ''
+      desensitize: ''
+    - name: occupation_cd
+      sample: '31'
+      desc: ''
+      desensitize: ''
+    - name: open_date
+      sample: '2024-09-18'
+      desc: ''
+      desensitize: ''
+    - name: risk_level
+      sample: R5
+      desc: ''
+      desensitize: ''
+    - name: vip_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-16T04:18:38+00:00'
+    published_at: '2026-10-16T04:18:38+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-16T04:18:38+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - v: ''
+      - v: V1
+        status: published
+        at: '2026-09-29T10:48:38+00:00'
+        by: console
+        delta: '+3'
+      - v: V2
+        status: published
+        at: '2026-09-30T07:51:58+00:00'
+        by: console
+        delta: '-2'
+      - v: V2
+        status: offline
+        at: '2026-09-30T07:53:07+00:00'
+        by: console
+        delta: ±0
+      - v: V4
+        status: published
+        at: '2026-09-30T07:55:32+00:00'
+        by: console
+        delta: '+2'
+      - v: V5
+        status: published
+        at: '2026-09-30T07:56:01+00:00'
+        by: console
+        delta: ±0
+      - v: V6
+        status: published
+        at: '2026-09-30T09:16:43+00:00'
+        by: console
+        delta: '+9'
+      - status: published
+        at: '2026-09-30T14:50:29+00:00'
+        by: rose-e2e
+        delta: '+9'
+      - status: published
+        at: '2026-09-30T14:50:35+00:00'
+        by: rose-e2e
+        delta: ±0
+      - status: published
+        at: '2026-10-08T06:14:41+00:00'
+        by: console
+        delta: ±0
+      - status: published
+        at: '2026-10-08T06:15:07+00:00'
+        by: console
+        delta: ±0
+      - status: published
+        at: '2026-10-08T06:15:20+00:00'
+        by: console
+        delta: '-2'
+      - status: published
+        at: '2026-10-08T10:58:26+00:00'
+        by: console
+        delta: '+2'
+      - status: published
+        at: '2026-10-16T03:17:24+00:00'
+        by: console
+        delta: ±0
+      - status: published
+        at: '2026-10-16T04:18:38+00:00'
+        by: console
+        delta: ±0
+    desc: 按查询键返回用户基础画像：年龄段、学历、婚姻、职业、客户等级与风险标识等基本信息。
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+  - id: v1-svc-usr-asset-tag
+    name: 用户资产标签查询
+    desc: 按查询键返回用户资产与行为标签：资产档位、活跃与流失风险、理财/保险/贷款持有情况等，供营销与经营分析参考。
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    route: /v1/svc/usr-asset-tag
+    method: POST
+    key: usr_id 的 phone_sm3
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261008'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: E
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: E
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-08T05:40:38+00:00'
+    published_at: '2026-10-08T05:40:38+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-08T05:40:38+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-08T05:40:38+00:00'
+        by: console
+        delta: '+16'
+  - id: v1-svc-card-acct-summary
+    name: 卡账户汇总查询
+    desc: 按查询键返回卡账户概览：卡与账户状态、余额与交易档位、积分、分期与境外交易标识等。
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    route: /v1/svc/card-acct-summary
+    method: POST
+    key: usr_id 的 phone_sm3
+    backend:
+      kv:
+        namespace: tags:card_acct_summary
+        alias_key: tags:card_acct_summary:latest
+        data_key: tags:card_acct_summary:{version}:{sm3}
+        version_meta_key: sync:ver:card_acct_summary:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: card_acct_summary
+        cf: cf
+        key_type: phone_sm3
+        version: '20261008'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: acct_sts
+      sample: '2'
+      desc: ''
+      desensitize: ''
+    - name: annual_fee_waived_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: bal_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: card_age_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: card_sts
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: cash_adv_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: install_cnt_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: last_txn_days
+      sample: '631'
+      desc: ''
+      desensitize: ''
+    - name: open_days
+      sample: '134'
+      desc: ''
+      desensitize: ''
+    - name: overseas_txn_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: points_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: qpay_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: txn_amt_m1_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: txn_cnt_m1_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-08T06:29:48+00:00'
+    published_at: '2026-10-08T06:29:48+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-08T06:29:48+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-08T06:29:48+00:00'
+        by: console
+        delta: '+14'
+  - id: v1-svc-usr-asset-tag1
+    name: 用户资产标签查询（1013 测试）
+    desc: 用户资产标签查询的 1013 批测试实例（字段另含代发工资/财富持有标识），用于装载与发布链路验证。
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    route: /v1/svc/usr-asset-tag1
+    method: POST
+    key: usr_id 的 phone_sm3
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261008'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: salary_in_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: wealth_hold_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-08T07:50:14+00:00'
+    published_at: '2026-10-08T07:50:14+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-08T07:50:14+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-08T07:50:14+00:00'
+        by: console
+        delta: '+18'
+  - id: v1-svc-usr-asset-tag1014
+    name: 用户资产标签查询 1014
+    desc: 用户资产标签查询的 1014 批测试实例，用于版本装载演练。
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    route: /v1/svc/usr-asset-tag1014
+    method: POST
+    key: usr_id 的 phone_sm3
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261014'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: salary_in_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: wealth_hold_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-14T09:00:54+00:00'
+    published_at: '2026-10-14T09:00:54+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-14T09:00:54+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-14T09:00:54+00:00'
+        by: console
+        delta: '+18'
+  - id: v1-svc-usr-asset-tag1020
+    name: 用户资产标签查询1020
+    desc: 1020 演示实例（同源 20261014 版标签表）：按查询键返回用户资产与行为标签——资产档位、活跃与流失风险、理财/保险/贷款持有情况等，供外部代理与直连双路由演示。
+    update_frequency: 每日（T+1）
+    owner: 平台运营组
+    route: /v1/svc/usr-asset-tag1020
+    method: POST
+    key: usr_id 的 phone_sm3
+    backend:
+      kv:
+        namespace: tags:usr_asset_tag
+        alias_key: tags:usr_asset_tag:latest
+        data_key: tags:usr_asset_tag:{version}:{sm3}
+        version_meta_key: sync:ver:usr_asset_tag:{version}
+        storage_key: as_received
+        entity: user
+      load:
+        source: hbase
+        table: usr_asset_tag
+        cf: cf
+        key_type: phone_sm3
+        version: '20261014'
+        loaded: false
+    field_space: wide297
+    params:
+    - name: key
+      type: string(64)
+      key_type: phone_sm3
+      pattern: ^[A-Za-z0-9_.-]{1,128}$
+    fields:
+    - name: active_m3_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: aum_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: churn_risk_band
+      sample: C
+      desc: ''
+      desensitize: ''
+    - name: credit_limit_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: cross_sell_cnt_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dep_bal_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: dormant_m12_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: fund_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: ins_hold_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: loan_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    - name: login_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: ltv_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: mk_response_band
+      sample: B
+      desc: ''
+      desensitize: ''
+    - name: mortgage_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: overdue_cnt_band
+      sample: A
+      desc: ''
+      desensitize: ''
+    - name: pay_cnt_band
+      sample: D
+      desc: ''
+      desensitize: ''
+    - name: salary_in_flag
+      sample: '0'
+      desc: ''
+      desensitize: ''
+    - name: wealth_hold_flag
+      sample: '1'
+      desc: ''
+      desensitize: ''
+    status: published
+    scope:
+      env: 本机M0
+      instance: 网关实例A
+    last_modified_by: console
+    last_modified_at: '2026-10-20T01:13:55+00:00'
+    published_at: '2026-10-20T01:13:55+00:00'
+    trace:
+      action: published
+      by: console
+      at: '2026-10-20T01:13:55+00:00'
+      commit: null
+      oa_ticket: ''
+      history:
+      - status: published
+        at: '2026-10-20T01:13:55+00:00'
+        by: console
+        delta: '+18'

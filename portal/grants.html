@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>授权与凭证全景 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<!-- P1-8 授权登记全景（仅引用既有令牌） -->
+<link rel="stylesheet" href="assets/grants.css?v=266daaf925e8">
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="site-gate.js?v=266daaf925e8"></script>
+<script defer src="data-format.js?v=266daaf925e8"></script>
+<script defer src="api.js?v=266daaf925e8"></script>
+<script defer src="assets/app.js?v=266daaf925e8"></script>
+<script defer src="assets/trial.js?v=266daaf925e8"></script>
+<!-- P1-8 授权登记全景页组件（Alpine；defer 保序在 alpine.min.js 前注册） -->
+<script defer src="assets/grants.js?v=266daaf925e8"></script>
+<script defer src="assets/pages.js?v=266daaf925e8"></script>
+<script defer src="assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+<script defer src="assets/alpine.min.js?v=266daaf925e8"></script>
+</head>
+<body class="os-layout">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="admin/load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="admin/publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="admin/published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="admin/appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="admin/tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="admin/grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="admin/pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="admin/accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="admin/upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="admin/monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="admin/billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link is-active" aria-current="page" href="grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 <ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">授权与凭证全景</li></ol>（admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="os-crumb" aria-label="面包屑"><ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">授权与凭证全景</li></ol></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<!-- ══ 授权登记全景页（P1-8 · SPEC §2-C2 合规审计面）：只读 · 租户×appkey×服务×字段＋OA 溯源＋字段反查 ══ -->
+<div class="os-container reveal" x-data="grantsViewPage" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">合规审计</div>
+    <h1 class="page-title">授权与凭证全景</h1>
+    <div class="os-page-actions">
+      <!-- 卡5：字段字典入口随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+      <a class="os-chip is-link" href="audit.html" title="审计查询：按调用方/端点/追踪号检索台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i>去审计查询</a>
+    </div>
+  </div>
+
+  <!-- 口径说明：只读登记展示＋ADR-0003 缺单号如实标注 -->
+  <section class="card span-24" id="grants-about" aria-label="授权登记口径说明">
+    <div class="card-body gr-about">
+      <p>本页是<b>授权登记的只读全景</b>：一个租户拿了哪把凭证、被授权了哪些服务、每个服务开放了哪些字段，
+         以及每条授权引用的 OA 审批单号。真源是 <span class="mono" x-text="caliber.source || 'service/auth_matrix.yaml'"></span>。</p>
+      <p>审批走工单系统，平台只做授权登记（<span x-text="caliber.oaRule || 'ADR-0003'"></span>）。
+         存量登记可能<b>缺单号</b>或仍是<b>占位单号</b>——本页如实逐条标注，不代填、不假装已合规。</p>
+      <p x-text="caliber.writeSide || '本页只读；授权登记的写侧归运营台与 auth_admin CLI。'"></p>
+    </div>
+  </section>
+
+  <!-- 汇总卡：登记面口径数字（全部来自真源，逐条可核对） -->
+  <div class="grid-24" id="grants-summary" aria-label="授权登记汇总">
+    <section class="card span-6">
+      <div class="card-body">
+        <div class="gr-kpi-val" x-text="summary ? summary.tenants : '—'"></div>
+        <div class="gr-kpi-name">授权租户
+          <span class="my-tip" tabindex="0" role="note" title="授权登记里出现的租户数（auth_matrix matrix[].tenant 去重）。">？</span></div>
+        <div class="src-note">凭证 <span class="num" x-text="summary ? summary.appkeys : '—'"></span> 把 · 服务 <span class="num" x-text="summary ? summary.services : '—'"></span> 个</div>
+      </div>
+    </section>
+    <section class="card span-6">
+      <div class="card-body">
+        <div class="gr-kpi-val" x-text="summary ? summary.grants : '—'"></div>
+        <div class="gr-kpi-name">授权登记条目
+          <span class="my-tip" tabindex="0" role="note" title="一行＝一个租户对某个服务的一条授权登记（auth_matrix matrix[].grants[] 计数）。">？</span></div>
+        <div class="src-note">字段引用 <span class="num" x-text="summary ? summary.fieldRefs : '—'"></span> 次 · 去重 <span class="num" x-text="summary ? summary.distinctFields : '—'"></span> 个</div>
+      </div>
+    </section>
+    <section class="card span-6">
+      <div class="card-body">
+        <div class="gr-kpi-val" x-text="summary ? summary.oaMissing : '—'" :class="summary && summary.oaMissing ? 'gr-kpi-warn' : ''"></div>
+        <div class="gr-kpi-name">缺 OA 单号
+          <span class="my-tip" tabindex="0" role="note" title="登记条目没有任何 OA 单号（tenant 级与 grant 级都为空）。ADR-0003 要求登记须填单号，存量不一致如实标注。">？</span></div>
+        <div class="src-note">占位待回填 <span class="num" x-text="summary ? summary.oaPlaceholder : '—'"></span> 条</div>
+      </div>
+    </section>
+    <section class="card span-6">
+      <div class="card-body">
+        <div class="gr-kpi-val" x-text="oaTickets.length"></div>
+        <div class="gr-kpi-name">OA 单号
+          <span class="my-tip" tabindex="0" role="note" title="登记里出现过的不同 OA 单号数量（含占位单号，单列一类）；点下方列表可溯源到具体授权范围。">？</span></div>
+        <div class="src-note">单号 → 授权范围溯源在位</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 筛选：租户 / 服务 / 字段 × OA 状态；字段可点反查 -->
+  <section class="card span-24" id="grants-toolbar" aria-label="授权全景筛选">
+    <div class="card-head">
+      <h2 class="card-title">筛选</h2>
+      <span class="badge text-bg-secondary gr-readonly-badge"
+            title="本页只读：只查授权登记不改配置；条件全部 AND 组合。">只读</span>
+    </div>
+    <div class="card-body gr-filter-body">
+      <div class="gr-filter-row">
+        <div class="gr-filter-field">
+          <label for="gr-tenant" class="form-label">租户</label>
+          <select class="form-select form-select-sm" id="gr-tenant" x-model="tenantFilter" @change="applyFilter()">
+            <option value="">全部租户</option>
+            <template x-for="t in facets.tenants" :key="t">
+              <option :value="t" x-text="t"></option>
+            </template>
+          </select>
+        </div>
+        <div class="gr-filter-field">
+          <label for="gr-service" class="form-label">服务</label>
+          <select class="form-select form-select-sm" id="gr-service" x-model="serviceFilter" @change="applyFilter()">
+            <option value="">全部服务</option>
+            <template x-for="s in facets.services" :key="s">
+              <option :value="s" x-text="s"></option>
+            </template>
+          </select>
+        </div>
+        <div class="gr-filter-field">
+          <label for="gr-field" class="form-label">字段</label>
+          <input class="form-control form-control-sm mono" id="gr-field" type="text" list="gr-field-list"
+                 autocomplete="off" spellcheck="false" x-model="fieldFilter" @keydown.enter="applyFilter()"
+                 placeholder="字段名，如 ac_active_sts_01（支持部分匹配）">
+          <datalist id="gr-field-list">
+            <template x-for="f in facets.fields" :key="f"><option :value="f"></option></template>
+          </datalist>
+        </div>
+        <div class="gr-filter-actions">
+          <button class="btn btn-sm btn-primary" id="gr-submit" type="button" @click="applyFilter()">筛选</button>
+          <button class="btn btn-sm btn-outline-secondary" id="gr-reset" type="button" @click="resetFilter()">重置</button>
+        </div>
+      </div>
+      <div class="os-chips" id="gr-oa-chips" role="group" aria-label="OA 单号状态筛选">
+        <button class="os-chip" type="button" :class="{ 'is-active': oaFilter === 'all' }" @click="setOaFilter('all')">全部状态</button>
+        <button class="os-chip" type="button" :class="{ 'is-active': oaFilter === 'present' }" @click="setOaFilter('present')">已登记单号</button>
+        <button class="os-chip" type="button" :class="{ 'is-active': oaFilter === 'placeholder' }" @click="setOaFilter('placeholder')">占位待回填</button>
+        <button class="os-chip" type="button" :class="{ 'is-active': oaFilter === 'missing' }" @click="setOaFilter('missing')">缺单号</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 全景表：租户 × 凭证 × 服务 × 字段（字段可点反查） -->
+  <section class="card span-24" id="grants-table" aria-label="授权登记全景表">
+    <div class="card-head">
+      <h2 class="card-title">授权登记全景</h2>
+      <span class="card-sub" x-text="tableText()"></span>
+    </div>
+    <template x-if="state === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+    <template x-if="state === 'error'">
+      <div class="card-body">
+        <div class="error-box"><span x-text="errMsg || '授权登记暂不可用'"></span><button class="retry-btn" @click="load()">重试</button></div>
+      </div>
+    </template>
+    <template x-if="state === 'ok'">
+      <div class="card-body">
+        <div class="gr-table-wrap">
+          <table class="gr-table" id="grants-rows">
+            <thead>
+              <tr>
+                <th>租户</th>
+                <th title="AppKey 掩码展示（前 7 位＋后 4 位）；kid＝sha256 前 12 位供运营台对照">凭证指纹（脱敏）</th>
+                <th>服务</th>
+                <th>对外端点</th>
+                <th>字段数</th>
+                <!-- #58 配额水电表（2026-10-15）：两列按 kid 对 /v1/admin/appkeys/usage（匿名只读）join；
+                     配额按凭证登记，同一凭证的多行同值；取不到＝「—」如实，不填 0 -->
+                <th title="配额按凭证（AppKey）登记——同一凭证的多行同值；真源 /v1/admin/appkeys/usage（与「我的配额」同口径）；未登记显示「未登记」，凭证不在用量表显示「—」">配额上限</th>
+                <th title="当日（东八区）审计真实调用条数：成功、失败与被 429 拒绝的都计入">今日已用</th>
+                <th>授权字段（点字段反查「给了谁」）</th>
+                <th>OA 单号</th>
+                <th>单号状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(row, i) in visibleRows()" :key="i">
+                <tr>
+                  <td class="mono gr-tenant" x-text="row.tenant || '—'"></td>
+                  <td class="mono gr-appkey" :title="'kid ' + (row.kid || '—')" x-text="row.appkeyMasked || '—'"></td>
+                  <td class="mono gr-svc" x-text="row.service"></td>
+                  <td class="mono gr-endpoint" x-text="row.endpoint || '—'"></td>
+                  <td class="num" x-text="row.fieldsCount"></td>
+                  <td class="num" x-text="quotaLimitLabel(row)"></td>
+                  <td class="num" :class="quotaExceeded(row) ? 'gr-quota-warn' : ''" x-text="quotaUsedLabel(row)"></td>
+                  <td class="gr-fields">
+                    <template x-for="f in row.fields" :key="f">
+                      <button class="os-chip gr-field-chip mono" type="button"
+                              :title="'反查：' + f + ' 给了谁'" @click="lookupField(f)" x-text="f"></button>
+                    </template>
+                    <span class="field-hint" x-show="!row.fields.length">未登记字段（B 型整体透传或空）</span>
+                  </td>
+                  <td class="mono gr-oa" x-text="row.oaTicket || '—'"></td>
+                  <td>
+                    <span class="badge gr-oa-badge" :class="oaClass(row.oaState)" x-text="oaLabel(row.oaState)"></span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" x-show="!visibleRows().length">当前筛选条件下没有匹配的授权登记条目</div>
+        <div class="src-note" x-text="sourceNote()"></div>
+      </div>
+    </template>
+  </section>
+
+  <div class="grid-24">
+    <!-- 字段反查：这个字段给了谁（与字段字典页同源口径） -->
+    <section class="card span-12" id="grants-field-lookup" aria-label="字段反查">
+      <div class="card-head">
+        <h2 class="card-title">「这个字段给了谁」反查</h2>
+        <span class="badge text-bg-secondary gr-readonly-badge">只读</span>
+      </div>
+      <div class="card-body">
+        <div class="gr-lookup-bar">
+          <input class="form-control form-control-sm mono" id="gr-field-lookup-input" type="text" list="gr-field-list"
+                 autocomplete="off" spellcheck="false" x-model="fieldQuery" @keydown.enter="lookupField()"
+                 placeholder="输入字段名（如 ac_active_sts_01）或点表中字段">
+          <button class="btn btn-sm btn-secondary" id="gr-field-lookup-btn" type="button"
+                  @click="lookupField()" :disabled="lookupState === 'loading'"
+                  x-text="lookupState === 'loading' ? '反查中…' : '反查'"></button>
+        </div>
+        <div class="gr-lookup-current" x-show="fieldQuery" x-cloak>
+          正在反查字段：<span class="mono" x-text="lookupFieldName || fieldQuery"></span>
+          <button class="btn btn-sm btn-link gr-clear" type="button" @click="clearLookup()">清空</button>
+        </div>
+        <template x-if="lookupState === 'error'">
+          <div class="error-box"><span x-text="lookupErr || '字段反查暂不可用'"></span><button class="retry-btn" @click="lookupField()">重试</button></div>
+        </template>
+        <template x-if="lookupState === 'ok'">
+          <div>
+            <template x-if="lookup && lookup.found">
+              <div>
+                <div class="gr-lookup-summary">
+                  <span class="num" x-text="lookup.summary.tenants"></span> 个租户 ·
+                  <span class="num" x-text="lookup.summary.services"></span> 个服务 ·
+                  <span class="num" x-text="lookup.summary.grants"></span> 条授权
+                  <template x-if="lookup.summary.oaMissing || lookup.summary.oaPlaceholder">
+                    <span class="field-hint">（其中缺单号 <span x-text="lookup.summary.oaMissing"></span> 条 · 占位 <span x-text="lookup.summary.oaPlaceholder"></span> 条）</span>
+                  </template>
+                </div>
+                <ul class="gr-lookup-list">
+                  <template x-for="(e, i) in lookup.entries" :key="i">
+                    <li>
+                      <span class="mono gr-tenant" x-text="e.tenant"></span>
+                      <span class="mono gr-svc" x-text="e.service"></span>
+                      <span class="badge gr-oa-badge" :class="oaClass(e.oaState)" x-text="oaLabel(e.oaState)"></span>
+                      <span class="mono gr-oa" x-text="e.oaTicket || '—'"></span>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+            <div class="empty-state" x-show="lookup && !lookup.found"
+                 x-text="'字段「' + (lookupFieldName || fieldQuery) + '」当前不在任何租户的授权白名单内——经平台任何接口零出现'"></div>
+          </div>
+        </template>
+        <div class="src-note" x-text="caliber.fieldLink || '字段反查与「字段字典」页同源：auth_matrix grants[].fields 即字段投影红线'"></div>
+      </div>
+    </section>
+
+    <!-- OA 单号溯源：单号 → 授权范围 -->
+    <section class="card span-12" id="grants-oa" aria-label="OA 单号溯源">
+      <div class="card-head">
+        <h2 class="card-title">OA 单号溯源</h2>
+        <span class="card-sub">单号 → 授权了哪些租户 / 服务 / 字段</span>
+      </div>
+      <div class="card-body">
+        <div class="gr-lookup-bar">
+          <input class="form-control form-control-sm mono" id="gr-oa-input" type="text"
+                 autocomplete="off" spellcheck="false" x-model="oaQuery" @keydown.enter="traceOa()"
+                 placeholder="输入 OA 单号，如 OA-PENDING-TASK008">
+          <button class="btn btn-sm btn-secondary" id="gr-oa-btn" type="button"
+                  @click="traceOa()" :disabled="oaTraceState === 'loading'"
+                  x-text="oaTraceState === 'loading' ? '溯源中…' : '溯源'"></button>
+        </div>
+        <template x-if="oaTraceState === 'ok'">
+          <div>
+            <template x-if="oaTrace && oaTrace.found">
+              <ul class="gr-lookup-list">
+                <template x-for="(e, i) in oaTrace.entries" :key="i">
+                  <li>
+                    <span class="mono gr-tenant" x-text="e.tenant"></span>
+                    <span class="mono gr-svc" x-text="e.service"></span>
+                    <span class="mono gr-endpoint" x-text="e.endpoint || '—'"></span>
+                    <span class="num" x-text="e.fieldsCount"></span> 字段
+                  </li>
+                </template>
+              </ul>
+            </template>
+            <div class="empty-state" x-show="oaTrace && !oaTrace.found"
+                 x-text="'本登记里查无单号「' + (oaTrace.ticket || oaQuery) + '」——请核对是否录入或是否为占位单号'"></div>
+          </div>
+        </template>
+        <div class="gr-oa-index">
+          <div class="gr-oa-index-title">登记中出现的单号（点击溯源）：</div>
+          <template x-if="oaTickets.length">
+            <ul class="gr-lookup-list">
+              <template x-for="t in oaTickets" :key="t.ticket">
+                <li>
+                  <button class="btn btn-sm btn-link gr-oa-use mono" type="button"
+                          :title="'溯源 ' + t.ticket" @click="useTicket(t.ticket)" x-text="t.ticket"></button>
+                  <span class="badge gr-oa-badge" :class="oaClass(t.state)" x-text="oaLabel(t.state)"></span>
+                  <span class="field-hint" x-text="t.tenants.length + ' 租户 · ' + t.services.length + ' 服务 · ' + t.fields.length + ' 字段'"></span>
+                </li>
+              </template>
+            </ul>
+          </template>
+          <div class="empty-state" x-show="state === 'ok' && !oaTickets.length">登记中没有任何 OA 单号（全部缺失）</div>
+        </div>
+        <div class="src-note">缺单号的登记条目不出现在单号索引里——缺失就是缺失，不塞空串占位。</div>
+      </div>
+    </section>
+  </div>
+
+</div>
+
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+</body>
+</html>

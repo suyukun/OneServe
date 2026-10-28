@@ -1,0 +1,118 @@
+# OneServe
+
+**OneServe — a self-hosted, gateway-fronted data service platform: publish a whitelisted data field as a query API in minutes, govern every caller with AppKeys, and audit every call.**
+（中英一句定位：OneServe 是自托管的网关化数据服务平台——把白名单数据字段分钟级发布成查询 API，调用方按 AppKey 授权，全链路留痕审计。）
+
+## What is this
+
+OneServe sits between your data warehouse copies (loaded into Redis as versioned KV) and external/internal callers. A thin FastAPI service exposes **type-A KV point queries** (and tag-style batch lookups) behind an **APISIX gateway** that authenticates callers by AppKey; a per-tenant **field whitelist** (auth matrix + console-issued credential registry) decides which fields each caller may see. Around that core: a portal + admin console for service publishing, grant management and credential lifecycle (sandbox trial keys, formal keys with OA ticket, rotation with overlap), an audit pipeline (JSONL / Kafka) with usage metering and reports, an optional PostgreSQL "meta database" twin of the YAML registries with migration/reconcile tooling, and a batch worker for asynchronous bulk delivery. Demo data and credentials are built in, so you can run a first end-to-end query in minutes.
+
+## Quickstart (minimal stack: redis + service, 2 terminals)
+
+Prerequisites: Docker, Python 3.13+, `curl`, `jq`.
+
+**Terminal 1 — start the minimal stack** (Redis published on `:6379`, the service on `:8000`; keep it running):
+
+```bash
+# 1) Redis in port mode: no --name, so no container-name collisions.
+#    Already have a Redis listening on 6379? Skip this step.
+docker run -d -p 6379:6379 valkey/valkey:8-alpine
+
+# 2) venv + the service (the venv also provides the redis-py driver used by the seed script)
+python3 -m venv .venv && . .venv/bin/activate && pip install -r service/requirements.txt
+cd service && REDIS_URL=redis://localhost:6379/0 AUDIT_DIR=/tmp/oneserve-audit uvicorn app.main:app --port 8000
+```
+
+**Terminal 2 — seed demo data + your first query** (a new terminal, from the repo root):
+
+```bash
+# 3) seed demo data (150 records x 12 whitelisted fields, loads in seconds;
+#    auto-detects Redis: redis-py direct connection first, container/cli as fallback)
+bash scripts/seed_demo.sh
+
+# 4) your first query
+curl -s -X POST http://localhost:8000/v1/query/v1-svc-usr-basic-info \
+  -H 'apikey: uat-c49d18ab72e03f55' \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"demo-partner-0001"}' | jq .
+```
+
+Expected: HTTP 200 with `found: true` and 12 whitelisted fields (`gender_cd`, `age_band`, `city_code`, ...).
+
+> The `apikey` above is the **demo credential of the `partner-demo` tenant declared in [`service/auth_matrix.yaml`](service/auth_matrix.yaml)** — it is a committed demo value, not a production key. The request header locates the tenant and drives the field whitelist when calling the service directly. On the minimal stack the site login wall is off by default (`AUTH_OIDC_MODE` defaults to off outside compose); the full compose stack turns it on.
+
+Also handy: `bash scripts/seed_demo_selftest.sh` runs the same flow (isolated ports, throwaway containers) as an end-to-end self-test using the built service image.
+
+## Full stack (Docker Compose, 9 services)
+
+```bash
+bash scripts/up.sh          # cp .env.example .env (first run) -> docker compose up -d --build -> wait healthy -> init APISIX routes
+```
+
+Brings up 9 containers: `etcd`, `redis`, `apisix`, `casdoor`, `casdoor-db`, `casdoor-init`, `service`, `batch-worker`, `portal`. Entrypoints after startup:
+
+| Entry | URL | Notes |
+|---|---|---|
+| Portal + admin console | http://localhost:8000 | Site-wide login wall (Casdoor OIDC behind a local password flow); roles: admin > operator > viewer |
+| Gateway (machine data plane) | http://localhost:9080 | `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*` — AppKey self-auth, no login wall |
+| Casdoor (IAM) | http://localhost:19000 | Backing issuer/JWKS for the login wall; business users never hit it directly |
+
+**Base image note (production build):** the dev compose builds `service` from [`service/Dockerfile`](service/Dockerfile) on the official `python:3.13-slim` — nothing to pre-build. The **prod** image [`Dockerfile.prod`](Dockerfile.prod) however builds on a locally pre-built hardened base:
+
+```bash
+docker build -f docker/python-base.Dockerfile -t oneserve-python-base:3.13-slim .
+docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/service:prod .
+```
+
+## Features
+
+| Feature | Where | Notes |
+|---|---|---|
+| Type-A KV point query with per-tenant field whitelist | `service/app/kv_executor.py`, `service/services.yaml` | Versioned keyspace (`tags:<ns>:latest` alias + data keys); SM3-hashed query keys |
+| Gateway AppKey auth + rate limiting | `docker-compose.yml` (APISIX), `service/app/ratelimit.py` | key-auth consumers synced from the credential registry; per-key QPS/daily quotas |
+| Credential lifecycle (sandbox / formal / rotation) | `service/app/appkeys.py`, `service/registry/appkeys.yaml.example` | Time-boxed `sb_` trial keys, `ak_` formal keys (OA ticket), rotation with overlap window; secrets stored only as sha256 digests |
+| Auth matrix (OA-granted tenants & fields) | `service/auth_matrix.yaml` | Registry-first auth with matrix fallback; demo tenants: `demo_bank`, `partner-demo`, `demo-1020` |
+| Service publishing & admin API | `service/app/admin_api.py`, `admin/` | Publish/unpublish services, grants, upstreams; every write lands in an admin event ledger |
+| Portal + catalog | `portal/` | Multi-page portal, service catalog/detail pages, admin console (login-walled) |
+| Site login wall (OIDC) | `service/app/auth_oidc.py`, `service/app/auth_native.py` | Casdoor OIDC or native bcrypt password mode; three roles with 403 on escalation |
+| Audit pipeline + usage metering | `service/app/audit.py`, `scripts/audit_consumer.py`, `service/app/metering.py` | JSONL / Kafka / dual sinks; per-caller x per-service x per-day aggregation, masked appkeys in every view |
+| Meta database twin (PostgreSQL) | `migrations/`, `scripts/meta_migrate.py`, `scripts/meta_reconcile.py` | YAML registries loaded into a meta DB; three-way reconcile + snapshot export |
+| Batch delivery | `service/app/batch_api.py`, `service/app/batch_worker.py` | Asynchronous bulk queries with quota, snapshots and result files |
+| Proxy hub (type-B passthrough) | `service/app/proxy_hub.py` | Whitelisted passthrough to registered upstreams, same auth + audit semantics |
+| Sync/load tooling + demo seed | `sync/`, `scripts/seed_demo.sh`, `scripts/load_demo_data.sh` | CSV -> Redis pipelines, mock generators, quickstart seed |
+
+## Testing
+
+Prerequisites:
+
+```bash
+pip install -r requirements-dev.txt          # pinned pytest dependency set (Python 3.13)
+cp service/registry/appkeys.yaml.example service/registry/appkeys.yaml   # console credential registry is gitignored; fixtures read it
+```
+
+Run:
+
+```bash
+python3 -m pytest tests/ -q -rf
+```
+
+Current measured baseline (113 test files, 1403 collected tests, Docker available with a local `postgres:17-alpine` image): **1377 passed, 8 skipped, 18 failed, 0 errors**. The Docker-backed DB e2e modules (`test_admin_api_db_e2e`, `test_meta_writer_db`, `test_tenants_api`, `test_meta_migrate`, ...) skip gracefully when Docker or the image is unavailable.
+
+Known failures in a fresh clone, by cause (fixing them requires artifacts this open-source tree deliberately does not ship, or follow-up test repairs):
+
+| Cause | Tests | Why not fixable by cloning |
+|---|---|---|
+| Archived e2e evidence files (`tests/evidence/*.txt`) are run outputs, not fixtures | 4 (`test_publish_hbase`, `test_publish_load`, `test_batch_first_run`, `test_m2_6_acceptance`) | They assert that real end-to-end runs left evidence archives; regenerate by running the corresponding e2e scripts (some need the full compose stack, HBase via `compose.hbase.yml`, or a CDP browser) |
+| Internal governance docs (`AGENTS.md`, backlog tasks, internal manuals, internal changelog commit ids) are not shipped | 2 (`test_m2_6_acceptance`, `test_docs_help_center`) | Internal project-management artifacts were removed from the open-source tree; the remaining tests guard the e2e acceptance script's presence, isolation discipline and self-contained checks, and that the changelog invents no version numbers |
+| Demo credential literal was redacted to a placeholder, stale masks remain in assertions | 5 (`test_metering` x2, `test_usage_report_api` x3) | Follow-up test repair (align `DEMO_KEY` fixture and expected masks) |
+| e2e pair unmasked by the appkeys fix: issue/grants tests reference a console-covered service instead of the removed runtime-only one | 2 (`test_admin_api_db_e2e` test_02/test_03) | Follow-up test repair (grant the runtime-published probe service instead); previously hidden behind the missing-registry setup error |
+
+## License
+
+Released under the **Apache License 2.0** — see [`docs/opensource/LICENSE`](docs/opensource/LICENSE).
+<!-- NOTE: the LICENSE file currently lives at docs/opensource/LICENSE; it is planned to move to the repository root (becoming ./LICENSE). When it moves, update this link to point to ./LICENSE. -->
+
+## Architecture
+
+One traffic path: caller -> APISIX gateway (key-auth, rate limit) -> thin FastAPI service -> Redis (versioned KV namespaces) with per-call whitelist projection, audit and metering on the way out; control plane state lives in YAML registries (`service/services.yaml`, `auth_matrix.yaml`, `registry/appkeys.yaml`) optionally mirrored into a PostgreSQL meta database with migrate/reconcile/snapshot tooling; the portal/admin console drives the control plane through the admin API. See [`docs/opensource/ARCHITECTURE.md`](docs/opensource/ARCHITECTURE.md) for the full picture with diagrams.
+<!-- NOTE: docs/opensource/ARCHITECTURE.md is the open-source architecture doc (landing with the docs batch); if it is reorganized, keep this link in sync. -->

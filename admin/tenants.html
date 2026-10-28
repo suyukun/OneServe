@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>租户管理 · OneServe 运营控制台</title>
+<!-- ══════════════════════════════════════════════════════════════════════
+ * OneServe 运营控制台 · 租户管理（管理功能群一期 A 节；设计稿 v1.1 §1 已拍板）
+ *
+ * 【走位】单页三区：指标卡（总数/类型分列＋active＋frozen）→ 筛选＋主表（行＝租户，
+ *   未登记凭证租户串只读徽标）→ 新建抽屉＋冻结两段确认＋解冻工单号弹层。
+ * 【口径】租户＝签约使用主体；审批在 OA，此处只做登记与生命周期管理（ADR-0003）。
+ *   读地板 viewer／写 admin（ROUTE_MIN_ROLE 域8）。双模（§1.5 拍板①）：
+ *   yaml 态新建可用（写矩阵登记行）；冻结/解冻仅 db 态（按钮置灰＋降级文案）。
+ * ==================================================================== -->
+<link rel="stylesheet" href="../portal/assets/tokens.css"><!-- 仅取令牌（间距/字号/字体/圆角） -->
+<style>
+  :root {
+    --admin-bg: #1c222b; --admin-card: #242b36; --admin-inset: #1b2029;
+    --admin-accent: #E85B6B; --admin-line: #35404d; --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE; --admin-note: #ACB8C4;
+    --admin-ok: #3FBE95; --admin-warn: #D89A3C; --admin-danger: #E05252;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px);
+           min-height: calc(100vh - var(--topbar-height, 56px));   /* 视觉评审⑥①：内容区撑满视口，页脚贴内容流 */
+           display: flex; flex-direction: column; }
+  details.caliber { flex: 1; }   /* 视觉评审⑦①：最后一张卡自身生长撑满剩余高度，页脚真贴内容流 */
+  /* 构建壳 flex 链（实测探针驱动：壳把 .page 包装替换为 os-content>os-container，
+     须让该链成列并撑满，口径卡 flex:1 才生效——仅本页样式块，不改壳全局） */
+  main.os-content { display: flex; flex-direction: column;
+                     min-height: calc(100vh - var(--topbar-height, 56px) - 52px); }
+  .os-content .os-container { display: flex; flex-direction: column; flex: 1;
+                              max-width: none; width: 100%; }   /* 视觉评审⑨②：与顶栏面包屑同宽对齐，恢复全局左缘基准 */
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  /* 视觉评审③①：本页次级文字整体提亮一档（#98A2AE → #B7C1CC），脚注限宽换行 */
+  .hint { color: #C4CDD7; font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  /* 视觉评审②：禁用态须可辨——降不透明度去描边感＋禁止光标（区别于纯文本） */
+  .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  /* 视觉评审①：解冻＝恢复操作用中性绿描边，红只留给危险语义 */
+  .btn-safe { border-color: var(--admin-ok); color: var(--admin-ok); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-secondary { background: var(--admin-inset); }
+  .btn:disabled { background: var(--admin-inset); border-color: var(--admin-line);
+                  color: var(--admin-muted); cursor: not-allowed; }
+  .btn-sm { padding: 3px 10px; }
+  .btn-danger { border-color: var(--admin-danger); color: var(--admin-danger); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-active { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-warn { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-danger { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+  .badge-muted { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .badge-plain { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .badge-sandbox { color: var(--admin-warn); border: 1px dashed var(--admin-warn); background: rgba(216,154,60,.08); }
+  .muted { color: #B7C1CC; }
+  .num { font-family: var(--font-mono, monospace); }
+  .toolbar { display: flex; gap: var(--space-1, 8px); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2, 16px); }
+  .toolbar input, .toolbar select { background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .toolbar input#tenant-search { min-width: 240px; }   /* 视觉评审：占位文案不截断 */
+  .toolbar input:focus, .toolbar select:focus, .dlg input:focus, .dlg select:focus, .dlg textarea:focus {
+    outline: none; border-color: var(--admin-accent); }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2, 16px);
+             margin-bottom: var(--space-3, 24px); }
+  .metric { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+            padding: var(--space-2, 16px); }
+  .metric .k { color: #B7C1CC; font-size: var(--fs-tiny, 11px); }
+  .metric .v { font-size: 22px; font-weight: 600; }
+  .metric .sub { color: #A9B5C1; font-size: var(--fs-tiny, 11px); }
+  /* 视觉评审③②：「未登记」＝异常警示，橙红虚线与「沙箱」黄脱钩 */
+  .badge-unreg { color: #E5634F; border: 1px solid #E5634F; background: rgba(229,99,79,.10); }   /* 视觉评审⑩③：偏红橙一档，与沙箱黄再拉色相 */
+  /* 视觉评审④②：frozen＝深琥珀实线，与「沙箱」虚线浅黄脱钩 */
+  .badge-frozen { color: #B08D57; border: 1px solid #B08D57; background: rgba(176,141,87,.12); }   /* 青铜：与沙箱黄/未登记橙拉开色相 */
+  /* 视觉评审⑥③：操作列按钮间距统一 */
+  #tenant-table td:last-child > * { margin-right: 6px; }
+  #tenant-table td:last-child > *:last-child { margin-right: 0; }
+  /* 视觉评审③③：「ⓘ 详情」＝描边小钮（点开口径折叠区），明示可点 */
+  .hint-btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: #B7C1CC;
+              border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px);
+              cursor: pointer; }
+  .hint-btn:hover { border-color: var(--admin-accent); color: var(--admin-text); }
+  .dlg input[type=text], .dlg select, .dlg textarea {
+    width: 100%; background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .dlg input:disabled { color: var(--admin-muted); cursor: not-allowed; }
+  label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2, 16px); }
+  .req { color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  .footnote { margin-top: var(--space-1, 8px); font-size: var(--fs-tiny, 11px); color: #B7C1CC; max-width: 96em; line-height: 1.7; }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 12, 15, .72); display: flex;
+             align-items: center; justify-content: center; padding: var(--space-3, 24px); z-index: 50; }
+  .dlg { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+         max-width: 680px; width: 100%; max-height: 88vh; overflow: auto; padding: var(--space-3, 24px); }
+  .modal-actions { display: flex; gap: var(--space-1, 8px); flex-wrap: wrap; margin-top: var(--space-2, 16px); }
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small, 12px); }
+  .diff-box { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+              padding: var(--space-2, 16px); font-size: var(--fs-small, 12px); margin: var(--space-1, 8px) 0; }
+  .trace-bar { display: flex; align-items: center; gap: var(--space-1, 8px); flex-wrap: wrap;
+               background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+               padding: 8px 12px; margin-bottom: var(--space-2, 16px); font-size: var(--fs-small, 12px); }
+  .trace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-ok); flex: none; }
+  .warn-bar { border: 1px dashed var(--admin-warn); color: var(--admin-warn); border-radius: var(--radius, 8px);
+              padding: 8px 12px; font-size: var(--fs-small, 12px); margin-bottom: var(--space-2, 16px); }
+  .pager { display: flex; gap: var(--space-1, 8px); align-items: center; margin-top: var(--space-2, 16px);
+           font-size: var(--fs-small, 12px); color: var(--admin-muted); }
+  /* 视觉评审⑤②③：口径块容器化（浅底小标题行距收敛）＋下边距收紧消残余空白 */
+  details.caliber[open] { display: flex; flex-direction: column; }   /* 视觉评审⑩①：口径卡成列，读侧行 margin-top:auto 才能沉底 */
+  /* Chrome 将 details 非 summary 子元素包进 ::details-content 匿名槽——该内层不成列则
+     margin-top:auto 永不生效（探针实测 footMargin=0 的真因） */
+  details.caliber[open]::details-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  details.caliber { margin-top: var(--space-2, 16px); margin-bottom: 0; font-size: var(--fs-tiny, 11px); color: #C4CDD7;
+                    background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+                    padding: 10px 14px; }
+  details.caliber summary { cursor: pointer; color: #B7C1CC; font-weight: 600; }
+  details.caliber .caliber-title { color: var(--admin-text); font-size: var(--fs-small, 12px); }
+  details.caliber p { margin: 4px 0; line-height: 1.6; }
+  details.caliber p b { color: var(--admin-text); font-weight: 600; }   /* 视觉评审⑥②：分组词与关键术语强调 */
+  details.caliber[open] .caliber-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--admin-line);
+                  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  @media (max-width: 720px) {
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body x-data="tenantsAdmin()" x-init="boot()">
+
+<main class="page">
+  <div class="card-head">
+    <div>
+      <h1>租户管理</h1>
+      <p class="hint">租户＝签约使用主体；审批在 OA，此处只做登记与生命周期管理。单号只做格式提醒，平台不做任何审批系统对接。读全角色可达；新建/冻结/解冻仅管理员。</p>
+    </div>
+    <button class="btn btn-primary" type="button" id="create-btn" @click="openCreate()"
+            :disabled="!canWrite()" title="新建租户（登记实体；授权归授权管理页）">新建租户</button>
+  </div>
+
+  <!-- ══ yaml 模式降级横幅（§1.8 文案；置灰提示的服务端同源串） ══ -->
+  <div class="warn-bar" id="yaml-banner" x-show="mode === 'yaml'" x-cloak
+       x-text="T8.YAML_LIFECYCLE_COPY"></div>
+
+  <!-- ══ 生效与留痕条 ══ -->
+  <div class="trace-bar" id="trace-bar" x-show="lastTrace" x-cloak>
+    <span class="trace-dot"></span>
+    <span id="trace-text" x-text="lastTrace"></span>
+  </div>
+  <p class="err" id="page-error" x-show="pageError" x-text="pageError" x-cloak></p>
+
+  <!-- ══ 摘挂不完整告警（partial：重试摘除入口） ══ -->
+  <div class="warn-bar" id="partial-banner" x-show="partialInfo" x-cloak>
+    <span x-text="partialInfo ? partialInfo.text : ''"></span>
+    <button class="btn btn-sm" type="button" id="resync-btn" @click="resync(partialInfo ? partialInfo.tenant : null)">重试摘除（幂等对账）</button>
+  </div>
+
+  <!-- ══ 指标卡三张（§1.2） ══ -->
+  <div class="metrics" id="metrics" x-show="summary">
+    <div class="metric" id="metric-total">
+      <div class="k">租户总数</div>
+      <div class="v num" x-text="summary ? summary.tenants : '—'"></div>
+      <div class="sub">内部 <span class="num" x-text="summary ? summary.byType.internal : 0"></span> ·
+        外部 <span class="num" x-text="summary ? summary.byType.external : 0"></span> ·
+        沙箱 <span class="num" x-text="summary ? summary.byType.sandbox : 0"></span></div>
+    </div>
+    <div class="metric" id="metric-active">
+      <div class="k">在册（active）</div>
+      <div class="v num" x-text="summary ? summary.active : '—'"></div>
+      <div class="sub">停用中 <span class="num" x-text="summary ? summary.terminating : 0"></span> ·
+        已注销 <span class="num" x-text="summary ? summary.cancelled : 0"></span>（注销流不在一期，恒 0 如实展示）</div>
+    </div>
+    <div class="metric" id="metric-frozen">
+      <div class="k">已冻结（frozen）</div>
+      <div class="v num" x-text="summary ? summary.frozen : '—'"></div>
+      <div class="sub">冻结＝调用全量拒、凭证/授权写面禁止；历史账照出</div>
+    </div>
+  </div>
+
+  <!-- ══ 筛选行＋主表 ══ -->
+  <section class="card" id="tenant-list-section" aria-label="租户列表">
+    <div class="toolbar" id="tenant-toolbar">
+      <input id="tenant-search" type="text" placeholder="搜索租户 ID／显示名（前缀）"
+             x-model="search" @input="debouncedFetch()" aria-label="搜索租户">
+      <select id="tenant-type-filter" x-model="typeFilter" @change="fetchList()" aria-label="按类型过滤">
+        <option value="">全部类型</option>
+        <option value="internal">内部</option>
+        <option value="external">外部</option>
+        <option value="sandbox">沙箱</option>
+      </select>
+      <select id="tenant-status-filter" x-model="statusFilter" @change="fetchList()" aria-label="按状态过滤">
+        <option value="">全部状态</option>
+        <option value="active">在册</option>
+        <option value="frozen">已冻结</option>
+        <option value="terminating">停用中</option>
+        <option value="cancelled">已注销</option>
+      </select>
+      <span class="muted" style="font-size:var(--fs-tiny,11px)" id="list-source"
+            x-text="loadError ? '加载失败' : (mode === 'db' ? '数据源：元数据库快照' : '数据源：yaml 矩阵投影')"></span>
+    </div>
+    <div class="table-scroll">
+    <table id="tenant-table" aria-label="租户一览">
+      <thead><tr>
+        <th>租户 ID</th><th>显示名</th><th>类型</th><th>状态</th><th>active 凭证</th>
+        <th>在册授权</th><th>开通 OA 单号</th><th>创建时间</th><th>操作</th>
+      </tr></thead>
+      <tbody>
+        <template x-for="t in tenants" :key="t.tenant">
+          <tr :data-testid="'tenant-row-' + t.tenant">
+            <td class="mono" x-text="t.tenant"></td>
+            <td x-text="t.displayName"></td>
+            <td><span class="badge" :class="T8.typeBadgeClass(t.tenantType)"
+                      x-text="T8.typeLabel(t.tenantType)"></span></td>
+            <td><span class="badge" :class="T8.statusBadgeClass(t.status)"
+                      x-text="T8.statusLabel(t.status)"></span></td>
+            <td class="num" x-text="t.activeKeys"></td>
+            <td class="num" x-text="t.grantsCount"></td>
+            <td class="mono" x-text="t.oaTicket || '—'"></td>
+            <td class="muted" x-text="t.createdAt || '—'" title="快照投影无创建时间戳，一期如实展示「—」"></td>
+            <td style="white-space:nowrap">
+              <a class="btn btn-sm" type="button" style="text-decoration:none" id="view-grants-btn"
+                 :href="'grants.html?tenant=' + encodeURIComponent(t.tenant)"
+                 :title="'查看 ' + t.tenant + ' 的授权登记'">查看授权</a>
+              <template x-if="t.registered">
+                <button class="btn btn-sm" type="button" data-action="freeze"
+                        :disabled="!canWrite() || mode !== 'db' || t.status !== 'active'"
+                        :title="lifecycleButtonTitle(t)" @click="askFreeze(t)">冻结</button>
+              </template>
+              <template x-if="t.registered">
+                <button class="btn btn-sm btn-safe" type="button" data-action="unfreeze"
+                        :disabled="!canWrite() || mode !== 'db' || t.status !== 'frozen'"
+                        :title="lifecycleButtonTitle(t)" @click="askUnfreeze(t)">解冻</button>
+              </template>
+              <!-- 未登记凭证租户串：无生命周期操作按钮（§1.8）；整句提示收进行 title，
+                   防长句挤爆操作列（视觉评审③），完整口径见下方脚注 -->
+              <template x-if="!t.registered">
+                <button class="badge-unreg" type="button" data-testid="unregistered-hint" data-action="unreg-hint"
+                        :title="T8.UNREGISTERED_COPY"
+                        @click="openCaliber()">未登记 ⓘ</button>
+              </template>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="tenants.length === 0"><td colspan="9" class="muted" id="empty-row"
+            x-text="loadError || '没有符合条件的租户——调整搜索或筛选。'"></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="pager" id="pager" x-show="total > 0">
+      <button class="btn btn-sm" type="button" id="pager-prev" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+      <span>第 <span class="num" x-text="page"></span> 页 · 共 <span class="num" x-text="total"></span> 条</span>
+      <button class="btn btn-sm" type="button" id="pager-next" :disabled="page * pageSize >= total"
+              @click="goPage(page + 1)">下一页</button>
+    </div>
+    <p class="footnote" id="list-footnote" style="max-width:72em">active 凭证数只计启用中凭证（域模型 §3 额度口径）；在册授权数含已停用行（可溯源）。未登记串口径见下方「口径与降级说明」。</p>
+  </section>
+
+  <details class="caliber" id="caliber-note" open @toggle="caliberOpen = $el.open">
+    <summary><span class="caliber-title">口径与降级说明</span>（<span x-text="caliberOpen ? '收起' : '点开'"></span>）</summary>
+    <p><b>读</b> · 数据源＝快照矩阵投影（<b>ADR-0021 读侧永不直读 DB</b>）；分页沿计量报表先例（page/page_size）。</p>
+    <p><b>写</b> · yaml 配置模式（dev 缺省）：新建可用（写矩阵登记行，矩阵即租户真源）；冻结/解冻需元数据库模式（<b>META_WRITER=db</b>）——yaml 态无生命周期状态源。</p>
+    <p><b>写·兜底</b> · 元数据库暂不可达：租户写操作已冻结（数据面不受影响），稍后重试或联系管理员；写入已提交但快照导出暂失败：已触发告警，请重试导出（重试幂等，无需重做操作）。</p>
+    <p><b>冻结/解冻</b> · 先库后网关；摘除不完整＝回执告警＋「重试摘除」幂等对账（执行时点重核冻结态）。</p>
+    <p id="caliber-unregistered"><b>未登记串</b> · 凭证注册表存在该租户但无登记实体——无生命周期操作；补登记归元数据迁移工具（域模型 §7 迁移动作）。</p>
+    <!-- 视觉评审⑨①：卡底真实次要信息（读侧口径＋刷新入口），不留空腔 -->
+    <div class="caliber-foot" id="caliber-foot">
+      <span class="muted" id="caliber-freshness">数据新鲜度＝最近一次快照导出；本页读侧不直连库，操作后即时重取。</span>
+      <button class="btn btn-sm" type="button" id="refresh-list-btn" @click="refreshList()">刷新列表</button>
+    </div>
+  </details>
+
+  <!-- ══ 新建租户抽屉（§1.2 两段式表单） ══ -->
+  <div class="overlay" id="create-modal" x-show="create.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="create-title">
+    <div class="dlg">
+      <h2 class="card-title" id="create-title">新建租户</h2>
+      <p class="muted" style="font-size:var(--fs-small,12px)">登记即分配租户 ID——双不复用：一经分配永不改写、永不复用。</p>
+      <div class="form-grid">
+        <div><label class="f" for="create-tenant-id">租户 ID <span class="req">*</span></label>
+          <input id="create-tenant-id" type="text" placeholder="小写字母/数字/_-，2~64 位" x-model="create.tenantId">
+          <p class="err" id="create-id-hint" x-text="T8.tenantIdFormatHint(create.tenantId)"></p></div>
+        <div><label class="f" for="create-display-name">显示名</label>
+          <input id="create-display-name" type="text" placeholder="缺省同租户 ID" x-model="create.displayName"></div>
+      </div>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f">类型 <span class="req">*</span>（三选一）</label>
+        <div class="switch-row" style="gap:16px;flex-wrap:wrap">
+          <label><input type="radio" id="create-type-internal" name="create-type" value="internal" x-model="create.tenantType"> 内部</label>
+          <label><input type="radio" id="create-type-external" name="create-type" value="external" x-model="create.tenantType"> 外部</label>
+          <label><input type="radio" id="create-type-sandbox" name="create-type" value="sandbox" x-model="create.tenantType"> 沙箱</label>
+        </div>
+        <p class="muted" id="create-type-note" style="font-size:var(--fs-tiny,11px)"
+           x-text="typeNote(create.tenantType)"></p>
+      </div>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f" for="create-oa-ticket">开通 OA 单号 <span class="req" x-show="create.tenantType !== 'sandbox'">*</span></label>
+        <input id="create-oa-ticket" type="text" placeholder="如 DEMO-2026-000123"
+               x-model="create.oaTicket" :disabled="create.tenantType === 'sandbox'"
+               title="沙箱免开通单号（自动置灰留空）">
+        <p class="err" id="create-ticket-hint" x-text="ticketHintLive()"></p>
+      </div>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f" for="create-remark">备注<span class="muted">（仅 db 模式持久化）</span></label>
+        <input id="create-remark" type="text" placeholder="可空" x-model="create.remark">
+      </div>
+      <p class="err" id="create-error" x-show="create.err" x-text="create.err" x-cloak></p>
+      <p class="err" id="create-ok" x-show="create.ok" style="color:var(--admin-ok)" x-text="create.ok" x-cloak></p>
+      <div class="modal-actions">
+        <button class="btn" id="create-submit" type="button" @click="submitCreate()"
+                :class="createSubmitDisabled() ? 'btn-secondary' : 'btn-primary'"
+                :disabled="createSubmitDisabled()" title="校验通过后可提交">登记</button>
+        <button class="btn btn-secondary" id="create-cancel" type="button" @click="closeCreate()">取消</button>
+      </div>
+      <p class="footnote">登记成功后可前往授权管理页登记授权；沙箱租户首次签发 AppKey 时自动挂平台演示模板授权（测试用，正式凭证另行审批）。</p>
+    </div>
+  </div>
+
+  <!-- ══ 冻结确认弹层（两段式＋影响域预览 §1.2） ══ -->
+  <div class="overlay" id="freeze-modal" x-show="freeze.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="freeze-title">
+    <div class="dlg">
+      <h2 class="card-title" id="freeze-title">冻结租户 <span class="mono" x-text="freeze.tenant"></span></h2>
+      <div class="diff-box" id="freeze-plan" x-show="freeze.plan">
+        <div class="k muted">影响域预览</div>
+        <template x-for="(line, i) in (freeze.plan ? freeze.plan.impacts : [])" :key="i">
+          <div :data-testid="'freeze-impact-' + i" x-text="'· ' + line"></div>
+        </template>
+      </div>
+      <p class="err" x-show="freeze.stage === 2">第二段确认：勾选下方确认开关后，才会真正执行。</p>
+      <div class="switch-row" x-show="freeze.stage === 2" x-cloak>
+        <input type="checkbox" id="freeze-switch" x-model="freeze.armed" @change="freeze.hint = ''">
+        <label for="freeze-switch">我确认冻结该租户（调用即刻被拒，可凭解冻工单号恢复）</label>
+      </div>
+      <p class="err" id="freeze-hint" x-show="freeze.hint" x-text="freeze.hint"></p>
+      <div class="modal-actions">
+        <button class="btn" id="freeze-step-btn" type="button" @click="freezeStep()"
+                x-text="freeze.stage === 1 ? '继续（进入二次确认）' : '确认冻结'"></button>
+        <button class="btn btn-secondary" id="freeze-cancel-btn" type="button" @click="closeFreeze()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 解冻弹层（必填工单号 §1.3-3） ══ -->
+  <div class="overlay" id="unfreeze-modal" x-show="unfreeze.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="unfreeze-title">
+    <div class="dlg">
+      <h2 class="card-title" id="unfreeze-title">解冻租户 <span class="mono" x-text="unfreeze.tenant"></span></h2>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f" for="unfreeze-ticket">解冻工单号 <span class="req">*</span>（纯登记留痕——域模型 §4：解冻走工单）</label>
+        <input id="unfreeze-ticket" type="text" placeholder="如 DEMO-2026-000456" x-model="unfreeze.ticket">
+        <p class="err" id="unfreeze-ticket-hint" x-text="T8.ticketFormatHint(unfreeze.ticket)"></p>
+      </div>
+      <p class="err" id="unfreeze-error" x-show="unfreeze.err" x-text="unfreeze.err" x-cloak></p>
+      <div class="modal-actions">
+        <button class="btn" id="unfreeze-submit" type="button" @click="submitUnfreeze()"
+                :class="unfreeze.ticket ? 'btn-primary' : 'btn-secondary'"
+                :disabled="!unfreeze.ticket">确认解冻（恢复名下在用凭证）</button>
+        <button class="btn btn-secondary" id="unfreeze-cancel-btn" type="button" @click="closeUnfreeze()">取消</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="admin-gate.js"></script><!-- 无闸 shim（登录态注入 Authorization；401 自动跳登录） -->
+<script src="tenants.js"></script><!-- 业务脚本必须先于 alpine 加载：本仓 alpine 构建在自身执行后 queueMicrotask 即 start()。 -->
+<script src="../portal/assets/alpine.min.js"></script><!-- alpinejs 自托管副本（同 portal） -->
+</body>
+</html>

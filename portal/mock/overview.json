@@ -1,0 +1,10 @@
+{
+  "coveredUsers": 60000000,
+  "coveredUsersScope": "口径：数仓同步任务报告（usr_label 全量对账 2026-09-21）",
+  "dataAsOf": "2026-09-21",
+  "onlineApis": 8,
+  "authorizedPartners": 6,
+  "totalCalls": 1284650,
+  "callsTrend7d": [31200, 35400, 33800, 38150, 36700, 41200, 48213],
+  "generatedAt": "2026-09-21T06:30:00+08:00"
+}

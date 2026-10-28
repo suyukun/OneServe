@@ -1,0 +1,58 @@
+# ============================================================
+# OneServe 上游代理配置（service/upstreams.yaml）——O-2 三步向导唯一权威源
+# 写入方：运营控制台「存草稿/发布/下线」端点（P1-10）；本文件随仓库 git 留痕。
+# 留痕口径占位：条目 trace 只登记 action/by/at（commit:null）——容器内无 git
+# 二进制，真实 commit 归宿主侧 git 执行器（M2-4 口径，本端点不伪造 hash）。
+# 生效边界（2026-10-15 起消费已接通）：本表由 proxy_hub 消费——数据面 /proxy/*
+# 透传直读本表；网关路由经 upstreams 看门 ≤轮询间隔幂等下发（发布→PUT，下线→DELETE）。
+# 结构：proxies[] -> id / service_name / route(/proxy/*) / method(GET|POST)
+#       / upstream_url / timeout_sec / retry_count / reuse_upstream(bool)
+#       / upstream_name / status(draft|published|offline) / scope{env,instance}
+#       / last_modified_by / last_modified_at / published_at / trace
+# ============================================================
+meta:
+  updated: '2026-10-20T01:21:54+00:00'
+  updated_by: console
+proxies:
+- id: proxy-local-usr-asset-tag
+  service_name: 用户资产标签代理（本地自转发）
+  route: /proxy/local/usr-asset-tag
+  method: POST
+  upstream_url: http://localhost:8000/v1/query/v1-svc-usr-asset-tag
+  timeout_sec: 5
+  retry_count: 1
+  reuse_upstream: false
+  upstream_name: proxy-local-usr-asset-tag-up
+  status: published
+  scope:
+    env: 本机M0
+    instance: 网关实例A
+  last_modified_by: rose@local-loop
+  last_modified_at: '2026-10-15T01:52:00+00:00'
+  published_at: '2026-10-15T01:52:00+00:00'
+  trace:
+    action: published
+    by: rose@local-loop
+    at: '2026-10-15T01:52:00+00:00'
+    commit: null
+- id: proxy-ext-asset-tag-1020
+  service_name: 资产标签·外部代理
+  route: /proxy/ext/asset-tag-1020
+  method: POST
+  upstream_url: http://localhost:8000/v1/query/v1-svc-usr-asset-tag1020
+  timeout_sec: 5
+  retry_count: 2
+  reuse_upstream: false
+  upstream_name: proxy-ext-asset-tag-1020-up
+  status: published
+  scope:
+    env: 本机M0
+    instance: 网关实例A
+  last_modified_by: admin
+  last_modified_at: '2026-10-20T01:21:54+00:00'
+  published_at: '2026-10-20T01:21:54+00:00'
+  trace:
+    action: published
+    by: admin
+    at: '2026-10-20T01:21:54+00:00'
+    commit: null

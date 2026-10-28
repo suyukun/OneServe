@@ -1,0 +1,1173 @@
+{
+  "contractVersion": "2026-09-23",
+  "source": "service/app/errors.py（P1-2 错误码中心唯一真源，构建期由 scripts/gen_openapi.py 生成）",
+  "envelope": {
+    "fields": [
+      "error",
+      "message",
+      "param",
+      "traceId",
+      "request_log_url",
+      "docs_url"
+    ],
+    "note": "所有 ≥400 响应统一 §4.4 信封：error/message 既有字段不改名；param 仅在适用时出现；traceId/request_log_url 由 trace_middleware 统一注入；docs_url 指向本页对应码的锚点",
+    "request_log_page": "my.html"
+  },
+  "meta": {
+    "total": 108,
+    "service": 107,
+    "gateway": 1
+  },
+  "codes": [
+    {
+      "code": "invalid_json",
+      "http_status": 400,
+      "meaning": "请求体不是合法 JSON 对象",
+      "solution": "按 Content-Type: application/json 发送 JSON 对象体",
+      "param": "请求体",
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "unknown_tenant",
+      "http_status": 403,
+      "meaning": "AppKey 未在授权矩阵登记（未绑定租户）",
+      "solution": "联系平台管理员完成授权登记（审批走 OA）；或核对 AppKey 是否发放正确",
+      "param": "apikey",
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "service_not_granted",
+      "http_status": 403,
+      "meaning": "租户未获本服务授权",
+      "solution": "按 OA 流程申请本服务授权；已批复则确认授权登记是否完成",
+      "param": "apikey",
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "internal_error",
+      "http_status": 503,
+      "meaning": "服务内部错误（存储不可用时降级拒绝，不读脏）",
+      "solution": "稍后重试；持续失败联系平台值班并附时间点",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "service_not_found",
+      "http_status": 404,
+      "meaning": "服务未注册（通配路由下的未知 service_id）",
+      "solution": "核对服务标识；到服务目录确认该服务是否已上线",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_version",
+      "http_status": 400,
+      "meaning": "查询请求不再接受 version（服务修订号机制已移除）",
+      "solution": "去掉 version 字段重试；表数据版本（tabver，YYYYMMDD）由平台加载切版管理，无需也不经查询传入（响应里的 live_version 即当前线上数据版本）",
+      "param": "version",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "max_items_exceeded",
+      "http_status": 400,
+      "meaning": "单次调用键数超过上限（点查服务为 1，批量请走数仓通道）",
+      "solution": "改为单键调用；批量需求走批量任务通道",
+      "param": "key",
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "redis_unavailable",
+      "http_status": 503,
+      "meaning": "KV 存储不可达（降级拒绝，不读脏）",
+      "solution": "稍后重试；持续失败联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_key",
+      "http_status": 400,
+      "meaning": "键格式不合法",
+      "solution": "按服务入参 pattern 校验键格式（键模式由服务注册声明，平台不关注键的加密算法）",
+      "param": "key",
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "bad_desensitize_rule",
+      "http_status": 500,
+      "meaning": "服务端脱敏规则配置异常（fail-closed 拒服）",
+      "solution": "平台侧配置问题，联系平台值班修复",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "data_not_ready",
+      "http_status": 503,
+      "meaning": "数据未上线（KV 无线上版本指针，拒绝读脏）",
+      "solution": "等待数据同步上线后重试；可关注门户目录的同步状态",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "guard_timeout",
+      "http_status": 503,
+      "meaning": "服务端查询超时（超过 guard.timeout_ms 熔断）",
+      "solution": "稍后重试；持续超时联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "schema_drift_quarantined",
+      "http_status": 503,
+      "meaning": "字段字典 schema 漂移，服务已隔离（拒绝读脏）",
+      "solution": "联系数据值班核对字段字典；修正后重跑对账脚本即恢复（无需重启）",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_phone",
+      "http_status": 400,
+      "meaning": "手机号须为 11 位大陆号段（1[3-9] 开头）",
+      "solution": "核对手机号；真实接入传上游生成的查询键调正式通道",
+      "param": "phone",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "HBASE_UPSTREAM_ERROR",
+      "http_status": 502,
+      "meaning": "HBase 上游读取失败",
+      "solution": "稍后重试；持续失败联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "HBASE_BAD_LIMIT",
+      "http_status": 400,
+      "meaning": "limit 须为正整数",
+      "solution": "改为正整数 limit",
+      "param": "limit",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "HBASE_DRIVER_MISSING",
+      "http_status": 503,
+      "meaning": "HBase 驱动未安装（环境缺依赖）",
+      "solution": "平台侧环境问题，联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bad_proxy_config",
+      "http_status": 500,
+      "meaning": "代理上游配置缺失（平台侧）",
+      "solution": "平台侧配置问题，联系平台值班修复",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_proxy_path",
+      "http_status": 400,
+      "meaning": "代理路径不合法（含越界字符或路径段）",
+      "solution": "核对上游接口路径拼写；路径按原样透传上游",
+      "param": "URL 路径",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "proxy_traversal_blocked",
+      "http_status": 403,
+      "meaning": "代理子路径越界（白名单字符集外：上跳/../、编码变体、host/scheme/@/冒号/空白一律拒）",
+      "solution": "子路径只许字母数字与 . _ - / 的相对路径段；确需特殊形态请走登记评审",
+      "param": "URL 路径",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "upstream_timeout",
+      "http_status": 504,
+      "meaning": "上游响应超时（超过 backend.proxy.timeout_ms，熔断返回）",
+      "solution": "稍后重试；如需超时口径探测联系平台（勿对生产上游慢速试探）",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "upstream_unreachable",
+      "http_status": 502,
+      "meaning": "上游服务不可达",
+      "solution": "稍后重试；持续不可达联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_request",
+      "http_status": 400,
+      "meaning": "请求体结构不合契约",
+      "solution": "按本端点入参表发送；批量提交须为 {keys:[..]} 或 {scope:'snapshot'}",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_scope",
+      "http_status": 400,
+      "meaning": "scope 取值非法",
+      "solution": "scope 须为 list 或 snapshot",
+      "param": "scope",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "empty_keys",
+      "http_status": 400,
+      "meaning": "keys 名单为空",
+      "solution": "提供至少一个键",
+      "param": "keys",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "too_many_keys",
+      "http_status": 413,
+      "meaning": "单任务键数超过上限",
+      "solution": "拆分任务或走全量快照（scope=snapshot）",
+      "param": "keys",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "fields_not_granted",
+      "http_status": 403,
+      "meaning": "请求字段超出授权白名单",
+      "solution": "去掉未授权字段，或按 OA 流程申请字段授权",
+      "param": "fields",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "job_not_found",
+      "http_status": 404,
+      "meaning": "任务不存在",
+      "solution": "核对 job_id",
+      "param": "job_id",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "job_not_finished",
+      "http_status": 409,
+      "meaning": "任务尚未到终态，结果不可取",
+      "solution": "等待任务完成后再取结果",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "job_not_succeeded",
+      "http_status": 409,
+      "meaning": "任务未成功，结果不可取",
+      "solution": "查看任务 error 字段并重试",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "results_gone",
+      "http_status": 410,
+      "meaning": "结果文件已过期/被清理",
+      "solution": "重新提交任务",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_limit",
+      "http_status": 400,
+      "meaning": "limit 参数非法",
+      "solution": "改为正整数 limit",
+      "param": "limit",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_cursor",
+      "http_status": 400,
+      "meaning": "cursor 参数非法",
+      "solution": "使用响应中的 next_cursor",
+      "param": "cursor",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_page",
+      "http_status": 400,
+      "meaning": "page 参数非法",
+      "solution": "改为正整数页码",
+      "param": "page",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "illegal_transition",
+      "http_status": 409,
+      "meaning": "任务状态迁移非法",
+      "solution": "按状态机允许的迁移操作",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "job_not_retryable",
+      "http_status": 409,
+      "meaning": "任务当前状态不可重试",
+      "solution": "仅 failed 状态可重试",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "quota_concurrent_exceeded",
+      "http_status": 429,
+      "meaning": "租户并发任务数超上限",
+      "solution": "等待执行中任务结束后再提交（响应头 X-RateLimit-Reason=concurrency）",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "quota_daily_exceeded",
+      "http_status": 429,
+      "meaning": "当日键量配额超上限",
+      "solution": "次日自动恢复，或按流程申请提额（响应头 X-RateLimit-Reason=daily）",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "trial_source_missing",
+      "http_status": 409,
+      "meaning": "沙箱试用口径依赖的授权矩阵条目缺失",
+      "solution": "平台侧配置问题，联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_tenant",
+      "http_status": 400,
+      "meaning": "租户 ID 非法（小写字母/数字/_-，2~64 位）",
+      "solution": "按租户 ID 规则修正",
+      "param": "tenant",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_key_type",
+      "http_status": 400,
+      "meaning": "key_type 须为 sandbox 或 formal",
+      "solution": "改为 sandbox 或 formal",
+      "param": "key_type",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_app_name",
+      "http_status": 400,
+      "meaning": "绑定应用名必填",
+      "solution": "补充 app_name",
+      "param": "app_name",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "oa_ticket_required",
+      "http_status": 400,
+      "meaning": "正式凭证必须绑定 OA 批件号",
+      "solution": "补充 oa_ticket（正式凭证缺单号拒绝登记，ADR-0003）",
+      "param": "oa_ticket",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_oa_ticket",
+      "http_status": 400,
+      "meaning": "OA 批件号非法（4~64 位字母数字-_）",
+      "solution": "按 OA 批件号格式修正",
+      "param": "oa_ticket",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "key_limit_reached",
+      "http_status": 409,
+      "meaning": "该调用方凭证数达上限（正常＋轮转各一把）",
+      "solution": "先禁用/轮换回收旧凭证再签发",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "tenant_not_registered",
+      "http_status": 409,
+      "meaning": "租户未在授权矩阵登记，正式凭证不可签发",
+      "solution": "先经 OA 审批并由管理员登记授权矩阵",
+      "param": "tenant",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "tenant_frozen",
+      "http_status": 409,
+      "meaning": "租户已冻结：写面动作禁止（签发/轮换/续期/授权登记）",
+      "solution": "先解冻租户（租户管理页，解冻须带工单号）再执行",
+      "param": "tenant",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "tenant_not_found",
+      "http_status": 404,
+      "meaning": "租户未登记（矩阵与注册表均无此实体）",
+      "solution": "先在租户管理页新建登记或核对租户 ID",
+      "param": "tenant",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "tenant_yaml_mode",
+      "http_status": 409,
+      "meaning": "yaml 配置模式无生命周期状态源，冻结/解冻不可用",
+      "solution": "切换 META_WRITER=db 元数据库模式后操作（dev 缺省 yaml 态新建仍可用）",
+      "param": "tenant",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_expires_at",
+      "http_status": 400,
+      "meaning": "有效期格式非法",
+      "solution": "改为 YYYY-MM-DD",
+      "param": "expires_at",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "unknown_service",
+      "http_status": 400,
+      "meaning": "授权引用的服务未注册",
+      "solution": "核对 service",
+      "param": "service",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "empty_fields",
+      "http_status": 400,
+      "meaning": "字段白名单不能为空",
+      "solution": "至少勾选一个字段",
+      "param": "fields",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "empty_grants",
+      "http_status": 400,
+      "meaning": "显式授权至少包含一个服务",
+      "solution": "补充 grants",
+      "param": "grants",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "appkey_not_found",
+      "http_status": 404,
+      "meaning": "凭证未在注册表登记",
+      "solution": "核对凭证或 kid",
+      "param": "appkey",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "already_rotated",
+      "http_status": 409,
+      "meaning": "该凭证已是轮换后的旧凭证",
+      "solution": "改用新凭证，无需再次轮换",
+      "param": "appkey",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "not_active",
+      "http_status": 409,
+      "meaning": "仅启用中的凭证可执行该操作",
+      "solution": "先启用凭证",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "not_disabled",
+      "http_status": 409,
+      "meaning": "仅已禁用的凭证可启用",
+      "solution": "核对凭证当前状态",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "credential_expired",
+      "http_status": 403,
+      "meaning": "凭证已过有效期",
+      "solution": "重新签发凭证",
+      "param": "appkey",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "credential_rotated_expired",
+      "http_status": 403,
+      "meaning": "凭证已被轮换且重叠期已结束",
+      "solution": "改用轮换后的新凭证",
+      "param": "appkey",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "credential_disabled",
+      "http_status": 403,
+      "meaning": "凭证已禁用",
+      "solution": "联系平台管理员启用或重新签发",
+      "param": "appkey",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_action",
+      "http_status": 400,
+      "meaning": "action 取值非法",
+      "solution": "action 须为 disable 或 enable",
+      "param": "action",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "appkey_has_calls",
+      "http_status": 409,
+      "meaning": "凭证已有调用记录，不能删除（审计账需不断链）",
+      "solution": "改用「禁用」：调用立即被拒，登记与审计留痕保留",
+      "param": "appkey",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "expires_shrink_forbidden",
+      "http_status": 409,
+      "meaning": "续期只能延长有效期（不能缩短）",
+      "solution": "如需作废请用「禁用」；需要长期有效可选「永久」",
+      "param": "expires_at",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "unauthorized",
+      "http_status": 401,
+      "meaning": "管理令牌缺失或不正确（X-Admin-Token）",
+      "solution": "携带正确的管理令牌 X-Admin-Token",
+      "param": "X-Admin-Token",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "auth_required",
+      "http_status": 401,
+      "meaning": "管理写操作需登录（Bearer OIDC 令牌缺失或无效）",
+      "solution": "经统一登录页登录后重试（页面会自动跳转；Casdoor 集成见 auth_oidc）",
+      "param": "Authorization",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "role_forbidden",
+      "http_status": 403,
+      "meaning": "已登录但角色不足（admin/operator/viewer 三角色，Casdoor 用户 tag 定）",
+      "solution": "改用具备所需角色的账号登录（角色由平台管理员在账号管理分配，ADR-0016）；或联系管理员调整",
+      "param": "Authorization",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "rate_limited",
+      "http_status": 429,
+      "meaning": "签发操作过于频繁（同租户/同 IP 固定窗限频）",
+      "solution": "稍后重试（响应体 retry_after_s 为窗口秒数）",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "gateway_unreachable",
+      "http_status": 502,
+      "meaning": "网关 Admin API 不可达，本次未生效",
+      "solution": "稍后重试；持续失败联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_quota",
+      "http_status": 400,
+      "meaning": "配额须为正整数",
+      "solution": "quota_qps/quota_daily 改为正整数",
+      "param": "quota_qps/quota_daily",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bad_query",
+      "http_status": 400,
+      "meaning": "审计查询条件非法（时间格式/状态条件）",
+      "solution": "按提示修正查询条件",
+      "param": "ts_from/ts_to/status",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "missing_caller",
+      "http_status": 400,
+      "meaning": "缺少查询凭证（caller）",
+      "solution": "提供以 sb_ 或 ak_ 开头的凭证",
+      "param": "caller",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "missing_query",
+      "http_status": 400,
+      "meaning": "缺少查询条件（caller 或 trace_id 至少一项）",
+      "solution": "提供凭证（caller）或追踪号（trace_id）",
+      "param": "trace_id",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bad_console_services",
+      "http_status": 500,
+      "meaning": "console_services 写区结构损坏",
+      "solution": "平台侧修复 services.yaml 写区",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "runtime_section_lost",
+      "http_status": 500,
+      "meaning": "校验失败：services.yaml 运行时注册区缺失",
+      "solution": "平台侧修复文件后重试",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_name",
+      "http_status": 400,
+      "meaning": "服务名必填",
+      "solution": "补充 serviceName",
+      "param": "serviceName",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_route",
+      "http_status": 400,
+      "meaning": "路由路径格式非法",
+      "solution": "按提示的路由格式修正",
+      "param": "routePath",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "route_exists",
+      "http_status": 400,
+      "meaning": "路由地址已被其他服务占用",
+      "solution": "换一个地址重试；改名＝新地址发布",
+      "param": "routePath",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "service_name_conflict",
+      "http_status": 409,
+      "meaning": "服务名与既有服务同名但路由不同（同名服务无法区分）",
+      "solution": "换一个服务名；同一服务更新＝保持路由不变重发（原地覆盖，版本史保留）",
+      "param": "serviceName",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_status",
+      "http_status": 400,
+      "meaning": "status 取值非法",
+      "solution": "status 须为 draft 或 published",
+      "param": "status",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_field_space",
+      "http_status": 400,
+      "meaning": "字段空间取值非法",
+      "solution": "field_space 须为 wide297/news/proxy 之一（见 ADR-0004）",
+      "param": "fieldSpace",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "field_not_in_dict",
+      "http_status": 400,
+      "meaning": "宽表域引用了字段字典中不存在的列",
+      "solution": "订正字段名，或在服务注册中声明正确的 field_space；宽表域引用不存在的列会在对账时被判删列而误隔离",
+      "param": "fields",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_field",
+      "http_status": 400,
+      "meaning": "字段名非法",
+      "solution": "字段名须小写字母开头、字母数字下划线",
+      "param": "fields",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "sample_required",
+      "http_status": 400,
+      "meaning": "发布态字段缺示例值（测试前置门禁）",
+      "solution": "为每个字段补示例值",
+      "param": "fields",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "already_offline",
+      "http_status": 409,
+      "meaning": "该对象已处于下线状态",
+      "solution": "无需重复下线",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "draft_not_offline",
+      "http_status": 409,
+      "meaning": "草稿无线上语义，不支持下线",
+      "solution": "直接覆盖发布即可",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bad_upstreams",
+      "http_status": 500,
+      "meaning": "upstreams.yaml proxies 结构损坏",
+      "solution": "平台侧修复 upstreams.yaml",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_method",
+      "http_status": 400,
+      "meaning": "method 须为 GET 或 POST",
+      "solution": "改为 GET 或 POST",
+      "param": "method",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_upstream_url",
+      "http_status": 400,
+      "meaning": "上游 URL 须为合法 http(s) 地址",
+      "solution": "补充合法 upstreamUrl",
+      "param": "upstreamUrl",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_timeout",
+      "http_status": 400,
+      "meaning": "超时秒数须大于 0",
+      "solution": "改为正数 timeoutSec",
+      "param": "timeoutSec",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_retry",
+      "http_status": 400,
+      "meaning": "重试次数不能为负",
+      "solution": "改为非负 retryCount",
+      "param": "retryCount",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "invalid_upstream_name",
+      "http_status": 400,
+      "meaning": "可复用 Upstream 名称非法（小写 slug，2~32 位）",
+      "solution": "按 slug 规则修正",
+      "param": "upstreamName",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "proxy_not_found",
+      "http_status": 404,
+      "meaning": "代理未在登记表",
+      "solution": "核对代理 id",
+      "param": "proxy",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bill_period_invalid",
+      "http_status": 400,
+      "meaning": "账期参数非法（须为 YYYY-MM 自然月）",
+      "solution": "按 YYYY-MM（自然月）修正账期参数",
+      "param": "period",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bill_period_not_found",
+      "http_status": 404,
+      "meaning": "账期不存在",
+      "solution": "核对账期（YYYY-MM）；出账走命令行 billing_run（页面不触发出账）",
+      "param": "period",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bill_status_refused",
+      "http_status": 422,
+      "meaning": "账期状态不符，动作拒绝（状态机不跳步）",
+      "solution": "仅已对账（reconciled）账期可确认、仅已确认（confirmed）账期可补录单号；确认后账单底数冻结，修正走调整单（ADR-0024 决定第 4 条）",
+      "param": "period",
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "bill_db_unavailable",
+      "http_status": 503,
+      "meaning": "账单库（pg）不可达（降级拒绝，不读脏、无 yaml 回落）",
+      "solution": "稍后重试；持续失败联系平台值班（账单真源＝pg usage schema，不受 META_WRITER 管辖）",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "auth_failed",
+      "http_status": 401,
+      "meaning": "未携带 apikey 请求头，或 AppKey 无效/已吊销（网关 key-auth 拒绝）",
+      "solution": "携带有效 AppKey 重试；新接入走 OA 审批后由授权登记发放",
+      "param": "apikey",
+      "source": "gateway",
+      "scope": "http",
+      "services": [
+        "v1-svc-card-acct-summary",
+        "v1-svc-usr-asset-tag",
+        "v1-svc-usr-asset-tag1",
+        "v1-svc-usr-asset-tag1014",
+        "v1-svc-usr-asset-tag1020",
+        "v1-svc-usr-basic-info"
+      ]
+    },
+    {
+      "code": "kv_read_failed",
+      "http_status": null,
+      "meaning": "单键读取重试耗尽（该行失败，任务继续）",
+      "solution": "重试该键或检查 KV 存储",
+      "param": null,
+      "source": "service",
+      "scope": "row",
+      "services": []
+    },
+    {
+      "code": "row_decode_failed",
+      "http_status": null,
+      "meaning": "结果行值损坏，重读后仍不可解析",
+      "solution": "重试该键；持续失败联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "row",
+      "services": []
+    },
+    {
+      "code": "kv_unavailable",
+      "http_status": null,
+      "meaning": "全部键均不可读（KV 存储故障）",
+      "solution": "稍后重试（任务可重提）",
+      "param": null,
+      "source": "service",
+      "scope": "job",
+      "services": []
+    },
+    {
+      "code": "job_state_inconsistent",
+      "http_status": null,
+      "meaning": "任务状态与钉版信息不一致（异常残留）",
+      "solution": "重试任务；持续失败联系平台值班",
+      "param": null,
+      "source": "service",
+      "scope": "job",
+      "services": []
+    },
+    {
+      "code": "snapshot_empty_version",
+      "http_status": null,
+      "meaning": "全量快照命中空版本（row_count=0）",
+      "solution": "确认数据是否已上线后重提",
+      "param": null,
+      "source": "service",
+      "scope": "job",
+      "services": []
+    },
+    {
+      "code": "row_count_missing",
+      "http_status": null,
+      "meaning": "版本元信息缺行数字段，无法对账",
+      "solution": "检查同步链路的版本元信息",
+      "param": null,
+      "source": "service",
+      "scope": "job",
+      "services": []
+    },
+    {
+      "code": "row_count_mismatch",
+      "http_status": null,
+      "meaning": "快照行数与版本元信息 row_count 不一致",
+      "solution": "检查同步一致性后重提",
+      "param": null,
+      "source": "service",
+      "scope": "job",
+      "services": []
+    },
+    {
+      "code": "price_item_not_found",
+      "http_status": 404,
+      "meaning": "价目条目不存在（或未生效条目已撤回删除）",
+      "solution": "核对 item_id；列表页刷新确认最新状态",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "pricing_validation",
+      "http_status": 422,
+      "meaning": "价目校验拒绝（区间三不变量/月初约束/非法枚举/生效窗重叠/B 型暂不开放）",
+      "solution": "按 message 人话报因修正表单后重提",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "pricing_state_conflict",
+      "http_status": 409,
+      "meaning": "价目条目已过期，自然到期无需停用",
+      "solution": "已过期条目无需操作；停用仅对在窗/未生效条目开放",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    },
+    {
+      "code": "pricing_db_unavailable",
+      "http_status": 503,
+      "meaning": "计费库未启用或未响应（compose.metadata.yml，项目名 oneserve-meta）",
+      "solution": "起 meta 库后重试；价目为空期间出账走空价目试运行口径，不受影响",
+      "param": null,
+      "source": "service",
+      "scope": "http",
+      "services": []
+    }
+  ]
+}

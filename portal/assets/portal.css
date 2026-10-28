@@ -1,0 +1,759 @@
+/* ============================================================
+ * OneServe 门户 · P-1R 布局与组件（仅引用 tokens.css 令牌，不直写 HEX）
+ * 结构：MPA 共享壳（侧导航/顶栏/页脚）＋P-1 组件区（数字条/状态条/目录/新鲜度/公告）
+ * 底座：Bootstrap 5.3（data-bs-theme=dark）＋Tabler 1.5.1 本地托管，本文件后载覆盖；
+ * 纪律：间距只用 8/16/24；栅格 24 列 gutter 24；圆角 8；阴影一档；
+ *      无常驻循环动画（骨架屏为静态灰块）；首载一次性 240ms 淡入。
+ * ============================================================ */
+[x-cloak] { display: none !important; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; height: 100dvh; overflow: hidden; }
+/* D3·CJK 折行（DESIGN.md §4）：中文容器 keep-all 防词内断行；anywhere 兜底长串 */
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  color: var(--text-body);
+  background: var(--bg-page);
+  line-height: 1.6;
+  height: 100%;
+  overflow: hidden;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+
+.mono { font-family: var(--font-mono); }
+.num { font-variant-numeric: tabular-nums; }
+/* 2026-10-15 修：表格内 mono 数据单元格（路径/ID/摘要）nowrap + 容器横滚，不逐字折行 */
+td.mono, th.mono { white-space: nowrap; }
+/* 窄屏修复三卡·卡3（2026-10-15）：长串兜底类——密钥掩码/URL/字段名等连续长串
+   任意点换行（overflow-wrap:anywhere 兼影响 min-content，flex/grid 子项可收缩），防撑破容器 */
+.os-break-anywhere { overflow-wrap: anywhere; }
+
+/* 首载一次性淡入（≤300ms，仅一次，非循环） */
+.reveal { animation: reveal-once var(--motion-duration) var(--motion-ease) both; }
+@keyframes reveal-once {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ══════════ MPA 共享壳：布局骨架（构建期拼接，运行时零注入） ══════════ */
+.os-layout {
+  display: flex;
+  height: 100dvh;
+  align-items: stretch;
+}
+
+/* ── 侧导航（固定宽 · 深底 · active 态构建期注入） ── */
+.os-sidebar {
+  width: 232px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-subtle);
+  border-right: 1px solid var(--border-light);
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.os-sidebar::-webkit-scrollbar { width: 6px; }
+.os-sidebar::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+.os-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+}
+.os-brand-block {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  background: var(--brand-primary);        /* 品牌红 ①（深底变体由令牌切换） */
+  flex: none;
+}
+.os-brand-text { display: flex; flex-direction: column; line-height: 1.3; }
+.os-brand-name { font-size: 15px; font-weight: 600; color: var(--text-strong); }
+.os-brand-sub { font-size: var(--fs-tiny); color: var(--text-muted); }
+
+.os-nav { flex: 1; padding: var(--space-2) var(--space-1); display: flex; flex-direction: column; gap: var(--space-2); }
+.os-nav-group { display: flex; flex-direction: column; gap: var(--space-1); }
+.os-nav-label {
+  font-size: var(--fs-tiny);
+  color: var(--text-body);               /* 分组标签承载导航语义（视觉诊断：中灰对深底发闷，提一档） */
+  padding: 0 var(--space-1);
+  letter-spacing: 0.04em;
+}
+.os-nav-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.os-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 34px;
+  padding: 0 var(--space-1);
+  border-radius: 6px;
+  color: var(--text-muted);
+  border-left: 2px solid transparent;
+  transition: color var(--motion-duration) var(--motion-ease),
+              background-color var(--motion-duration) var(--motion-ease);
+}
+.os-nav-link .bi { font-size: 15px; flex: none; }
+.os-nav-link:hover { color: var(--text-strong); background: var(--bg-inset); }
+.os-nav-link.is-active {
+  color: var(--text-strong);
+  background: var(--bg-inset);
+  border-left-color: var(--text-strong);   /* 单色高亮指示（不用品牌红，保持红≤2 处） */
+}
+.os-nav-dot {
+  width: 8px; height: 8px;               /* 视觉诊断：告警圆点过小，加大一档 */
+  border-radius: var(--radius-full);
+  margin-left: auto;
+  margin-right: var(--space-1);
+  background: var(--brand-primary);        /* 品牌红使用点（与 ② 同指示语义，合计仍≤2 处装饰位） */
+}
+
+/* P5（走查 2026-10-16）：侧栏原「N 项待办」计数与「降级数据如实带角标标注」
+   文案移除（维护者 拍：无实际业务意义）——foot 区仅保留认证/登出区
+   #os-sidebar-auth（DESIGN §1.5 落地件）。 */
+.os-sidebar-foot {
+  padding: var(--space-2);
+  border-top: 1px solid var(--border-light);
+  font-size: var(--fs-tiny);
+  color: var(--text-faint);
+}
+
+/* ── 主列：顶栏＋内容＋页脚 ── */
+.os-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+.os-topbar {
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-page);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.os-topbar-spacer { flex: 1; }
+
+/* ── P0-1 环境条（全站顶部 24px：环境标识＋数据快照 data_as_of；真伪一目了然的常驻层） ── */
+.os-envbar {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  background: rgba(212, 118, 10, 0.12);   /* 测试环境暖色低饱和底（亮暗两主题均可读） */
+  border-bottom: 1px solid var(--status-warn);
+  font-size: var(--fs-tiny);
+  color: var(--text-body);
+  position: sticky;
+  top: 0;
+  z-index: 12;
+}
+.os-envbar .dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--status-warn); flex: none; }
+.os-envbar .env-name { color: var(--text-strong); font-weight: 600; letter-spacing: 0.02em; }
+.os-envbar .sep { color: var(--text-faint); }
+.os-crumb-list {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.os-crumb-list li + li::before { content: "/"; margin-right: var(--space-1); color: var(--text-faint); }
+.os-crumb-list a:hover { color: var(--text-strong); }
+.os-crumb-list [aria-current="page"] { color: var(--text-body); }
+.os-env {
+  font-size: var(--fs-tiny);
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 var(--space-1);
+  line-height: 18px;
+}
+.os-topbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: color var(--motion-duration) var(--motion-ease),
+              background-color var(--motion-duration) var(--motion-ease);
+}
+.os-topbar-icon:hover { color: var(--text-strong); background: var(--bg-subtle); }
+
+.os-content { flex: 1; min-width: 0; }
+.os-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--container-pad) var(--space-3);
+}
+
+/* 页头（Tabler page-header 骨架 ＋ 本令牌间距）
+   P1（走查 2026-10-16）：margin-bottom 清零——页头→首区块间距改由下方
+   .os-container 纵向节奏统一给 os-space-6，防 12px＋新增间距叠加。 */
+.os-page-header { margin-bottom: 0; }
+.os-page-header .page-pretitle {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+.os-page-header .page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.4;
+}
+.os-page-actions { display: flex; align-items: center; gap: var(--space-1); margin-left: auto; }
+
+/* 页脚 */
+.os-footer {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border-light);
+  font-size: var(--fs-tiny);
+  color: var(--text-muted);
+}
+.os-footer-spacer { flex: 1; }
+
+/* ══════════ 栅格与卡片基线（P-1 迁移区） ══════════ */
+.grid-24 {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: var(--grid-gutter);
+}
+.span-6 { grid-column: span 6; }
+.span-8 { grid-column: span 8; }
+.span-10 { grid-column: span 10; }
+.span-14 { grid-column: span 14; }
+.span-16 { grid-column: span 16; }
+.span-24 { grid-column: span 24; }
+
+.card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+}
+.card + .card { margin-top: 0; }
+
+/* ════ P1（走查 2026-10-16）：容器级纵向节奏 ════
+   根因：.os-container 块级子元素无纵向规则——grid 外独立卡（errors/audit/grants
+   等平铺 card.span-24）与嵌套堆叠列（my/docs 的 aside.span-8）间距=0。
+   修法（DESIGN §1 D4 / §3.1）：容器直接子级统一区块间距 os-space-5；
+   页头→首区块用 os-space-6（页头自身 margin-bottom 已清零防叠加）；
+   嵌套堆叠列转为 grid＋gap。
+   :where() 压低特异性＝0，页内既有规则可整体覆写；栅格内 .card+.card
+   的 0 间距 reset 保留（防 grid 轨道错位），容器平铺卡需更高特异性显式覆盖。 */
+:where(.os-container) > * + * { margin-top: var(--os-space-5); }
+:where(.os-container) > .os-page-header + * { margin-top: var(--os-space-6); }
+.os-container > .card + .card { margin-top: var(--os-space-5); }
+:where(.grid-24 > aside[class*="span-"]) {
+  display: grid;
+  gap: var(--os-space-5);
+  align-content: start;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+.card-title { font-size: var(--fs-title); font-weight: 600; color: var(--text-strong); }
+.card-sub { font-size: var(--fs-small); color: var(--text-muted); }
+.card-head .spacer { flex: 1; }
+
+/* 演示数据角标（降级 mock 时显示，不许无标注假数据） */
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-tiny);
+  color: var(--text-muted);
+  border: 1px dashed var(--status-warn);
+  border-radius: 4px;
+  padding: 0 var(--space-1);
+  line-height: 18px;
+}
+.demo-badge .dot { width: 5px; height: 5px; border-radius: var(--radius-full); background: var(--status-warn); }
+/* 角标置于卡片右上角（card 已 position:relative） */
+.corner-badge { position: absolute; top: var(--space-1); right: var(--space-1); }
+
+/* ── P0-1 小基数策略：调用基数低于阈值时以徽标如实展示，不做大数字 KPI ── */
+.small-base-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-1) 0 var(--space-2);
+  padding: 3px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  font-size: var(--fs-small);
+  line-height: 20px;
+  color: var(--text-body);
+}
+.small-base-badge .num { color: var(--text-strong); font-weight: 600; }
+
+/* 成功率样本不足（今日 < 100 次）：不展示百分比，如实标注 */
+.sample-note {
+  display: inline-block;
+  padding: 0 var(--space-1);
+  border: 1px dashed var(--status-warn);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-tiny);
+  line-height: 18px;
+}
+
+/* 每卡右下角：数据来源接口名＋上次更新（小字灰） */
+.src-note {
+  margin-top: var(--space-2);
+  font-size: var(--fs-tiny);
+  color: var(--text-muted);
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+/* ══════════ 全局搜索（首页 hero 位）＋目录页内搜索 ══════════ */
+.hero-search { margin-bottom: var(--space-3); }
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0 var(--space-2);
+  height: 48px;
+  transition: border-color var(--motion-duration) var(--motion-ease);
+}
+.search-box:focus-within { border-color: var(--text-faint); }
+.search-box .icon { color: var(--text-muted); flex: none; }
+.search-box input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-strong);
+  height: 100%;
+}
+.search-box input::placeholder { color: var(--text-faint); }
+.search-hint {
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+/* hero 搜索右侧「进入目录」按钮（2026-10-15 修：与 input 等高对齐，bottom差≤2px） */
+.search-go {
+  flex: none;
+  height: 40px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  color: var(--text-body);
+  font-size: var(--fs-small);
+  cursor: pointer;
+  line-height: 38px;
+  transition: border-color var(--motion-duration) var(--motion-ease),
+              background-color var(--motion-duration) var(--motion-ease);
+}
+.search-go:hover { border-color: var(--text-faint); background: var(--bg-inset); }
+/* 目录页工具行：左对齐搜索＋筛选 chips */
+.catalog-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+.os-search-inline { max-width: 420px; margin: 0; height: 36px; flex: 1; }
+
+/* 业务域筛选 chips */
+.os-chips { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+.os-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+  cursor: pointer;
+  transition: color var(--motion-duration) var(--motion-ease),
+              border-color var(--motion-duration) var(--motion-ease),
+              background-color var(--motion-duration) var(--motion-ease);
+}
+.os-chip .n { font-size: var(--fs-tiny); color: var(--text-faint); }
+.os-chip:hover { color: var(--text-strong); border-color: var(--text-faint); }
+.os-chip.is-active {
+  color: var(--text-strong);
+  border-color: var(--text-faint);
+  background: var(--bg-subtle);
+}
+.os-chip.is-active .n { color: var(--text-muted); }
+.os-chip.is-link { text-decoration: none; }
+
+/* ══════════ 数字条（4 卡 · 单色大数字 · 禁渐变禁彩虹） ══════════ */
+.kpi-bar { margin-bottom: var(--space-3); }
+.kpi-card { min-height: 148px; }
+.kpi-label { font-size: var(--fs-small); color: var(--text-muted); }
+.kpi-value {
+  font-size: var(--fs-kpi);
+  font-weight: 600;
+  color: var(--text-strong);      /* 数字单色 */
+  line-height: 1.2;
+  margin: var(--space-1) 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;            /* 大数字单行（不折行），窄卡由旁侧迷你趋势图让位 */
+}
+.kpi-note { font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.5; }
+.kpi-flex { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-2); }
+.spark { width: 96px; min-width: 56px; height: 36px; flex: 0 1 auto; }   /* 可轻度压缩，保数字单行 */
+.spark .line { stroke: var(--chart-1); stroke-width: 1.5; fill: none; }
+.spark .area { fill: var(--chart-1); opacity: 0.12; }
+
+/* ══════════ 受控叙事状态条（一行） ══════════ */
+.status-band { margin-bottom: var(--space-3); }
+.status-band .body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  min-height: 24px;
+}
+.status-band .seg { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-small); color: var(--text-body); }
+.status-band .divider { width: 1px; height: 16px; background: var(--border-light); }
+.status-band .meta { margin-left: auto; font-size: var(--fs-tiny); color: var(--text-muted); }
+.strong-num { font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+
+/* 状态灯（语义色 · 灯旁必配文字） */
+.status { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-small); color: var(--text-body); }
+.status .dot { width: 8px; height: 8px; border-radius: var(--radius-full); flex: none; }
+.status.is-ok .dot { background: var(--status-ok); }
+.status.is-warn .dot { background: var(--status-warn); }
+.status.is-error .dot { background: var(--status-error); }
+
+/* ══════════ 服务目录独立页（P-1 原区块迁入） ══════════ */
+.section-head { display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-2); }
+.section-title { font-size: 16px; font-weight: 600; color: var(--text-strong); }
+.section-sub { font-size: var(--fs-small); color: var(--text-muted); }
+
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);   /* 目录默认双列 */
+  gap: var(--space-2);
+}
+.domain-card { min-height: 232px; }
+.domain-meta { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); }
+.domain-meta .m { font-size: var(--fs-small); color: var(--text-muted); }
+.domain-meta .m b { font-size: 14px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.svc-list { display: flex; flex-direction: column; gap: var(--space-1); }
+.svc {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: var(--space-1);
+  transition: border-color var(--motion-duration) var(--motion-ease);
+}
+.svc:hover { border-color: var(--border-strong); }
+.svc .name { font-size: var(--fs-body); color: var(--text-strong); font-weight: 500; }
+.svc .api { font-family: var(--font-mono); font-size: var(--fs-tiny); color: var(--text-muted); }
+.svc .desc { font-size: var(--fs-tiny); color: var(--text-muted); }
+/* 目录卡模板属性（维护者 2026-10-15 批）：更新频率/责任主体两行元信息（值缺＝「未标注」） */
+.svc-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin-top: 2px; }
+.svc-meta .m { font-size: var(--fs-tiny); color: var(--text-muted); }
+.svc-meta .m b { font-weight: 500; color: var(--text-strong); }
+
+/* 目录空态（搜索/筛选无结果） */
+.empty-state {
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+/* ══════════ 新鲜度＋公告（P-1 原区块迁入） ══════════ */
+.fresh-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.fresh-row:last-of-type { border-bottom: 0; }
+.fresh-row .name { width: 96px; flex: none; font-size: var(--fs-body); color: var(--text-strong); }
+.fresh-row .time { flex: 1; font-size: var(--fs-small); color: var(--text-body); }
+.fresh-row .rows { font-size: var(--fs-small); color: var(--text-body); font-variant-numeric: tabular-nums; }
+
+.ann-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.ann { display: flex; align-items: flex-start; gap: var(--space-1); }
+.ann .tag {
+  flex: none;
+  font-size: var(--fs-tiny);
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 var(--space-1);
+  line-height: 18px;
+}
+.ann .title { font-size: var(--fs-body); color: var(--text-body); line-height: 1.5; }
+.ann .time { flex: none; font-size: var(--fs-tiny); color: var(--text-muted); }
+
+/* ══════════ 占位页共用（ops/docs/admin · P-3/P-4 交付前的诚实占位） ══════════ */
+.os-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 280px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.os-placeholder-compact { min-height: 120px; }
+.os-placeholder .bi { font-size: 32px; color: var(--text-faint); }
+.os-placeholder h2 { font-size: var(--fs-title); color: var(--text-strong); }
+.os-placeholder p { max-width: 560px; font-size: var(--fs-body); }
+.os-placeholder-meta { font-size: var(--fs-small); color: var(--text-faint); }
+
+/* 接入口径说明列表（试用台右栏） */
+.os-notes { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.os-notes li { display: flex; flex-direction: column; gap: 2px; }
+.os-notes b { font-size: var(--fs-body); color: var(--text-strong); font-weight: 600; }
+.os-notes p { font-size: var(--fs-small); color: var(--text-body); line-height: 1.6; }
+.os-notes a { color: var(--text-body); border-bottom: 1px dashed var(--border-strong); }
+
+/* 名词解释（docs 页） */
+.os-glossary { display: flex; flex-direction: column; gap: var(--space-2); }
+.os-glossary dt { font-size: var(--fs-body); font-weight: 600; color: var(--text-strong); }
+.os-glossary dd { font-size: var(--fs-small); color: var(--text-body); line-height: 1.6; margin-top: 2px; }
+
+/* 管理区入口卡（admin 页占位） */
+.os-entry {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: 180px;
+}
+.os-entry .bi { font-size: 24px; color: var(--text-faint); }
+.os-entry h2 { font-size: var(--fs-title); color: var(--text-strong); }
+.os-entry p { font-size: var(--fs-small); color: var(--text-muted); line-height: 1.6; }
+.os-entry-tag {
+  align-self: flex-start;
+  font-size: var(--fs-tiny);
+  color: var(--text-faint);
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  padding: 0 var(--space-1);
+  line-height: 18px;
+}
+.os-para { font-size: var(--fs-small); color: var(--text-muted); line-height: 1.7; }
+
+/* ══════════ 三态：骨架屏（静态灰块，尺寸=最终组件）与错误态 ══════════ */
+.sk { background: var(--bg-inset); border-radius: 4px; }
+.sk-line { height: 12px; margin-bottom: var(--space-1); }
+.sk-line.w40 { width: 40%; }
+.sk-line.w60 { width: 60%; }
+.sk-line.w80 { width: 80%; }
+.sk-num { height: 36px; width: 56%; margin: var(--space-1) 0; }
+.sk-block { height: 40px; margin-bottom: var(--space-1); }
+.sk-chart { width: 96px; height: 36px; }
+
+.error-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 64px;
+  color: var(--text-body);
+  font-size: var(--fs-body);
+}
+.error-box .icon { width: 20px; height: 20px; color: var(--text-muted); }
+.retry-btn {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-body);
+  border-radius: var(--radius);
+  padding: 0 var(--space-2);
+  height: 28px;
+  font-size: var(--fs-small);
+  cursor: pointer;
+  transition: border-color var(--motion-duration) var(--motion-ease),
+              background-color var(--motion-duration) var(--motion-ease);
+}
+.retry-btn:hover { border-color: var(--text-faint); background: var(--bg-subtle); }
+
+/* ══════════ 响应式：1280 保底；≤1024 侧导航转顶部横排、栅格堆叠 ══════════ */
+@media (min-width: 1920px) {
+  :root { --fs-kpi: 40px; }
+}
+@media (max-width: 1024px) {
+  .os-layout { flex-direction: column; }
+  .os-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .os-nav { flex-direction: row; flex-wrap: wrap; }
+  .os-nav-group { flex-direction: row; align-items: center; }
+  .os-nav-label { display: none; }
+  .os-nav-link { border-left: 0; border-bottom: 2px solid transparent; }
+  .os-nav-link.is-active { border-bottom-color: var(--text-strong); }
+  .os-sidebar-foot { display: none; }
+  .span-16, .span-14 { grid-column: span 24; }
+  .span-8, .span-10, .span-6 { grid-column: span 12; }
+  .domain-grid { grid-template-columns: 1fr; }   /* 目录双列转单列 */
+}
+/* ══ 窄屏修复三卡·卡1（2026-10-15 · docs/reviews/narrow-viewport-20261015）：≤768px 断点 ══
+   375px 五页实证：≤1024 断点虽已把侧栏转顶部，但 .os-nav-list 未转横排——组被排成
+   竖列（两列并排、「管理」组 8 项整列推出视口右缘），文本/数据稍宽即横向溢出。
+   本断点把组/列表全部转横排、单行不换行，溢出收进 .os-nav 自身横向滚动——
+   页面恒无横向溢出（最小实现：纯 CSS，零 JS 零 HTML 结构变更，不做汉堡重设计）。 */
+@media (max-width: 768px) {
+  .os-layout { flex-direction: column; }
+  .os-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .os-nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .os-nav-group { flex-direction: row; align-items: center; flex: none; }
+  .os-nav-list { flex-direction: row; flex-wrap: nowrap; }   /* ≤1024 块漏改列表方向＝竖列双排根因 */
+  .os-nav-label { display: none; }
+  .os-nav-link { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .os-nav-link.is-active { border-bottom-color: var(--text-strong); }
+  .os-sidebar-foot { display: none; }
+  .os-topbar { top: 0; }   /* 环境条 2026-09-29 源头已删，清窄屏遗留 sticky 偏移（仅窄屏，桌面不动） */
+  /* 卡3 兜底：等宽串（密钥掩码/URL/字段名）与已知长文本位允许任意点换行 */
+  .mono, .svc .api, .svc .desc, .kpi-note, .src-note { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 720px) {
+  /* P0-12：390px 实测 24×1fr 轨道被 23×24px gutter 撑爆（552px）——栅格收窄为 6 列，
+     卡片全宽单列；gutter 同步收窄，条带卡恢复被内容撑开的能力 */
+  .grid-24 { grid-template-columns: repeat(6, 1fr); --grid-gutter: 12px; }
+  .span-8, .span-10, .span-6, .span-12, .span-14, .span-16 { grid-column: span 6; }
+  .os-topbar { padding: 0 var(--space-2); }
+  .os-container { padding: var(--space-2) var(--space-2) var(--space-2); }
+
+  /* P0-12 KPI 卡：数字单行超出即缩字截断，口径注释双行省略（SPEC §5 P0-12） */
+  .kpi-value { font-size: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .kpi-note, .src-note { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .kpi-flex { flex-wrap: nowrap; min-width: 0; }
+  .kpi-flex .kpi-value { min-width: 0; }
+  .kpi-flex .spark { flex: 1 1 auto; min-width: 0; max-width: 96px; }
+
+  /* P0-12 全局兜底：文字类 flex 子项可收缩换行，禁撑破容器 */
+  .card-head, .fresh-row, .demo-banner { flex-wrap: wrap; }
+  .card-title, .card-sub, .fresh-row .time, .fresh-row .name { min-width: 0; }
+  .fresh-row .time { word-break: break-all; }
+  .fresh-row { align-items: flex-start; }
+  .src-note { word-break: break-all; }
+  .status-band .grid-24 { grid-template-columns: 1fr; }
+}
+
+/* ══════════ P0-2 API 详情页（portal/openapi/*.html · 复用既有令牌） ══════════ */
+.detail-card { margin-bottom: var(--space-4); }
+.detail-table { width: 100%; border-collapse: collapse; font-size: var(--fs-tiny); }
+.detail-table th, .detail-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+  text-align: left; vertical-align: top; color: var(--text-body);
+}
+.detail-table th { background: var(--bg-subtle); color: var(--text-strong); font-weight: 500; white-space: nowrap; }
+.detail-table tbody th { background: transparent; color: var(--text-strong); font-weight: 500; width: 8em; }
+.detail-table code { font-family: var(--font-mono); color: var(--text-strong); }
+.detail-endpoint { font-size: var(--fs-body); }
+.detail-method {
+  font-family: var(--font-mono); font-weight: 600;
+  background: var(--bg-subtle); border: 1px solid var(--border-light);
+  border-radius: 4px; padding: 0 var(--space-1); margin-right: var(--space-2);
+}
+.detail-subblock { margin-top: var(--space-3); }
+.detail-subtitle { font-size: var(--fs-body); color: var(--text-strong); margin: 0 0 var(--space-2); }
+.detail-code pre {
+  margin: 0; padding: var(--space-3); overflow-x: auto;
+  background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: 6px;
+  font-family: var(--font-mono); font-size: var(--fs-tiny); color: var(--text-body); white-space: pre;
+}
+.detail-notes { margin: var(--space-2) 0 0; padding-left: 1.2em; color: var(--text-muted); font-size: var(--fs-tiny); }
+.detail-notes li { margin-bottom: var(--space-1); }
+.detail-changelog { list-style: none; margin: 0; padding: 0; }
+.detail-changelog li { padding: var(--space-2) 0; border-bottom: 1px dashed var(--border-light); color: var(--text-body); font-size: var(--fs-tiny); }
+.detail-changeset { margin-right: var(--space-2); }
+.table-scroll { overflow-x: auto; }
+/* 目录条目可点进详情（P0-2：div→a；外观沿用 .svc） */
+a.svc-link { text-decoration: none; display: block; color: inherit; }
+a.svc-link:hover .name { color: var(--brand-primary); }
+/* #42-②（2026-10-15）：「查看详情」CTA 提级为明显按钮（原 muted 行内弱化文字；仅既有令牌） */
+.svc .svc-go {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 3px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+a.svc-link:hover .svc-go { border-color: var(--neutral-7); background: var(--bg-card); }
+/* #46-a（2026-10-15）：详情页错误行「下一步」行动按钮（与 svc-go 同族尺度） */
+.err-act {
+  display: inline-block;
+  margin-right: var(--space-1);
+  padding: 2px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+  font-size: var(--fs-tiny);
+  font-weight: 500;
+  text-decoration: none;
+}
+.err-act:hover { border-color: var(--neutral-7); background: var(--bg-card); }

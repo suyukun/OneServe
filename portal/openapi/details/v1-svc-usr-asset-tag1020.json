@@ -1,0 +1,362 @@
+{
+  "service_id": "v1-svc-usr-asset-tag1020",
+  "archetype": "kv_lookup",
+  "archetype_label": "A 型 · KV 点查",
+  "name": "用户标签域·KV 点查",
+  "domain": {
+    "id": "user",
+    "name": "用户标签域"
+  },
+  "summary": "输入查询键，返回该实体的授权标签字段（白名单投影＋脱敏后输出，data_as_of 时点照带）",
+  "endpoint": "/v1/svc/usr-asset-tag1020",
+  "methods": [
+    "POST"
+  ],
+  "gateway": {
+    "route": "/v1/svc/usr-asset-tag1020",
+    "key_auth": true
+  },
+  "auth": {
+    "scheme": "ApiKey（网关 key-auth）",
+    "header": "apikey",
+    "describe": "请求头 apikey 携带 AppKey；APISIX 认证后透传服务层做授权定位（未携带/无效统一 401，服务层再按授权矩阵判定 403）",
+    "keys_note": "oneserve-dev-appkey-001（开发占位值；正式 AppKey 走 OA 审批后由授权登记发放）"
+  },
+  "rate_limit": {
+    "enabled": true,
+    "note": "网关按 route×consumer 挂 limit-count/limit-conn（P1-5）；阈值＝appkeys.yaml 登记的 quota_qps（路由速率）与 quota_daily（日配额），与门户「我的配额」同源。超限返 429＋X-RateLimit-Reason（global/endpoint/concurrent）；并发上限为平台常量，未按凭证登记。未登记配额的凭证不上限流（如实不限）",
+    "header": "X-RateLimit-Reason",
+    "reasons": [
+      "global",
+      "endpoint",
+      "concurrent"
+    ]
+  },
+  "params": [
+    {
+      "name": "key",
+      "type": "string(64)",
+      "cn": "查询键",
+      "required": true,
+      "in": "body",
+      "note": "格式 ^[A-Za-z0-9_.-]{1,128}$；phone_sm3 声明口径（键由上游 ETL 生成）",
+      "pattern": "^[A-Za-z0-9_.-]{1,128}$",
+      "key_type": "phone_sm3"
+    }
+  ],
+  "response": {
+    "found_shape": [
+      {
+        "name": "service_id",
+        "type": "string",
+        "cn": "服务标识",
+        "note": "命中的服务 ID，回显定位"
+      },
+      {
+        "name": "key",
+        "type": "string",
+        "cn": "查询键",
+        "note": "请求键原样回显（上游供数键，平台不留明文）"
+      },
+      {
+        "name": "tenant",
+        "type": "string",
+        "cn": "调用方租户",
+        "note": "按 AppKey 在授权矩阵定位的租户 ID"
+      },
+      {
+        "name": "found",
+        "type": "boolean",
+        "cn": "是否命中",
+        "note": "键不在库时如实返回 false（诚实空值，不伪造空标签集）"
+      },
+      {
+        "name": "fields",
+        "type": "object",
+        "cn": "返回标签集",
+        "note": "键值对：仅授权白名单字段；命中且非空才有值，否则为 null"
+      },
+      {
+        "name": "data_as_of",
+        "type": "string",
+        "cn": "数据时点",
+        "note": "数据批次业务日期（时点诚实字段，未命中也返回）"
+      },
+      {
+        "name": "live_version",
+        "type": "string",
+        "cn": "线上数据版本",
+        "note": "当前服务的同步版本号"
+      }
+    ],
+    "not_found_shape": [
+      {
+        "name": "found",
+        "type": "boolean",
+        "cn": "是否命中",
+        "note": "固定 false"
+      },
+      {
+        "name": "fields",
+        "type": "object",
+        "cn": "返回标签集",
+        "note": "固定 null（绝不伪造空标签集）"
+      },
+      {
+        "name": "data_as_of",
+        "type": "string",
+        "cn": "数据时点",
+        "note": "数据批次业务日期照常返回"
+      },
+      {
+        "name": "live_version",
+        "type": "string",
+        "cn": "线上数据版本",
+        "note": "当前同步版本号"
+      }
+    ],
+    "meta_fields": [
+      "data_as_of",
+      "live_version"
+    ],
+    "auth_fields": [
+      {
+        "name": "active_m3_flag",
+        "cn": "近3月活跃",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "aum_band",
+        "cn": "AUM等级",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "churn_risk_band",
+        "cn": "流失风险档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "credit_limit_band",
+        "cn": "信用额度档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "cross_sell_cnt_band",
+        "cn": "交叉销售数档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "dep_bal_band",
+        "cn": "存款余额档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "dormant_m12_flag",
+        "cn": "12月沉睡",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "fund_hold_flag",
+        "cn": "基金持有",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "ins_hold_flag",
+        "cn": "保险持有",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "loan_flag",
+        "cn": "贷款标志",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "login_cnt_band",
+        "cn": "月登录次数档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "ltv_band",
+        "cn": "客户价值档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "mk_response_band",
+        "cn": "营销响应档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "mortgage_flag",
+        "cn": "房贷标志",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "overdue_cnt_band",
+        "cn": "逾期次数档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "pay_cnt_band",
+        "cn": "月支付笔数档",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "salary_in_flag",
+        "cn": "工资代发",
+        "type": "—",
+        "desensitize": null
+      },
+      {
+        "name": "wealth_hold_flag",
+        "cn": "理财持有",
+        "type": "—",
+        "desensitize": null
+      }
+    ],
+    "desensitize_notes": [
+      "无（本服务未登记脱敏规则）"
+    ]
+  },
+  "errors": [
+    {
+      "http_status": 400,
+      "code": "invalid_json",
+      "meaning": "请求体不是合法 JSON 对象",
+      "solution": "按 Content-Type: application/json 发送 JSON 对象体",
+      "source": "service",
+      "related": "请求体"
+    },
+    {
+      "http_status": 403,
+      "code": "unknown_tenant",
+      "meaning": "AppKey 未在授权矩阵登记（未绑定租户）",
+      "solution": "联系平台管理员完成授权登记（审批走 OA）；或核对 AppKey 是否发放正确",
+      "source": "service",
+      "related": "apikey 请求头"
+    },
+    {
+      "http_status": 403,
+      "code": "service_not_granted",
+      "meaning": "租户未获本服务授权",
+      "solution": "按 OA 流程申请本服务授权；已批复则确认授权登记是否完成",
+      "source": "service",
+      "related": "apikey 请求头"
+    },
+    {
+      "http_status": 503,
+      "code": "internal_error",
+      "meaning": "服务内部错误（存储不可用时降级拒绝，不读脏）",
+      "solution": "稍后重试；持续失败联系平台值班并附时间点",
+      "source": "service",
+      "related": "—"
+    },
+    {
+      "http_status": 400,
+      "code": "invalid_key",
+      "meaning": "键格式不合法（按该服务入参 pattern 校验：UUID／自增 ID／摘要串等均可）",
+      "solution": "按入参表 pattern 校验键格式；键值由上游 ETL 生成，平台只按声明验收",
+      "source": "service",
+      "related": "key"
+    },
+    {
+      "http_status": 400,
+      "code": "max_items_exceeded",
+      "meaning": "单次调用键数超过上限（点查服务为 1，批量请走数仓通道）",
+      "solution": "改为单键调用；批量需求走批量任务通道",
+      "source": "service",
+      "related": "key"
+    },
+    {
+      "http_status": 500,
+      "code": "bad_desensitize_rule",
+      "meaning": "服务端脱敏规则配置异常（fail-closed 拒服）",
+      "solution": "平台侧配置问题，联系平台值班修复",
+      "source": "service",
+      "related": "—"
+    },
+    {
+      "http_status": 503,
+      "code": "data_not_ready",
+      "meaning": "数据未上线（KV 无线上版本指针，拒绝读脏）",
+      "solution": "等待数据同步上线后重试；可关注门户目录的同步状态",
+      "source": "service",
+      "related": "—"
+    },
+    {
+      "http_status": 503,
+      "code": "guard_timeout",
+      "meaning": "服务端查询超时（超过 guard.timeout_ms 熔断）",
+      "solution": "稍后重试；持续超时联系平台值班",
+      "source": "service",
+      "related": "—"
+    },
+    {
+      "http_status": 401,
+      "code": "auth_failed",
+      "meaning": "未携带 apikey 请求头，或 AppKey 无效/已吊销（网关 key-auth 拒绝）",
+      "solution": "携带有效 AppKey 重试；新接入走 OA 审批后由授权登记发放",
+      "source": "gateway",
+      "related": "apikey 请求头"
+    }
+  ],
+  "errors_meta": "错误响应统一为 §4.4 信封：error（机读错误码，见本表）＋message（人话说明）＋param（出错参数，适用时）＋traceId＋request_log_url（审计反查深链）＋docs_url（本表锚点）。限流口径（P1-5）：网关按 route×consumer 挂 limit-count/limit-conn（阈值＝appkeys.yaml 登记值，与门户「我的配额」同源），超限返 429 并带 X-RateLimit-Reason（global 日配额 / endpoint 路由速率 / concurrent 并发）——429 按凭证登记配额触发（非无条件），故不逐服务罗列，统一在 rate_limit 段说明。",
+  "example": {
+    "kind": "curl",
+    "command": [
+      "# 用户标签域：键＝上游供数键（示例为对手机号实算的摘要；平台全程不收明文）",
+      "curl -sS -X POST \"http://<网关域名>/v1/tags/query\" \\",
+      "  -H \"Content-Type: application/json\" \\",
+      "  -H \"apikey: oneserve-dev-appkey-001\" \\",
+      "  -d '{\"key\": \"ee5e7b1cbf65495467be9ff49ac5fc14b6887547c1cd7f8856221b23f1efa062\"}'",
+      "",
+      "# 资讯标签域：键＝资讯 ID 明文（同步造数编号段 n000001 起）",
+      "curl -sS -X POST \"http://<网关域名>/v1/news/query\" \\",
+      "  -H \"Content-Type: application/json\" \\",
+      "  -H \"apikey: oneserve-dev-appkey-001\" \\",
+      "  -d '{\"key\": \"n000001\"}'"
+    ],
+    "notes": [
+      "用户域示例键＝对 13800138000 实算的摘要（示例值；实际键由上游 ETL 生成）；是否命中取决于该键是否在库",
+      "AppKey 为授权矩阵登记的开发占位凭证；正式凭证走 OA 审批后由授权登记发放",
+      "响应带 data_as_of（数据时点）：任何应答都可核对数据批次"
+    ]
+  },
+  "trial_url": "trial.html",
+  "trial_hint": "在线调试请前往试用台（SPEC P0-2 口径：调试器本体由试用台承接）",
+  "contract_version": "2026-09-23",
+  "platform_version": "v1",
+  "changelog": [
+    {
+      "version": "2026-09-23",
+      "note": "契约初版：由 gen_openapi.py 自真源生成（后续服务登记变更自动跟随，变更记录在此追加）"
+    }
+  ],
+  "elements": {
+    "items": {
+      "identification": true,
+      "params_table": true,
+      "response_table": true,
+      "errors": true,
+      "example": true,
+      "version": true
+    },
+    "complete": true,
+    "missing": []
+  }
+}

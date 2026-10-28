@@ -1,0 +1,10 @@
+{
+  "name": "oneserve-frontend-tooling",
+  "private": true,
+  "devDependencies": {
+    "stylelint": "^16",
+    "stylelint-declaration-strict-value": "^1",
+    "backstopjs": "^6",
+    "pangu": "^4"
+  }
+}

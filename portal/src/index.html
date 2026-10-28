@@ -1,0 +1,225 @@
+<!-- ══ 首页（P-1R）：全局搜索＋4 数字条＋受控叙事状态条＋公告＋新鲜度（P-1/P-2 内容全量迁移） ══ -->
+<div class="os-container reveal" x-data="homePage" x-cloak>
+
+  <!-- 全局搜索（hero 位 · 前端过滤目录；回车/按钮携关键词进入服务目录独立页） -->
+  <section class="hero-search" id="global-search" aria-label="全局搜索">
+    <div class="search-box">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+      <input type="search" x-model="query" @keydown.enter.prevent="goCatalog()" placeholder="搜索业务域 / 服务 / API 路径，如：风险、渠道、/v1/tags/query" aria-label="搜索服务目录">
+      <button class="search-go" type="button" @click="goCatalog()">进入目录</button>
+    </div>
+    <p class="search-hint" x-text="searchHint()"></p>
+  </section>
+
+  <!-- 数字条（4 卡：覆盖用户数·标口径 / 在线服务 API / 已授权接入方 / 累计调用＋近 7 日迷你趋势） -->
+  <section class="grid-24 kpi-bar" id="kpi-bar" aria-label="平台规模数字">
+
+    <div class="card kpi-card span-6" id="kpi-users">
+      <template x-if="st('overview') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="sk sk-num"></div><div class="sk sk-line w80"></div></div>
+      </template>
+      <template x-if="st('overview') === 'error'">
+        <div class="error-box">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+          <span>数据暂不可用</span>
+          <button class="retry-btn" @click="retry('overview')">重试</button>
+        </div>
+      </template>
+      <template x-if="st('overview') === 'ok'">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('overview')"><span class="dot"></span>演示数据</span>
+          <div class="kpi-label">覆盖用户数</div>
+          <div class="kpi-value num" x-text="fmtCompact(data('overview').coveredUsers)"></div>
+          <div class="kpi-note" x-text="data('overview').coveredUsersScope"></div>
+        </div>
+      </template>
+      <div class="src-note" x-show="st('overview') === 'ok'" x-text="endpoint('overview') + (sections.overview.updatedAt ? ' · 更新 ' + sections.overview.updatedAt : '')"></div>
+    </div>
+
+    <div class="card kpi-card span-6" id="kpi-apis">
+      <template x-if="st('overview') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="sk sk-num"></div><div class="sk sk-line w60"></div></div>
+      </template>
+      <template x-if="st('overview') === 'error'">
+        <div class="error-box"><span>数据暂不可用</span></div>
+      </template>
+      <template x-if="st('overview') === 'ok'">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('overview')"><span class="dot"></span>演示数据</span>
+          <div class="kpi-label">在线服务 API</div>
+          <div class="kpi-value num" x-text="fmtCompact(data('overview').onlineApis)"></div>
+          <div class="kpi-note">口径：服务注册表（当前在线可调用）</div>
+        </div>
+      </template>
+      <div class="src-note" x-show="st('overview') === 'ok'" x-text="endpoint('overview')"></div>
+    </div>
+
+    <div class="card kpi-card span-6" id="kpi-partners">
+      <template x-if="st('overview') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="sk sk-num"></div><div class="sk sk-line w60"></div></div>
+      </template>
+      <template x-if="st('overview') === 'error'">
+        <div class="error-box"><span>数据暂不可用</span></div>
+      </template>
+      <template x-if="st('overview') === 'ok'">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('overview')"><span class="dot"></span>演示数据</span>
+          <div class="kpi-label">已授权接入方</div>
+          <div class="kpi-value num" x-text="fmtCompact(data('overview').authorizedPartners)"></div>
+          <div class="kpi-note">口径：授权登记（工单审批通过）</div>
+        </div>
+      </template>
+      <div class="src-note" x-show="st('overview') === 'ok'" x-text="endpoint('overview')"></div>
+    </div>
+
+    <div class="card kpi-card span-6" id="kpi-calls">
+      <template x-if="st('overview') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="kpi-flex"><div class="sk sk-num"></div><div class="sk sk-chart"></div></div><div class="sk sk-line w60"></div></div>
+      </template>
+      <template x-if="st('overview') === 'error'">
+        <div class="error-box"><span>数据暂不可用</span></div>
+      </template>
+      <template x-if="st('overview') === 'ok' && !isSmallCallsBase(data('overview').totalCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('overview')"><span class="dot"></span>演示数据</span>
+          <div class="kpi-label">累计调用量</div>
+          <div class="kpi-flex">
+            <div class="kpi-value num" x-text="fmtCompact(data('overview').totalCalls)"></div>
+            <svg class="spark" viewBox="0 0 96 36" preserveAspectRatio="none" aria-hidden="true">
+              <path class="area" :d="sparkline(data('overview').callsTrend7d).area"></path>
+              <path class="line" :d="sparkline(data('overview').callsTrend7d).line"></path>
+            </svg>
+          </div>
+          <div class="kpi-note">近 7 日调用趋势（面积折线）</div>
+        </div>
+      </template>
+      <!-- P0-1 小基数策略：累计低于阈值→徽标「今日 N 次 · 真实计数」，不做大数字 KPI（N 取运行状态接口今日真计数） -->
+      <template x-if="st('overview') === 'ok' && isSmallCallsBase(data('overview').totalCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('overview')"><span class="dot"></span>演示数据</span>
+          <div class="kpi-label">累计调用量</div>
+          <span class="small-base-badge">今日 <span class="num" x-text="st('runtimeStatus') === 'ok' ? fmtThousands(data('runtimeStatus').todayCalls) : '—'"></span> 次 · 真实计数</span>
+          <div class="kpi-note">累计 <span class="num" x-text="fmtThousands(data('overview').totalCalls)"></span> 次 · 基数尚小，按真实计数展示</div>
+        </div>
+      </template>
+      <div class="src-note" x-show="st('overview') === 'ok'" x-text="endpoint('overview')"></div>
+    </div>
+  </section>
+
+  <!-- 受控叙事状态条：最近同步｜今日调用·成功率｜审计开启(hash_only) -->
+  <section class="card status-band" id="status-band" aria-label="运行状态">    <template x-if="st('runtimeStatus') === 'loading'">
+    <div><div class="sk sk-line w40"></div></div>
+    </template>
+    <template x-if="st('runtimeStatus') === 'error'">
+      <div class="error-box">
+        <span>数据暂不可用</span>
+        <button class="retry-btn" @click="retry('runtimeStatus')">重试</button>
+      </div>
+    </template>
+    <template x-if="st('runtimeStatus') === 'ok'">
+      <div class="body">
+        <span class="seg">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></svg>
+          最近同步 <span class="strong-num" x-text="fmtRel(data('runtimeStatus').lastSyncAt)"></span>
+          <span class="status" :class="data('runtimeStatus').lastSyncResult === 'success' ? 'is-ok' : 'is-error'">
+            <span class="dot"></span><span x-text="data('runtimeStatus').lastSyncResult === 'success' ? '成功' : '失败'"></span>
+          </span>
+        </span>
+        <span class="divider"></span>
+        <span class="seg">今日调用 <span class="strong-num num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次 · 成功率
+          <span class="strong-num num" x-show="rateSampleEnough(data('runtimeStatus').todayCalls)" x-text="fmtPercent(data('runtimeStatus').todaySuccessRate)"></span>
+          <span class="sample-note" x-show="!rateSampleEnough(data('runtimeStatus').todayCalls)" title="今日调用不足 100 次时不展示成功率">样本量不足</span>
+        </span>
+        <span class="divider"></span>
+        <span class="seg">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          审计开启（<span class="mono" x-text="data('runtimeStatus').auditMode"></span>）
+        </span>
+        <span class="meta">自动刷新 60s · 上次更新 <span class="num" x-text="sections.runtimeStatus.updatedAt || '—'"></span></span>
+        <span class="demo-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+      </div>
+    </template>
+    <div class="src-note" x-show="st('runtimeStatus') === 'ok'" x-text="endpoint('runtimeStatus')"></div>
+  </section>
+
+  <!-- P0-10/P0-11 引导条：从「看看有什么」到「正式用／出事找谁」的下一步（不阻断试用） -->
+  <section class="card span-24" id="guide-bar" aria-label="下一步引导">
+    <div class="body">
+      <span class="seg">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        要正式接入：先走 <a href="apply.html" id="guide-apply-link">申请接入</a>（工单审批＋授权进度一条线看懂）
+      </span>
+      <span class="divider"></span>
+      <span class="seg">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        查不到数或要报障：到 <a href="docs.html#docs-channels" id="guide-contact-link">帮助与支持</a>（联系人／SLA 时限／三步自查引导）
+      </span>
+    </div>
+  </section>
+
+  <!-- 主体：公告栏（全宽）＋ 数据新鲜度 -->
+  <div class="grid-24">
+
+    <section class="card span-24" id="announcements" aria-label="公告栏">
+      <div class="card-head">
+        <h2 class="card-title">公告</h2>
+        <span class="spacer"></span>
+        <span class="demo-badge" x-show="st('announcements') === 'ok' && isDemo('announcements')"><span class="dot"></span>演示数据</span>
+      </div>
+      <template x-if="st('announcements') === 'loading'">
+        <div><div class="sk sk-line w80"></div><div class="sk sk-line w60"></div><div class="sk sk-line w80"></div><div class="sk sk-line w60"></div></div>
+      </template>
+      <template x-if="st('announcements') === 'error'">
+        <div class="error-box">
+          <span>数据暂不可用</span>
+          <button class="retry-btn" @click="retry('announcements')">重试</button>
+        </div>
+      </template>
+      <template x-if="st('announcements') === 'ok'">
+        <div class="ann-list">
+          <template x-for="a in data('announcements').items" :key="a.title">
+            <div class="ann">
+              <span class="tag" x-text="a.tag"></span>
+              <span class="title" x-text="a.title"></span>
+              <span class="time" x-text="fmtRel(a.time)"></span>
+            </div>
+          </template>
+          <div class="src-note" x-text="endpoint('announcements') + (sections.announcements.updatedAt ? ' · 更新 ' + sections.announcements.updatedAt : '')"></div>
+        </div>
+      </template>
+    </section>
+
+    <!-- 数据新鲜度（各业务域最后同步时间＋同步条数，全宽） -->
+    <section class="card span-24" id="freshness-card" aria-label="数据新鲜度">
+      <div class="card-head">
+        <h2 class="card-title">数据新鲜度</h2>
+        <span class="card-sub">按业务域</span>
+        <span class="spacer"></span>
+        <span class="demo-badge" x-show="st('freshness') === 'ok' && isDemo('freshness')"><span class="dot"></span>演示数据</span>
+      </div>
+      <template x-if="st('freshness') === 'loading'">
+        <div><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div>
+      </template>
+      <template x-if="st('freshness') === 'error'">
+        <div class="error-box">
+          <span>数据暂不可用</span>
+          <button class="retry-btn" @click="retry('freshness')">重试</button>
+        </div>
+      </template>
+      <template x-if="st('freshness') === 'ok'">
+        <div>
+          <template x-for="row in data('freshness').domains" :key="row.id">
+            <div class="fresh-row">
+              <span class="name" x-text="row.name"></span>
+              <span class="status" :class="statusMeta(row.status).cls"><span class="dot"></span><span x-text="statusMeta(row.status).text"></span></span>
+              <span class="time">最后同步 <span x-text="fmtRel(row.lastSyncAt)"></span></span>
+              <span class="rows num">同步 <span class="strong-num" x-text="fmtThousands(row.rows)"></span> 条</span>
+            </div>
+          </template>
+          <div class="src-note" x-text="endpoint('freshness') + (sections.freshness.updatedAt ? ' · 更新 ' + sections.freshness.updatedAt : '')"></div>
+        </div>
+      </template>
+    </section>
+  </div>
+
+</div>

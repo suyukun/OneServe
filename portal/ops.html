@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>运行视图 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<link rel="stylesheet" href="assets/ops.css?v=266daaf925e8"><!-- P-3 运行视图驾驶舱（仅引用既有令牌） -->
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="site-gate.js?v=266daaf925e8"></script>
+<script defer src="data-format.js?v=266daaf925e8"></script>
+<script defer src="api.js?v=266daaf925e8"></script>
+<script defer src="assets/app.js?v=266daaf925e8"></script>
+<script defer src="assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="assets/pages.js?v=266daaf925e8"></script>
+<script defer src="assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+<script defer src="assets/alpine.min.js?v=266daaf925e8"></script>
+</head>
+<body class="os-layout">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link is-active" aria-current="page" href="ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="admin/load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="admin/publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="admin/published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="admin/appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="admin/tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="admin/grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="admin/pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="admin/accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="admin/upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="admin/monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="admin/billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 <ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">运行视图</li></ol>（admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="os-crumb" aria-label="面包屑"><ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">运行视图</li></ol></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<!-- ══ 运行视图页（P-3 · 深色驾驶舱） ══
+     布局：顶栏（大字＋环境标识＋时钟）→ 4 KPI 大数字 → 两图（近 7 日调用趋势面积折线／
+     各业务域新鲜度横向条形）→ 底部组件状态带（网关/服务/Redis/审计，P1-6 起为真探活）。
+     纪律：首载骨架屏，此后 60s 静默轮询原位更新（visibilitychange 暂停，不闪骨架屏）；
+     图表 animation:false 无循环动画；每个数字旁小字标注数据来源；
+     TPS/时延取 testkit＋loadtest 实测口径不新造。
+     脚本序：页尾两支经典 script（echarts→ops.js）先于 head 全部 defer 脚本执行，
+     alpine:init 监听先挂、Alpine 最后启动——与 P-1R「初始化不被打断」同一纪律。 -->
+<div class="ops-cockpit reveal" id="ops-cockpit" x-data="opsPage" x-cloak>
+
+  <!-- ── 顶栏：运行视图大字＋环境标识「测试环境」＋时钟 ── -->
+  <header class="ops-top" id="ops-top" aria-label="运行视图顶栏">
+    <div class="ops-title">
+      <span class="ops-title-big">运行视图</span>
+      <span class="ops-title-sub">OneServe 数据运行驾驶舱</span>
+    </div>
+    <!-- 环境标识移入全站环境条（partials/topbar.html：测试环境＋数据快照），本页不再重复 -->
+    <span class="ops-top-spacer"></span>
+    <span class="ops-updated num" x-show="sections.runtimeStatus.updatedAt"
+          x-text="'自动刷新 60s · 数据更新 ' + (sections.runtimeStatus.updatedAt || '')"></span>
+    <span class="ops-clock num" x-text="clock" aria-label="当前时间">--:--:--</span>
+  </header>
+
+  <!-- ── 四个 KPI 大数字（api.js 取数＋mock 降级角标；时延/TPS＝实测口径常量） ── -->
+  <section class="ops-kpi-bar" id="ops-kpi-bar" aria-label="运行核心指标">
+
+    <div class="ops-kpi" id="ops-kpi-calls">
+      <template x-if="st('runtimeStatus') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="sk sk-num"></div><div class="sk sk-line w80"></div></div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'error'">
+        <div class="error-box">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+          <span>数据暂不可用</span>
+          <button class="retry-btn" @click="retry('runtimeStatus')">重试</button>
+        </div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'ok' && !isSmallCallsBase(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">今日调用</div>
+          <div class="ops-kpi-value num" x-text="fmtCompact(data('runtimeStatus').todayCalls)"></div>
+          <div class="ops-kpi-note">精确值 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次 · 最近同步 <span x-text="fmtRel(data('runtimeStatus').lastSyncAt)"></span></div>
+        </div>
+      </template>
+      <!-- P0-1 小基数策略（与首页同源同策略）：今日低于阈值→徽标如实计数，不做大数字 KPI -->
+      <template x-if="st('runtimeStatus') === 'ok' && isSmallCallsBase(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">今日调用</div>
+          <span class="small-base-badge">今日 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次 · 真实计数</span>
+          <div class="ops-kpi-note">网关真实计数（自动刷新 60s） · 最近同步 <span x-text="fmtRel(data('runtimeStatus').lastSyncAt)"></span></div>
+        </div>
+      </template>
+      <div class="ops-src" x-show="st('runtimeStatus') === 'ok'" x-text="endpoint('runtimeStatus') + ' · 字段 todayCalls'"></div>
+    </div>
+
+    <div class="ops-kpi" id="ops-kpi-success">
+      <template x-if="st('runtimeStatus') === 'loading'">
+        <div><div class="sk sk-line w40"></div><div class="sk sk-num"></div><div class="sk sk-line w60"></div></div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'error'">
+        <div class="error-box"><span>数据暂不可用</span></div>
+      </template>
+      <template x-if="st('runtimeStatus') === 'ok' && rateSampleEnough(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">成功率</div>
+          <div class="ops-kpi-value num" x-text="fmtPercent(data('runtimeStatus').todaySuccessRate)"></div>
+          <div class="ops-kpi-note">口径：今日成功调用占比（今日调用 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次为分母）</div>
+        </div>
+      </template>
+      <!-- P0-1 小样本不展示成功率（与首页状态条同源同策略）：标「样本量不足」 -->
+      <template x-if="st('runtimeStatus') === 'ok' && !rateSampleEnough(data('runtimeStatus').todayCalls)">
+        <div>
+          <span class="demo-badge corner-badge" x-show="isDemo('runtimeStatus')"><span class="dot"></span>演示数据</span>
+          <div class="ops-kpi-label">成功率</div>
+          <span class="sample-note ops-sample-lg">样本量不足</span>
+          <div class="ops-kpi-note">今日调用 <span class="num" x-text="fmtThousands(data('runtimeStatus').todayCalls)"></span> 次，不足 100 次暂不展示成功率</div>
+        </div>
+      </template>
+      <div class="ops-src" x-show="st('runtimeStatus') === 'ok'" x-text="endpoint('runtimeStatus') + ' · 字段 todaySuccessRate'"></div>
+    </div>
+
+    <!-- 平均时延＝实测口径常量（loadtest/testkit 2026-09-21，不实时） -->
+    <div class="ops-kpi" id="ops-kpi-latency">
+      <div class="ops-kpi-label">平均时延</div>
+      <div class="ops-kpi-value num"><span x-text="latencyDisplay()"></span><span class="unit">ms</span></div>
+      <div class="ops-kpi-note">50 并发档实测 P50=45ms／P99≈60ms</div>
+      <div class="ops-src">testkit 实测 2026-09-21 · 非实时</div>
+    </div>
+
+    <!-- 当前 TPS＝实测口径常量（容量梯子 100 并发档 RPS 均值，不实时） -->
+    <div class="ops-kpi" id="ops-kpi-tps">
+      <div class="ops-kpi-label">当前 TPS</div>
+      <div class="ops-kpi-value num" x-text="tpsDisplay()"></div>
+      <div class="ops-kpi-note">容量梯子 100 并发档 RPS 均值 1089.9（≈1.09k QPS）</div>
+      <div class="ops-src">扩容压测实测 2026-09-21 · 非实时</div>
+    </div>
+  </section>
+
+  <!-- ── 中部两图（ECharts · oneserve-dark 自定义深色主题） ── -->
+  <section class="ops-charts" aria-label="调用趋势与同步链路状态">
+
+    <div class="ops-chart-card" id="ops-chart-card-trend">
+      <div class="ops-chart-head">
+        <span class="ops-chart-title">调用趋势</span>
+        <span class="ops-chart-sub">近 7 日 · 面积折线</span>
+        <span class="spacer"></span>
+        <span class="demo-badge" x-show="st('overview') === 'ok' && isDemo('overview')"><span class="dot"></span>演示数据</span>
+      </div>
+      <div class="ops-chart-body">
+        <div class="chart" id="ops-chart-trend" role="img" aria-label="近 7 日调用趋势面积折线图"></div>
+        <div class="ops-chart-cover" x-show="st('overview') === 'loading'" aria-hidden="true">
+          <div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div>
+          <div class="sk sk-block"></div><div class="sk sk-block"></div>
+        </div>
+        <div class="ops-chart-cover" x-show="st('overview') === 'error'">
+          <div class="error-box">
+            <span>数据暂不可用</span>
+            <button class="retry-btn" @click="retry('overview')">重试</button>
+          </div>
+        </div>
+      </div>
+      <div class="ops-src" x-show="st('overview') === 'ok'" x-text="endpoint('overview') + ' · 字段 callsTrend7d（横轴日期以 generatedAt 回推 7 日）'"></div>
+    </div>
+
+    <div class="ops-chart-card" id="ops-chart-card-freshness">
+      <div class="ops-chart-head">
+        <span class="ops-chart-title">同步链路状态</span>
+        <span class="ops-chart-sub">各业务域新鲜度 · 横向条形</span>
+        <span class="spacer"></span>
+        <span class="demo-badge" x-show="st('freshness') === 'ok' && isDemo('freshness')"><span class="dot"></span>演示数据</span>
+      </div>
+      <div class="ops-chart-body">
+        <div class="chart" id="ops-chart-freshness" role="img" aria-label="各业务域数据新鲜度横向条形图"></div>
+        <div class="ops-chart-cover" x-show="st('freshness') === 'loading'" aria-hidden="true">
+          <div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div>
+          <div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div>
+        </div>
+        <div class="ops-chart-cover" x-show="st('freshness') === 'error'">
+          <div class="error-box">
+            <span>数据暂不可用</span>
+            <button class="retry-btn" @click="retry('freshness')">重试</button>
+          </div>
+        </div>
+      </div>
+      <div class="ops-src" x-show="st('freshness') === 'ok'" x-text="endpoint('freshness') + ' · 字段 domains[].rows/lastSyncAt/status（条色=同步状态语义色）'"></div>
+    </div>
+  </section>
+
+  <!-- ── 底部状态带：四组件（网关/服务/Redis/审计）真实探活（P1-6）──
+      灯色与文字由 /v1/portal/status 的 components[] 驱动：探不到＝error→「未知」，
+       绝不回退「正常」（此前四卡写死 is-ok＋「正常」＝评估报告 F5/B4 缺陷）。
+       容量梯子 CPU/内存实测降为副注并标「实测档案·非实时」，不与实时状态混排。 ── -->
+  <section class="ops-statusband" id="ops-statusband" aria-label="组件运行状态">
+
+    <template x-for="comp in components()" :key="comp.id">
+      <div class="ops-comp" :id="comp.id">
+        <div class="ops-comp-head">
+          <span class="ops-comp-light" :class="compStatusMeta(comp.status).cls" aria-hidden="true"></span>
+          <span class="ops-comp-name" x-text="comp.name"></span>
+          <span class="ops-comp-tech" x-text="comp.tech + ' · ' + compStatusMeta(comp.status).text"></span>
+        </div>
+        <div class="ops-comp-detail" x-text="comp.detail || '未取到探活明细'"></div>
+        <div class="ops-comp-detail ops-comp-live">探活 <span class="mono" x-text="comp.probe || '—'"></span>
+          · 探于 <span class="mono" x-text="comp.checkedAt || '—'"></span></div>
+        <div class="ops-src ops-archive-src" x-show="comp.archivePerf"
+             x-text="'实测档案（非实时）：' + (comp.archivePerf || '')"></div>
+        <div class="ops-src" x-text="endpoint('runtimeStatus') + ' · 字段 components[' + comp.id + ']'"></div>
+      </div>
+    </template>
+
+    <!-- 未取到探活结果（首载/不可达）：如实显示「未知」，不显示「正常」 -->
+    <div class="ops-comp" id="ops-comp-unknown" x-show="!components().length">
+      <div class="ops-comp-head">
+        <span class="ops-comp-light is-unknown" aria-hidden="true"></span>
+        <span class="ops-comp-name">组件状态</span>
+        <span class="ops-comp-tech" x-text="st('runtimeStatus') === 'error' ? '数据暂不可用 · 未知' : '读取中'"></span>
+      </div>
+      <div class="ops-comp-detail">四组件探活结果取自运行状态接口；取不到＝如实「未知」（不回退「正常」）</div>
+      <div class="ops-src" x-text="endpoint('runtimeStatus') + ' · 字段 components'"></div>
+    </div>
+  </section>
+
+  <!-- 图表底座＋页组件：经典 script（无 defer）置于页尾，先于 head 全部 defer 脚本执行；
+       echarts 哈希入库见 assets/vendor/SHA256SUMS（echarts@5.6.0 common 版，gzip 214KB） -->
+  <script src="assets/vendor/echarts.common.min.js?v=266daaf925e8"></script>
+  <script src="assets/ops.js?v=266daaf925e8"></script>
+</div>
+
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "OneServe 统一数据服务平台",
+  "short_name": "OneServe",
+  "icons": [{ "src": "/assets/brand/favicon.png", "sizes": "512x512", "type": "image/png" }],
+  "start_url": "/",
+  "display": "standalone"
+}

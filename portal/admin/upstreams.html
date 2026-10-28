@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>上游/模拟代理配置 · 运营控制台 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<style>
+  /* ── 独立简化深色样式（与 appkeys.html 同约定；语义别名在本页 :root 重定义，不改 tokens.css） ── */
+  :root {
+    --admin-bg: #1c222b;        /* 深底（整体调亮一档，提高层次对比） */
+    --admin-card: #242b36;      /* 卡片 */
+    --admin-inset: #1b2029;     /* 输入/代码底色 */
+    --admin-accent: #E85B6B;    /* 强调色（品牌红·全站≤2 处纪律沿用到操作面：主按钮＋关键数字） */
+    --admin-line: #35404d;      /* 分隔线/边框 */
+    --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE;
+    --admin-ok: #3FBE95;
+    --admin-warn: #D89A3C;
+    --admin-danger: #E05252;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .topbar { height: var(--topbar-height, 56px); display: flex; align-items: center; gap: var(--space-2, 16px);
+            padding: 0 var(--space-3, 24px); border-bottom: 1px solid var(--admin-line); background: var(--admin-card); }
+  .brand { font-weight: 600; letter-spacing: .5px; }
+  .brand-sub { color: var(--admin-muted); font-size: var(--fs-small, 12px); }
+  /* P0-1 环境标识（与门户全站环境条同语义：warn 点＋测试环境；本页无 data_as_of 数据面） */
+  .env-chip { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small, 12px);
+              color: var(--admin-text); border: 1px solid var(--admin-warn); border-radius: 999px;
+              padding: 1px 10px; line-height: 18px; }
+  .env-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--admin-warn); }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px); }
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  .hint { color: var(--admin-muted); font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-primary:disabled { opacity: .38; cursor: not-allowed; }
+  .btn-sm { padding: 3px 10px; }
+  .btn-danger { border-color: var(--admin-danger); color: var(--admin-danger); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .muted { color: var(--admin-muted); }
+  .num { font-family: var(--font-mono, monospace); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-active { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-disabled { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-offline { color: var(--admin-muted); border: 1px solid var(--admin-muted); }
+  .badge-danger { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+  .badge-demo { color: var(--admin-warn); border: 1px dashed var(--admin-warn); background: rgba(216,154,60,.08); }
+  /* 开发占位令牌提示（管理令牌可见卡 2026-09-23）：真值仅在开发占位态出现；
+     非占位态显示「不在页面显示」；窄屏可换行，不挤坏令牌栏 */
+  .dev-hint { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--fs-tiny, 11px);
+              color: var(--admin-muted); border: 1px dashed var(--admin-line); border-radius: var(--radius, 8px);
+              padding: 1px 8px; max-width: 100%; }
+  .dev-hint-value { color: var(--admin-text); font-family: var(--font-mono, monospace); }
+  .dev-hint-note { color: var(--admin-muted); }
+  .dev-hint code { background: none; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2, 16px); }
+  label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  input[type=password] {
+    width: 200px; background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 4px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .crumb { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small, 12px);
+           color: var(--admin-muted); white-space: nowrap; }
+  .crumb a { color: var(--admin-text); text-decoration: none; }
+  .crumb a:hover { color: var(--admin-accent); }
+  .crumb-sep { opacity: .55; }
+  /* P1-10 差量·SPEC B4：业务向门槛提示条（技术运维面标识，非报错非告警） */
+  .gate-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--admin-line);
+               border-left: 3px solid var(--admin-warn); color: var(--admin-muted); border-radius: var(--radius, 8px);
+               padding: 8px 12px; margin: 0 0 var(--space-2, 16px); font-size: var(--fs-small, 12px);
+               background: var(--admin-inset); }
+  input[type=text], input[type=number], select {
+    width: 100%; background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--admin-accent); }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  .checks label { color: var(--admin-text); font-size: var(--fs-small, 12px); cursor: pointer; }
+  .req { color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  /* P1-10 差量·错误就近：控件旁行内错误（紧跟输入框，不再顶部统一弹） */
+  .err-inline { margin: 4px 0 0; min-height: 0; }
+  .count-note { font-size: var(--fs-tiny, 11px); color: var(--admin-muted); }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 12, 15, .72); display: flex;
+             align-items: center; justify-content: center; padding: var(--space-3, 24px); z-index: 50; }
+  /* 2026-10-09（B8）：.modal → .dlg——门户壳注入 bootstrap/tabler 的 .modal{display:none}
+     同名碰撞致「遮罩现、面板隐」锁死（与 AppKey 页 2026-10-08 修复同法） */
+  .dlg { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+           max-width: 640px; width: 100%; max-height: 88vh; overflow: auto; padding: var(--space-3, 24px); }
+  pre.yaml { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+             padding: var(--space-2, 16px); font-family: var(--font-mono, monospace); font-size: var(--fs-small, 12px);
+             overflow: auto; max-height: 420px; margin: 0; }
+  .trace-bar { display: flex; align-items: center; gap: var(--space-1, 8px); flex-wrap: wrap;
+               background: var(--admin-inset); border: 1px solid var(--admin-ok); border-radius: var(--radius, 8px);
+               padding: 8px 12px; margin-bottom: var(--space-2, 16px); font-size: var(--fs-small, 12px); }
+  .trace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-ok); flex: none; }
+
+  /* ── O-2 专属：三步向导 ── */
+  .steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-2, 16px); }
+  .step-dot { display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px; border: 1px solid var(--admin-line);
+              border-radius: 999px; color: var(--admin-muted); font-size: var(--fs-small, 12px); cursor: default;
+              background: var(--admin-inset); }
+  .step-dot.on { border-color: var(--admin-accent); color: var(--admin-text); }
+  .step-dot.done { border-color: var(--admin-ok); color: var(--admin-ok); cursor: pointer; }
+  .step-num { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+              border: 1px solid currentColor; font-size: 11px; font-family: var(--font-mono, monospace); flex: none; }
+  .step-arrow { color: var(--admin-muted); font-size: 11px; }
+  .wizard-actions { display: flex; gap: var(--space-1, 8px); align-items: center; margin-top: var(--space-2, 16px); flex-wrap: wrap; }
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small, 12px); }
+
+  /* ── O-2 专属：发布方式单选（先测试再发布/直接发布） ── */
+  .release-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: var(--admin-inset);
+                 border: 1px solid var(--admin-line); border-radius: var(--radius, 8px); padding: 8px 12px;
+                 font-size: var(--fs-small, 12px); }
+  .release-row label { color: var(--admin-text); cursor: pointer; }
+  .tag { display: inline-block; background: var(--admin-card); border: 1px solid var(--admin-line);
+         border-radius: 999px; padding: 1px 10px; font-size: var(--fs-tiny, 11px); color: var(--admin-text); }
+  /* 发布会后跟进：代理未授权提示（C6） */
+  .followup-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--admin-warn);
+                  border-left: 3px solid var(--admin-warn); background: var(--admin-inset); border-radius: var(--radius, 8px);
+                  padding: 10px 12px; margin-bottom: var(--space-2, 16px); font-size: var(--fs-small, 12px); }
+  .followup-bar a.btn { text-decoration: none; }
+
+  /* ── O-2 专属：测试一把结果盒 ── */
+  .test-box { border: 1px solid var(--admin-line); background: var(--admin-inset); border-radius: var(--radius, 8px);
+              padding: 10px 12px; font-size: var(--fs-small, 12px); margin-top: var(--space-1, 8px); }
+  .test-box.ok { border-color: var(--admin-ok); }
+  .test-box.bad { border-color: var(--admin-danger); }
+  .test-conclusion { margin: 6px 0 2px; color: var(--admin-text); }
+  .test-tech { margin-top: 6px; color: var(--admin-muted); }
+  .test-tech summary { cursor: pointer; }
+  .test-tech pre { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+                   padding: 8px 10px; margin: 6px 0 0; white-space: pre-wrap; font-size: var(--fs-tiny, 11px); }
+
+  /* ── O-2 专属：配置生成结果盒（默认视图；原始 YAML 折叠在「查看原始配置」内） ── */
+  .gen-result { border: 1px solid var(--admin-line); background: var(--admin-inset); border-radius: var(--radius, 8px);
+                padding: 12px 16px; margin-top: 12px; }
+  .gen-title { display: flex; align-items: center; gap: 8px; color: var(--admin-ok); font-weight: 600;
+               font-size: var(--fs-title, 16px); }
+  .gen-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-ok); flex: none; }
+  .gen-desc { margin: 6px 0 12px; color: var(--admin-text); font-size: var(--fs-small, 12px); }
+
+  /* ── O-2 专属：只读 YAML diff ── */
+  .diff-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; font-size: var(--fs-small, 12px); }
+  .diff-stat-add { color: var(--admin-ok); font-weight: 600; }
+  .diff-stat-del { color: var(--admin-danger); font-weight: 600; }
+  .diff-body { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+               padding: 10px 0; max-height: 420px; overflow: auto; }
+  .dl { font-family: var(--font-mono, monospace); font-size: var(--fs-small, 12px); padding: 1px 14px; white-space: pre-wrap; }
+  .dl-add { color: var(--admin-ok); background: rgba(63, 190, 149, .09); }
+  .dl-del { color: var(--admin-danger); background: rgba(224, 82, 82, .09); }
+  .dl-ctx { color: var(--admin-muted); }
+  .diff-legend { display: flex; gap: 14px; color: var(--admin-muted); font-size: var(--fs-tiny, 11px); }
+
+  /* ── P0-12 窄屏（≤720px）：宽列表格容器内滚动＋顶栏可换行，布局不撑破（SPEC §5 P0-12） ── */
+  @media (max-width: 720px) {
+    /* 本页顶栏＝门户 shell 的 .os-topbar（管理页接入门户壳后由 .topbar 改名） */
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    .token-row { margin-left: 0; width: 100%; }
+    .token-row input { width: 100%; }
+    table { display: block; overflow-x: auto; }   /* 宽列明细表→容器滚动，不撑破卡片 */
+    pre.yaml { max-width: 100%; }
+  }
+</style>
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="../site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="../site-gate.js?v=266daaf925e8"></script>
+<script defer src="../data-format.js?v=266daaf925e8"></script>
+<script defer src="../api.js?v=266daaf925e8"></script>
+<script defer src="../assets/app.js?v=266daaf925e8"></script>
+<script defer src="../assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="../assets/pages.js?v=266daaf925e8"></script>
+<script defer src="../assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+
+</head>
+<body class="os-layout" x-data="upstreamAdmin()" x-init="boot()">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="../index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="../catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="../trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="../my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="../apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="../docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="../errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link is-active" aria-current="page" href="upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="../reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="../grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 （admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="crumb" id="admin-crumb" aria-label="面包屑"><span>管理</span><span class="crumb-sep">›</span><span aria-current="page">上游代理</span></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="../docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<div class="os-container">
+  <h1>上游代理配置</h1>
+  <p class="hint">三步完成上游代理配置：基本信息 → 上游服务 → 预览确认。测试通过才可发布；发布后 ≤30 秒网关生效，变更已写盘、历史版本可回溯。</p>
+
+  <!-- ══ P1-10 差量·SPEC B4 门槛提示：本页属技术运维面，业务角色无需操作 ══ -->
+  <div class="gate-note" id="ops-gate-note" role="note">
+    <span aria-hidden="true">🛠</span>
+    <span>本页为技术运维配置，业务无需操作。上游地址与路由由平台运维/研发变更，业务仅按「接口调试/申请接入」使用已发布的接口。</span>
+  </div>
+
+  <!-- 2026-09-23：管理令牌机制已彻底拆除（维护者 原话：完全拆掉，现在用不上，等以后再加）；本机/内网阶段授权边界＝网络层可达，写操作不再校验任何令牌，故只读锁定 banner 与token-error 提示一并移除（gateLocked()/canWrite() 在 admin-gate.js 中恒放行，避免运行时报错）。 -->
+
+  <!-- ══ 通用「生效与留痕条」（发布/下线后出现，点开看只读 YAML diff） ══ -->
+  <div class="trace-bar" id="trace-bar" x-show="lastTrace" x-cloak>
+    <span class="trace-dot"></span>
+    <span id="trace-text" x-text="lastTrace"></span>
+    <button class="btn btn-sm" id="trace-view-diff" type="button" x-show="traceDiff" @click="openDiff()">查看只读 YAML diff</button>
+  </div>
+
+  <!-- 临时提示（保存成功/占位说明/发布被拒），4 秒自动消散 -->
+  <p class="count-note" id="wizard-note" x-show="note" x-text="note" x-cloak></p>
+
+  <!-- C6：发布成功后的授权跟进——代理已上线但还没有凭证能调它 -->
+  <div class="followup-bar" id="publish-followup" x-show="followup.open" x-cloak role="status">
+    <span>代理「<b x-text="followup.serviceName"></b>」已发布，但尚未授权给任何凭证。</span>
+    <a class="btn btn-sm" id="followup-issue-link"
+       :href="'appkeys.html?service=' + encodeURIComponent(followup.serviceId)">去签发页授权</a>
+    <button class="btn btn-sm" id="followup-close-btn" type="button" @click="followup.open = false">稍后</button>
+  </div>
+
+  <!-- ══ 三步向导 ══ -->
+  <section class="card" id="wizard-section" aria-label="代理配置三步向导">
+    <div class="card-head">
+      <h2 class="card-title">新建代理（三步向导）</h2>
+      <span class="count-note">数据源：<span id="wizard-source" x-text="source === 'live' ? '在线 · 读写服务端配置文件' : '演示数据 · 后端不可达降级（mock）'"></span></span>
+    </div>
+
+    <!-- 步骤指示器：①基本信息 → ②上游服务 → ③预览确认 -->
+    <nav class="steps" id="wizard-steps" aria-label="向导步骤指示器">
+      <span class="step-dot" id="step-ind-1" :class="step === 1 ? 'on' : (step > 1 ? 'done' : '')" @click="goStep(1)">
+        <span class="step-num">1</span>基本信息</span>
+      <span class="step-arrow" x-show="true">→</span>
+      <span class="step-dot" id="step-ind-2" :class="step === 2 ? 'on' : (step > 2 ? 'done' : '')" @click="goStep(2)">
+        <span class="step-num">2</span>上游服务</span>
+      <span class="step-arrow" x-show="true">→</span>
+      <span class="step-dot" id="step-ind-3" :class="step === 3 ? 'on' : ''">
+        <span class="step-num">3</span>预览确认</span>
+    </nav>
+
+    <!-- 步骤①：基本信息 -->
+    <div class="step-panel" id="wizard-step-1" data-step="1" x-show="step === 1">
+      <div class="form-grid">
+        <div>
+          <label class="f" for="service-name-input">服务名 <span class="req">*</span></label>
+          <input id="service-name-input" type="text" x-model="form.serviceName" placeholder="如：合作方信息查询"
+                 aria-describedby="service-name-error">
+          <p class="err err-inline" id="service-name-error" x-text="stepTouched ? serviceNameError() : ''"
+             x-show="stepTouched && serviceNameError()" x-cloak></p>
+        </div>
+        <div>
+          <label class="f" for="route-path-input">路由路径 <span class="req">*</span>（须形如 /proxy/partner/xxx）</label>
+          <input id="route-path-input" type="text" x-model="form.routePath" placeholder="/proxy/partner/record-status" class="mono"
+                 aria-describedby="route-path-error">
+          <div class="count-note" id="route-preview-note">调用方将访问 <span class="mono" x-text="'…' + (form.routePath || '/proxy/…')"></span></div>
+          <p class="err err-inline" id="route-path-error" x-text="stepTouched ? routeError() : ''"
+             x-show="stepTouched && routeError()" x-cloak></p>
+          <p class="count-note" id="route-overwrite-warning" x-show="routeOverwriteEntry()" x-cloak
+             x-text="routeOverwriteEntry() ? '注意：该路径已有条目「' + routeOverwriteEntry().serviceName + '」，保存将覆盖它' : ''"></p>
+        </div>
+      </div>
+      <!-- 「先存草稿」开关（写配置文件但不对外转发；要生效须点发布） -->
+      <div class="switch-row" style="margin-top:var(--space-2,16px)">
+        <input type="checkbox" id="draft-toggle" x-model="form.draftMode">
+        <label for="draft-toggle">先存草稿：写进配置文件但不对外转发，要生效请点发布</label>
+      </div>
+    </div>
+
+    <!-- 步骤②：上游服务 -->
+    <div class="step-panel" id="wizard-step-2" data-step="2" x-show="step === 2" x-cloak>
+      <div class="form-grid">
+        <div style="grid-column:1/-1">
+          <label class="f" for="upstream-url-input">上游 URL <span class="req">*</span></label>
+          <input id="upstream-url-input" type="text" x-model="form.upstreamUrl" placeholder="https://上游地址/路径" class="mono"
+                 aria-describedby="upstream-url-error">
+          <div class="count-note" id="upstream-url-note">注意：填 localhost 会指向平台容器自身（不是你的电脑/宿主机），容器栈内请用服务名。</div>
+          <p class="err err-inline" id="upstream-url-error" x-text="stepTouched ? upstreamUrlError() : ''"
+             x-show="stepTouched && upstreamUrlError()" x-cloak></p>
+        </div>
+        <div>
+          <label class="f" for="timeout-sec-input">超时（秒，默认 5，范围 1~30）</label>
+          <input id="timeout-sec-input" type="number" min="1" max="30" x-model.number="form.timeoutSec"
+                 aria-describedby="timeout-sec-error">
+          <div class="count-note">等待上游响应的最大秒数。</div>
+          <p class="err err-inline" id="timeout-sec-error" x-text="stepTouched ? timeoutError() : ''"
+             x-show="stepTouched && timeoutError()" x-cloak></p>
+        </div>
+        <div>
+          <label class="f" for="retry-count-input">重试次数（默认 2）</label>
+          <input id="retry-count-input" type="number" min="0" max="5" x-model.number="form.retryCount"
+                 aria-describedby="retry-count-error">
+          <div class="count-note">连接失败时自动重试次数（接口业务报错不重试）。</div>
+          <p class="err err-inline" id="retry-count-error" x-text="stepTouched ? retryError() : ''"
+             x-show="stepTouched && retryError()" x-cloak></p>
+        </div>
+      </div>
+      <div style="max-width:420px;margin-top:var(--space-2,16px)">
+        <label class="f" for="upstream-name-input">上游名称（仅登记备注，可选）</label>
+        <input id="upstream-name-input" type="text" x-model="form.upstreamName" placeholder="如 mock-partner"
+               aria-describedby="upstream-name-error">
+        <div class="count-note">仅登记名称备注，不创建也不共享任何 Upstream 对象。</div>
+        <p class="err err-inline" id="upstream-name-error" x-text="stepTouched ? upstreamNameError() : ''"
+           x-show="stepTouched && upstreamNameError()" x-cloak></p>
+      </div>
+    </div>
+
+    <!-- 步骤③：预览确认 -->
+    <div class="step-panel" id="wizard-step-3" data-step="3" x-show="step === 3" x-cloak>
+      <!-- 发布方式单选（退役「环境×实例」假维度） -->
+      <div class="release-row" id="release-mode-row">
+        <span class="muted">发布方式：</span>
+        <template x-for="m in RELEASE_MODES" :key="m.value">
+          <label><input type="radio" name="release-mode" :value="m.value" x-model="releaseMode"> <span x-text="m.label"></span></label>
+        </template>
+        <span class="count-note" id="release-mode-note">发布后 ≤30 秒网关生效</span>
+      </div>
+
+      <!-- 配置生成结果：默认人话摘要视图；原始 YAML 默认折叠，技术用户可展开 -->
+      <div class="gen-result" id="gen-result">
+        <div class="gen-title"><span class="gen-dot"></span>配置已生成</div>
+        <p class="gen-desc">该配置用于「<span x-text="form.serviceName || '本服务'"></span>」接口的网关代理转发，将写入 upstreams.yaml 并按「<span x-text="releaseModeLabel()"></span>」方式发布。</p>
+        <!-- 2026-10-21 界面降噪：技术出口收进默认折叠区，主流程只留「测试→发布」。
+             导出片段按钮移除＝纯冗余（发布时配置由服务端原样写入 upstreams.yaml
+             真源，本机另存片段文件不在任何流程链上，只添新手噪音）；「查看原始配置」
+             保留为折叠的技术详情，功能不删。 -->
+        <details class="test-tech" id="raw-config-details" style="margin-top:8px">
+          <summary>查看原始配置（技术详情）</summary>
+          <p class="count-note" id="raw-config-note">发布时这段 YAML 会由平台原样写入 upstreams.yaml，日常配置无需使用；此处仅供技术核对片段内容（仅本条，与线上完整配置文件不同）。</p>
+          <div class="f">本次片段（proxy-x.yaml）</div>
+          <pre class="yaml mono" id="preview-yaml" x-text="previewYaml()"></pre>
+        </details>
+      </div>
+
+      <!-- 测试一把：服务端真实 probe；三态结论（通过/方法不匹配/不可用），测试通过才放行 -->
+      <div class="wizard-actions" style="margin-top:12px">
+        <button class="btn" id="test-fire-btn" type="button" @click="runTestNow()" :disabled="testing"
+                x-text="testing ? '测试中…' : '测试一把'"></button>
+        <span class="count-note">测试通过才可发布</span>
+      </div>
+      <div class="test-box" id="test-result-box" x-show="test" x-cloak :class="test && test.passed ? 'ok' : 'bad'">
+        <template x-if="test">
+          <div>
+            <span class="badge" id="test-verdict" :class="testVerdictClass()" x-text="testVerdictLabel()"></span>
+            <div class="test-conclusion" id="test-conclusion" x-text="testVerdictText()"></div>
+            <!-- 只读方法结论：用户界面上不提供方法选择，AUTO 探测后在此明示将用哪个方法转发 -->
+            <div class="count-note" id="test-method-note" x-text="testMethodNote()"></div>
+            <!-- 2026-10-20 视觉 QC：状态码/耗时/错误码/原始异常信息只进折叠区，主文案不露技术值 -->
+            <details class="test-tech" id="test-tech-details">
+              <summary>技术详情</summary>
+              <pre class="mono" id="test-tech-body" x-text="testTechnicalText()"></pre>
+            </details>
+            <div class="count-note" id="test-live-probe-hint" x-show="showUnreachableHint()" x-cloak style="margin-top:4px">
+              连不上？容器栈内请用服务名（如 <span class="mono">oneserve-mock-partner</span>）——<span class="mono">localhost</span> 指向平台容器自身，不是宿主机。
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 步骤校验错误与上一步/下一步 -->
+    <div class="err" id="step-error" x-text="stepTouched ? stepErr(step) : ''"></div>
+    <div class="wizard-actions">
+      <button class="btn" id="prev-step-btn" type="button" @click="prevStep()" :disabled="step === 1">上一步</button>
+      <button class="btn btn-secondary" id="next-step-btn" type="button" x-show="step !== 3" @click="nextStep()">下一步</button>
+      <!-- 步骤③的动作位：草稿开关决定主动作（存草稿 vs 测试通过后发布） -->
+      <button class="btn" id="save-draft-btn" type="button" x-show="step === 3" :disabled="gateLocked()" @click="saveDraft()">存为草稿</button>
+      <button class="btn btn-primary" id="publish-btn" type="button" x-show="step === 3 && !form.draftMode"
+              :disabled="!canPublish() || gateLocked()" @click="publish()"
+              :title="gateLocked() ? gateBannerText() : (canPublish() ? '发布并留痕' : '先「测试一把」通过后才能发布')">确认发布</button>
+      <span class="count-note" id="publish-hint" x-show="step === 3 && !form.draftMode"
+            x-text="canPublish() ? '测试已通过，可发布' : '未通过探测：发布按钮禁用'"></span>
+      <!-- P1-10 差量·错误就近：保存/发布失败提示挂在动作按钮旁 -->
+      <p class="err err-inline" id="save-error" x-text="saveError" x-show="saveError" x-cloak></p>
+    </div>
+  </section>
+
+  <!-- ══ 列表区（向导下方）：O-2 补审计——最近变更人/时间直显 ══ -->
+  <section class="card" id="proxy-list-section" aria-label="已配置代理列表">
+    <div class="card-head">
+      <h2 class="card-title">已配置代理 <span class="muted num" id="proxy-count" x-text="'(' + proxies.length + ' 条)'"></span></h2>
+    </div>
+    <table id="proxy-table" aria-label="代理明细表">
+      <thead><tr>
+        <th id="col-service">服务名</th>
+        <th id="col-upstream">上游地址</th>
+        <th id="col-status">状态</th>
+        <th id="col-modifier">最近变更人</th>
+        <th id="col-modified-at">最近变更时间</th>
+        <th id="col-actions">操作</th>
+      </tr></thead>
+      <tbody>
+        <template x-for="(p, i) in proxies" :key="p.id">
+          <tr :data-testid="'proxy-row-' + i">
+            <td>
+              <div x-text="p.serviceName"></div>
+              <div class="muted mono" x-text="p.method + ' ' + p.routePath"></div>
+            </td>
+            <td>
+              <div class="mono" x-text="p.upstreamUrl"></div>
+              <div class="count-note" x-text="(p.callCount7d == null ? '近7日调用 —（未接入计量）' : '近7日调用 ' + p.callCount7d + ' 次') + (p.upstreamName ? ' · 备注：' + p.upstreamName : '')"></div>
+            </td>
+            <td>
+              <span class="badge" :class="p.status === 'published' ? 'badge-active' : (p.status === 'offline' ? 'badge-offline' : 'badge-disabled')"
+                    x-text="statusBadge(p.status)"></span>
+            </td>
+            <td class="mono" x-text="p.lastModifiedBy || '—'"></td>
+            <td class="num" x-text="fmtDT(p.lastModifiedAt)"></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-sm btn-secondary" type="button" data-action="publish" x-show="p.status !== 'published'"
+                      :disabled="testing || gateLocked()" @click="publishRow(i)">发布</button>
+              <button class="btn btn-sm btn-danger" type="button" data-action="delete-draft" x-show="p.status === 'draft'"
+                      :disabled="gateLocked()" @click="askDeleteDraft(i)">删除草稿</button>
+              <button class="btn btn-sm btn-danger" type="button" data-action="offline" x-show="p.status === 'published'"
+                      :disabled="gateLocked()" @click="askOffline(i)">下线</button>
+              <!-- A窗陪测修（2026-10-19）：编辑二期未做——死按钮无就近反馈（维护者 实测「点了没反应」），
+                   改禁用态+悬停说明；调整配置走「下线→新建」或宿主侧改 upstreams.yaml -->
+              <button class="btn btn-sm" type="button" data-action="edit" disabled
+                      title="编辑功能建设中（二期）：请下线后新建，或由运维改 service/upstreams.yaml">编辑</button>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="proxies.length === 0"><td colspan="6" class="muted">暂无代理配置</td></tr>
+      </tbody>
+    </table>
+    <p class="count-note" id="audit-note">发布后 ≤30 秒网关生效。</p>
+    <p class="count-note" id="live-note">变更已写盘，历史版本可回溯。</p>
+  </section>
+
+  <!-- ══ 只读 YAML diff 弹窗（演示王牌：前后两版 ± 行对比） ══ -->
+  <div class="overlay" id="diff-modal" x-show="diffModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="diff-modal-title">
+    <div class="dlg" style="max-width:760px">
+      <h2 class="card-title" id="diff-modal-title" x-text="diffModal.title"></h2>
+      <div class="diff-head">
+        <span class="muted">只读 diff · 提交</span>
+        <span class="mono" x-text="diffModal.meta"></span>
+        <span class="diff-stat-add" id="diff-added" x-text="'+' + diffModal.added + ' 行'"></span>
+        <span class="diff-stat-del" id="diff-removed" x-text="'-' + diffModal.removed + ' 行'"></span>
+        <span class="diff-legend"><span><span class="dl-add" style="padding:0 6px">＋</span> 新增/改后</span>
+        <span><span class="dl-del" style="padding:0 6px">－</span> 删除/改前</span></span>
+      </div>
+      <div class="diff-body" id="diff-body">
+        <template x-for="(l, i) in diffModal.lines" :key="i">
+          <div class="dl" :class="l.op === '+' ? 'dl-add' : (l.op === '-' ? 'dl-del' : 'dl-ctx')" x-text="l.text"></div>
+        </template>
+      </div>
+      <div class="modal-actions" style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn" id="diff-close-btn" type="button" @click="diffModal.open = false">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 两段式确认弹窗（下线＝危险操作） ══ -->
+  <div class="overlay" id="offline-modal" x-show="offlineModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="offline-modal-title">
+    <div class="dlg" style="max-width:520px">
+      <h2 class="card-title" id="offline-modal-title">下线代理</h2>
+      <p class="muted" id="offline-modal-detail">下线后该路由立即停止转发（配置保留、状态置 offline，可再发布）。</p>
+      <p class="err" x-show="offlineModal.stage === 2">第二段确认：勾选下方授权开关才会真正提交（危险操作两段式）。</p>
+      <div class="switch-row" x-show="offlineModal.stage === 2" x-cloak>
+        <input type="checkbox" id="offline-auth-switch" x-model="offlineModal.armed">
+        <label for="offline-auth-switch">我确认下线该代理并已知晓调用方将收到中断</label>
+      </div>
+      <div class="modal-actions" style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-danger" id="offline-step-btn" type="button" @click="confirmOffline()"
+                x-text="offlineModal.stage === 1 ? '继续（进入二次确认）' : '确认下线'"></button>
+        <button class="btn" id="offline-cancel-btn" type="button" @click="offlineModal.open = false">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 删除草稿：两段确认（第一段点名条目，第二段确认删除） ══ -->
+  <div class="overlay" id="draft-delete-modal" x-show="draftDeleteModal.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="draft-delete-modal-title">
+    <div class="dlg" style="max-width:520px">
+      <h2 class="card-title" id="draft-delete-modal-title">删除草稿</h2>
+      <p class="muted" id="draft-delete-detail">
+        即将删除草稿「<b x-text="(proxies[draftDeleteModal.index] || {}).serviceName || ''"></b>」
+        （<span class="mono" x-text="(proxies[draftDeleteModal.index] || {}).routePath || ''"></span>）。
+      </p>
+      <p class="err" id="draft-delete-stage2" x-show="draftDeleteModal.stage === 2" x-cloak>
+        第二段确认：草稿尚未对外转发，删除后不可恢复；确认删除请点下方按钮。
+      </p>
+      <div class="modal-actions" style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-danger" id="draft-delete-step-btn" type="button" @click="confirmDeleteDraft()"
+                x-text="draftDeleteModal.stage === 1 ? '继续（确认删除草稿）' : '确认删除'"></button>
+        <button class="btn" id="draft-delete-cancel-btn" type="button" @click="draftDeleteModal.open = false">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+<script defer src="admin-gate.js?v=266daaf925e8"></script>
+<script defer src="upstreams.js?v=266daaf925e8"></script>
+<script defer src="../assets/alpine.min.js?v=266daaf925e8"></script>
+</body>
+</html>

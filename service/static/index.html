@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneServe 标签点查演示</title>
+<style>
+  :root { --brand: #1f3a5f; --accent: #2f6fed; --ok: #1a7f4b; --bad: #b3261e; --bg: #f5f6f8; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         margin: 0; background: var(--bg); color: #222; }
+  header { background: var(--brand); color: #fff; padding: 18px 28px; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header p { margin: 4px 0 0; font-size: 12px; opacity: .75; }
+  main { max-width: 780px; margin: 24px auto; padding: 0 16px; }
+  .notice { background: #fff7e6; border: 1px solid #f0d38c; border-radius: 8px;
+            padding: 10px 14px; font-size: 13px; line-height: 1.7; margin-bottom: 18px; }
+  .notice strong { color: var(--bad); }
+  .card { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 18px; }
+  .query { display: flex; gap: 10px; }
+  .query input { flex: 1; font-size: 16px; padding: 10px 12px; border: 1px solid #c8cdd4;
+                 border-radius: 8px; letter-spacing: 1px; }
+  .query button { font-size: 15px; padding: 10px 22px; border: 0; border-radius: 8px;
+                  background: var(--accent); color: #fff; cursor: pointer; }
+  .query button:disabled { opacity: .6; cursor: wait; }
+  .hint { font-size: 12px; color: #666; margin-top: 8px; }
+  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+          gap: 10px; margin: 16px 0; }
+  .meta div { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+  .meta .k { font-size: 12px; color: #666; }
+  .meta .v { font-size: 14px; font-weight: 600; margin-top: 2px; word-break: break-all; }
+  .meta .v.mono { font-family: ui-monospace, Menlo, monospace; font-weight: 400; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eceff3; }
+  th { color: #555; font-weight: 600; background: #fafbfc; }
+  td.mono { font-family: ui-monospace, Menlo, monospace; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px;
+           background: #e8f0fe; color: var(--accent); margin-left: 8px; vertical-align: 1px; }
+  .empty { color: #888; padding: 18px; text-align: center; }
+  .error { color: var(--bad); }
+  .ok { color: var(--ok); }
+  footer { text-align: center; font-size: 12px; color: #999; margin: 26px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>OneServe · 用户标签点查演示</h1>
+  <p>service_id: v1-svc-usr-asset-tag ｜ archetype: kv_lookup ｜ key_type: phone_sm3 ｜ 投影＋脱敏见 auth_matrix.yaml / services.yaml</p>
+</header>
+<main>
+  <div class="notice">
+    <strong>演示通道：真实接入传上游生成的查询键。</strong>
+    本页由服务端把手机号转成查询键（手机号明文仅存在于本次演示请求）；真实接入时，调用方传
+    上游供数键调 <code>POST /v1/tags/query</code>（经网关 key-auth 鉴权），
+    平台全程不接触明文（ADR-0001）。返回字段经租户授权白名单投影，资产类标签已按 band_mask 分档脱敏（A/B/C 档，不输出原值）。
+  </div>
+
+  <div class="card">
+    <div class="query">
+      <input id="phone" placeholder="输入 11 位手机号（演示数据）" maxlength="11" inputmode="numeric">
+      <button id="btn" onclick="doQuery()">查询标签</button>
+    </div>
+    <div class="hint" id="hint">数据为模拟造数（297 列真实表结构 × 假值），仅授权白名单字段可见。</div>
+
+    <div id="result" hidden>
+      <div class="meta">
+        <div><div class="k">查询结果</div><div class="v" id="found"></div></div>
+        <div><div class="k">数据时点 data_as_of</div><div class="v mono" id="asof"></div></div>
+        <div><div class="k">线上版本 live_version</div><div class="v mono" id="ver"></div></div>
+        <div><div class="k">查询键（演示通道生成）</div><div class="v mono" id="keyhash"></div></div>
+      </div>
+      <table>
+        <thead><tr><th style="width:40%">标签字段</th><th>值（脱敏后）</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>该用户无标签（诚实空值：fields = null）</div>
+    </div>
+  </div>
+  <footer>OneServe M0 · task-003 标签服务演示页 ｜ 审计七元组随每次调用落盘</footer>
+</main>
+<script>
+async function doQuery() {
+  const phone = document.getElementById('phone').value.trim();
+  const btn = document.getElementById('btn');
+  const hint = document.getElementById('hint');
+  const result = document.getElementById('result');
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    hint.className = 'hint error'; hint.textContent = '手机号须为 11 位大陆号段（1[3-9] 开头）'; return;
+  }
+  btn.disabled = true; hint.className = 'hint'; hint.textContent = '查询中…'; result.hidden = true;
+  try {
+    const resp = await fetch('/demo/query', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phone})
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      hint.className = 'hint error';
+      hint.textContent = '查询失败（' + resp.status + '）：' + (data.message || data.error || '未知错误');
+      return;
+    }
+    hint.textContent = '查询完成（演示通道，服务端生成查询键）。';
+    document.getElementById('found').textContent = data.found ? 'found = true' : 'found = false';
+    document.getElementById('found').className = 'v ' + (data.found ? 'ok' : 'error');
+    document.getElementById('asof').textContent = data.data_as_of ?? '(null)';
+    document.getElementById('ver').textContent = data.live_version ?? '(null)';
+    document.getElementById('keyhash').textContent = data.key ?? '';
+    const rows = document.getElementById('rows'); rows.innerHTML = '';
+    const fields = data.fields || {};
+    const names = Object.keys(fields).sort();
+    const maskedNote = new Set(['if_acct_fct_24', 'if_bse_fct_04']);  // band_mask 规则字段（配置口径）
+    for (const name of names) {
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.className = 'mono'; td1.textContent = name;
+      const td2 = document.createElement('td'); td2.className = 'mono'; td2.textContent = fields[name];
+      if (maskedNote.has(name)) {
+        const b = document.createElement('span'); b.className = 'badge';
+        b.textContent = 'band_mask 脱敏'; td2.appendChild(b);
+      }
+      tr.append(td1, td2); rows.appendChild(tr);
+    }
+    document.getElementById('empty').hidden = names.length > 0;
+    result.hidden = false;
+  } catch (e) {
+    hint.className = 'hint error'; hint.textContent = '网络错误：' + e;
+  } finally { btn.disabled = false; }
+}
+document.getElementById('phone').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doQuery();
+});
+</script>
+</body>
+</html>

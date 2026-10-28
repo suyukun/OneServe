@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的接入 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<!-- P0-7 我的接入（仅引用既有令牌） -->
+<link rel="stylesheet" href="assets/my.css?v=266daaf925e8">
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="site-gate.js?v=266daaf925e8"></script>
+<script defer src="data-format.js?v=266daaf925e8"></script>
+<script defer src="api.js?v=266daaf925e8"></script>
+<script defer src="assets/app.js?v=266daaf925e8"></script>
+<script defer src="assets/trial.js?v=266daaf925e8"></script>
+<!-- P0-7 我的接入页组件（Alpine；defer 保序在 alpine.min.js 前注册） -->
+<script defer src="assets/my.js?v=266daaf925e8"></script>
+<script defer src="assets/pages.js?v=266daaf925e8"></script>
+<script defer src="assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+<script defer src="assets/alpine.min.js?v=266daaf925e8"></script>
+</head>
+<body class="os-layout">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link is-active" aria-current="page" href="my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="admin/load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="admin/publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="admin/published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="admin/appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link" href="admin/tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="admin/grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="admin/pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="admin/accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="admin/perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="admin/upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="admin/monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="admin/billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 <ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">我的接入</li></ol>（admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="os-crumb" aria-label="面包屑"><ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">我的接入</li></ol></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<!-- ══ 我的接入页（P0-7 · SPEC A7 最小版，D1=b 凭证兼身份）：凭证／配额／日志三块，按凭证查询 ══ -->
+<div class="os-container reveal" x-data="myAccessPage" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">我的接入</div>
+    <h1 class="page-title">凭证 · 配额 · 调用记录</h1>
+  </div>
+
+  <!-- 查询条：无登录（D1=b），凭证即身份——明示「按凭证查询」 -->
+  <section class="card span-24" id="my-caller-bar" aria-label="按凭证查询">
+    <div class="card-body my-caller-row">
+      <div class="my-caller-field">
+        <label for="my-caller-input" class="form-label">
+          你的凭证（AppKey）
+          <span class="my-tip" tabindex="0" role="note"
+                title="调用平台接口时放在 apikey 请求头里的那串钥匙，以 sb_（沙箱凭证，测试用，正式凭证另行审批；默认 7 天有效）或 ak_（正式）开头。平台不保存也无法找回，请自行留存。">？</span>
+        </label>
+        <div class="my-caller-controls">
+          <input class="form-control mono" id="my-caller-input" type="text" autocomplete="off" spellcheck="false"
+                 x-model="callerInput" @keydown.enter="query()"
+                 placeholder="如：sb_0123456789abcdef（签发凭证时显示过的完整串）">
+          <button class="btn btn-primary my-caller-btn" id="my-caller-submit" type="button"
+                  @click="query()" :disabled="callerState === 'loading'"
+                  x-text="callerState === 'loading' ? '查询中…' : '查询'"></button>
+        </div>
+        <div class="field-hint">本页按凭证查询（无需登录）：只显示这把凭证自己的信息，输入别的凭证看不到。</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid-24">
+
+    <!-- 左 2/3：③ 我的日志（近 N 次调用：审计过滤＋traceId 展示/反查＋网关拒记合并） -->
+    <section class="card span-16" id="my-logs" aria-label="我的日志">
+      <div class="card-head">
+        <h2 class="card-title">我的日志</h2>
+        <div class="my-trace-lookup">
+          <label for="my-trace-input" class="field-hint">
+            用追踪号反查
+            <span class="my-tip" tabindex="0" role="note"
+                  title="每次调用的响应头 X-Trace-Id 里都有一个追踪号；报错时把它填在这里，能查到这次调用（包括被网关拦下的）。">？</span>
+          </label>
+          <input class="form-control form-control-sm mono" id="my-trace-input" type="text" autocomplete="off"
+                 spellcheck="false" x-model="traceInput" @keydown.enter="lookupTrace()"
+                 placeholder="粘贴错误响应里的追踪号（X-Trace-Id）">
+          <button class="btn btn-sm btn-outline-secondary" id="my-trace-submit" type="button"
+                  @click="lookupTrace()" :disabled="logsState === 'loading'">反查</button>
+        </div>
+      </div>
+
+      <!-- 反查结果提示（反查模式才出现；普通查询隐藏） -->
+      <div class="my-trace-active" x-show="traceMode" x-cloak>
+        正在按追踪号查：<span class="mono" x-text="logsTraceId"></span>
+        <button class="btn btn-sm btn-link my-trace-clear" type="button" @click="clearTrace()">返回按凭证查看</button>
+      </div>
+
+      <template x-if="logsState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+      <template x-if="logsState === 'error'">
+        <div class="card-body">
+          <div class="error-box"><span>日志暂不可用</span><button class="retry-btn" @click="reloadLogs()">重试</button></div>
+        </div>
+      </template>
+      <template x-if="logsState === 'ok'">
+        <div class="card-body">
+          <table class="my-log-table" id="my-log-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>调用了什么</th>
+                <th>结果</th>
+                <th>耗时</th>
+                <th>追踪号</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(row, i) in logItems" :key="i">
+                <tr>
+                  <td class="my-ts" x-text="fmtTs(row.ts)"></td>
+                  <td>
+                    <span class="mono my-endpoint" x-text="row.endpoint || '—'"></span>
+                    <span class="badge my-badge-gw" x-show="row.source === 'gateway'"
+                          title="这次请求没有通过网关的门口检查（比如凭证填错、已禁用或已过期）。网关侧查不到是谁在调，只能按时间排进来参考；用响应头里的追踪号能精确反查。">网关拒绝</span>
+                  </td>
+                  <td>
+                    <span class="badge" :class="statusClass(row.status)" x-text="'HTTP ' + (row.status ?? '—')"></span>
+                  </td>
+                  <td x-text="row.latencyMs != null ? row.latencyMs + 'ms' : '—'"></td>
+                  <td class="my-trace-cell">
+                    <template x-if="row.traceId">
+                      <span>
+                        <span class="mono my-trace-id" x-text="row.traceId"></span>
+                        <button class="btn btn-sm btn-link my-trace-use" type="button"
+                                title="把这条记录的追踪号填进上方反查框，可精确定位这次调用">用此反查</button>
+                      </span>
+                    </template>
+                    <span x-show="!row.traceId" class="field-hint">未记录</span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <div class="empty-tags" x-show="!logItems.length">还没有查询到调用记录——先到<a href="trial.html">接口调试</a>发起一次调用，记录会显示在这里。</div>
+          <div class="src-note" x-text="logsFootnote()"></div>
+        </div>
+      </template>
+      <template x-if="logsState === 'idle'">
+        <div class="card-body">
+          <div class="empty-tags">在上方输入凭证后，这里会列出这把凭证最近的调用</div>
+          <div class="src-note">每次调用都会记一条台账（含追踪号）；被网关拦下的调用没有凭证身份，按时间并入参考</div>
+        </div>
+      </template>
+    </section>
+
+    <!-- 右 1/3：① 我的凭证 ＋ ② 我的配额 -->
+    <aside class="span-8">
+      <section class="card" id="my-credentials" aria-label="我的凭证">
+        <div class="card-head"><h2 class="card-title">我的凭证</h2></div>
+        <template x-if="credState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+        <template x-if="credState === 'error'">
+          <div class="card-body"><div class="error-box"><span>凭证信息暂不可用</span><button class="retry-btn" @click="reloadCreds()">重试</button></div></div>
+        </template>
+        <template x-if="credState === 'ok'">
+          <div class="card-body">
+            <template x-if="credentials.length">
+              <div>
+                <template x-for="c in credentials" :key="c.appkeyMasked">
+                  <div class="my-cred-item">
+                    <div class="my-cred-key mono" x-text="c.appkeyMasked"></div>
+                    <div class="my-cred-tags">
+                      <span class="badge" :class="c.keyType === 'sandbox' ? 'text-bg-info' : 'text-bg-secondary'"
+                            x-text="c.keyType === 'sandbox' ? '沙箱凭证' : '正式凭证'"></span>
+                      <span class="badge" :class="credStatusClass(c)" x-text="credStatusLabel(c)"></span>
+                      <span class="badge text-bg-warning my-countdown" x-show="c.expiringSoon"
+                            x-text="(c.daysLeft ?? 0) + ' 天后到期'"></span>
+                      <!-- P1-4 轮换重叠期倒计时：新旧 key 并行期间提示旧凭证剩余天数 -->
+                      <span class="badge text-bg-warning my-countdown" x-show="c.rotation && c.rotation.rotated" x-cloak
+                            :title="'轮换发起于 ' + ((c.rotation && c.rotation.rotatedAt) || '—') +
+                                    '，旧凭证重叠期至 ' + ((c.rotation && c.rotation.overlapExpiresAt) || '—') + '（到期自动失效）'"
+                            x-text="rotationLabel(c)"></span>
+                    </div>
+                    <dl class="my-cred-facts">
+                      <div><dt>有效期至</dt><dd x-text="c.expiresAt || '长期'"></dd></div>
+                      <div><dt>绑定应用</dt><dd x-text="c.appName || '—'"></dd></div>
+                      <div><dt>能调的服务</dt>
+                        <dd><template x-for="g in c.grants" :key="g.service"><span class="my-grant-chip" x-text="g.service + '（' + g.fieldsCount + ' 个字段）'"></span></template></dd></div>
+                    </dl>
+                    <div class="field-hint" x-show="c.status === 'expired'">已过有效期，请到 AppKey 发放页重新签发，或<a href="apply.html">去申请接入</a>正式凭证（找平台管理员审批）；调用方式可先到<a href="trial.html">接口调试台</a>查看。</div>
+                    <div class="field-hint" x-show="c.status === 'disabled'">这把凭证已被停用，恢复请联系平台运营。</div>
+                    <div class="field-hint" x-show="c.rotation && c.rotation.expired">这把凭证已被轮换，重叠期已结束并自动失效，请改用轮换后的新凭证。</div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <div class="empty-tags" x-show="!credentials.length">没有查询到这把凭证</div>
+            <div class="src-note" x-show="!credentials.length">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；沙箱凭证在 AppKey 发放页自助签发。还没有自己的凭证？<a href="apply.html">去申请接入</a>，或先到<a href="trial.html">接口调试台</a>体验。</div>
+          </div>
+        </template>
+        <template x-if="credState === 'idle'">
+          <div class="card-body"><div class="empty-tags">输入凭证后显示状态与有效期</div></div>
+        </template>
+      </section>
+
+      <!-- ── 用量统计（权限方案 v1.1 裁决#4：viewer 计量入口补齐·2026-10-16）──
+           数据源 GET /v1/admin/metering/summary（域7 计量查看，ROUTE_MIN_ROLE
+           viewer 地板＝登录即可见——此前唯一入口在 operator+ 的运营台壳内，
+           viewer「有权无门」）。全角色可见，侧栏「用量统计」导航项锚到本块。 -->
+      <section class="card" id="my-metering" aria-label="用量统计（近 7 日计量）">
+        <div class="card-head">
+          <h2 class="card-title">用量统计（近 7 日）</h2>
+          <span class="badge text-bg-success my-quota-badge" x-show="meterState === 'ok'"
+                title="计量真源＝审计台账/统计快照聚合（掩码口径，完整凭证不出端点）。">已接真</span>
+          <span class="badge text-bg-secondary my-quota-badge" x-show="meterState === 'loading'">统计中…</span>
+        </div>
+        <template x-if="meterState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+        <template x-if="meterState === 'error'">
+          <div class="card-body">
+            <div class="error-box"><span>用量统计暂不可用</span><button class="retry-btn" @click="reloadMeter()">重试</button></div>
+          </div>
+        </template>
+        <template x-if="meterState === 'ok' && (!meterRows || !meterRows.length)">
+          <div class="card-body"><div class="empty-tags">近 7 日暂无调用计量</div></div>
+        </template>
+        <template x-if="meterState === 'ok' && meterRows && meterRows.length">
+          <div class="card-body">
+            <div class="src-note" style="margin-bottom:8px;">
+              近 7 日全平台调用 <span class="mono" x-text="meterTotalLabel()"></span> 次
+              （成功 <span class="mono" x-text="meterSuccessLabel()"></span>／失败 <span class="mono" x-text="meterFailLabel()"></span>）；
+              按调用主体聚合，凭证已掩码。生成于 <span class="mono" x-text="meterGeneratedAt"></span>。
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="table" id="my-metering-table" aria-label="近 7 日计量明细">
+                <thead>
+                  <tr><th>调用主体（掩码）</th><th>登记应用</th><th>调用次数</th><th>成功</th><th>失败</th><th>平均耗时</th></tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in meterRows" :key="row.callerMasked">
+                    <tr>
+                      <td class="mono" x-text="row.callerMasked"></td>
+                      <td x-text="row.appName || (row.registered ? '—' : '未登记')"></td>
+                      <td class="mono" x-text="meterNum(row.calls)"></td>
+                      <td class="mono" x-text="meterNum(row.success)"></td>
+                      <td class="mono" x-text="meterNum(row.fail)"></td>
+                      <td class="mono" x-text="row.avgMs != null ? row.avgMs + ' ms' : '—'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <section class="card" id="my-quota" aria-label="我的配额">
+        <div class="card-head">
+          <h2 class="card-title">我的配额</h2>
+          <span class="badge text-bg-success my-quota-badge" x-show="quotaState === 'ok' && quotaFound"
+                title="四个数字都是真值：限额来自授权登记（网关按同一数值强制），已用来自当日审计台账的真实调用条数。">已接真</span>
+          <span class="badge text-bg-secondary my-quota-badge" x-show="quotaState === 'loading'"
+                title="正在按凭证聚合当日用量">统计中…</span>
+        </div>
+
+        <template x-if="quotaState === 'loading'"><div class="card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div></div></template>
+        <template x-if="quotaState === 'error'">
+          <div class="card-body">
+            <div class="error-box"><span>配额暂不可用</span><button class="retry-btn" @click="reloadQuota()">重试</button></div>
+          </div>
+        </template>
+
+        <!-- 未查询／未知凭证：如实空态（不显示 0 已用——查无此凭证 ≠ 今天没调用） -->
+        <template x-if="quotaState === 'idle'">
+          <div class="card-body"><div class="empty-tags">输入凭证后显示这把凭证的当日用量</div></div>
+        </template>
+        <template x-if="quotaState === 'ok' && !quotaFound">
+          <div class="card-body">
+            <div class="empty-tags">没有查询到这把凭证的配额</div>
+            <div class="src-note">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；配额随凭证登记，未登记的凭证没有配额可查。需要配额？<a href="apply.html">去申请接入</a>完成授权登记，或先到<a href="trial.html">接口调试台</a>体验。</div>
+          </div>
+        </template>
+
+        <template x-if="quotaState === 'ok' && quotaFound">
+          <div class="card-body">
+            <div class="my-quota-grid" id="my-quota-grid">
+              <div class="my-quota-cell">
+                <div class="my-quota-val" id="quota-limit" x-text="quotaLimitLabel()"></div>
+                <div class="my-quota-name">日限额
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="这把凭证登记的每天最多调用次数（授权登记配置）。网关按同一数值强制拦截（日配额），超出会收到 429。">？</span></div>
+              </div>
+              <div class="my-quota-cell" :class="quotaExceeded() ? 'is-warn' : ''">
+                <div class="my-quota-val" id="quota-used" x-text="quotaUsedLabel()"></div>
+                <div class="my-quota-name">今日已用
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="今天（东八区 0 点到此刻）这把凭证在审计台账里的真实调用条数：成功与失败都算，被限流拒绝的（429）也算一次。">？</span></div>
+              </div>
+              <div class="my-quota-cell" :class="quotaExceeded() ? 'is-warn' : ''">
+                <div class="my-quota-val" id="quota-remaining" x-text="quotaRemainingLabel()"></div>
+                <div class="my-quota-name">今日剩余
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="限额减去已用；超额时显示 0（不显示负数）。">？</span></div>
+              </div>
+              <div class="my-quota-cell">
+                <div class="my-quota-val my-quota-val-sm" id="quota-reset" x-text="quotaResetLabel()"></div>
+                <div class="my-quota-name">重置时间
+                  <span class="my-tip" tabindex="0" role="note"
+                        title="到这个时刻，今日用量清零重新开始计（东八区次日 0 点）。">？</span></div>
+              </div>
+            </div>
+
+            <div class="my-quota-bar" x-show="quotaRatio() !== null" :class="quotaExceeded() ? 'is-warn' : ''">
+              <div class="my-quota-bar-fill" :style="'width: ' + Math.min(100, quotaRatio() || 0) + '%'"></div>
+            </div>
+            <!-- #58（2026-10-15 水电表）：条形读法明示——蓝条＝本期已用占比，留白＝今日剩余 -->
+            <div class="my-quota-bar-legend" x-show="quotaRatio() !== null">
+              条形＝本期已用占比 <span class="mono" x-text="quotaRatioLabel()"></span>；留白＝今日剩余 <span class="mono" x-text="quotaRemainingLabel()"></span> 次
+            </div>
+
+            <div class="my-quota-warn" id="quota-exceeded-note" x-show="quotaExceeded()">
+              今日用量已超过登记限额（<span x-text="quotaUsed()"></span>/<span x-text="quotaLimit()"></span>）：网关已按此限额强制拦截，超出的调用将收到 429（<span class="mono">X-RateLimit-Reason: global</span>）。如需提额请联系平台运营调整登记配额。
+            </div>
+
+            <!-- 近 7 日用量迷你趋势（审计聚合逐日；无调用的日为 0，连续不跳点） -->
+            <div class="my-quota-trend" id="my-quota-trend" aria-label="近 7 日用量">
+              <div class="my-quota-trend-head">
+                <span class="my-quota-trend-title">近 7 日用量</span>
+                <span class="my-quota-trend-nums">
+                  峰值 <span class="mono" x-text="quotaTrendPeak()"></span> · 合计 <span class="mono" x-text="quotaTrendSum()"></span>
+                </span>
+              </div>
+              <div class="my-quota-sparks">
+                <template x-for="d in quotaTrend" :key="d.date">
+                  <div class="my-quota-spark" :title="d.date + '：' + d.used + ' 次'">
+                    <div class="my-quota-spark-bar" :style="sparkHeight(d.used)"></div>
+                    <div class="my-quota-spark-num" x-text="d.used"></div>
+                    <div class="my-quota-spark-day" x-text="sparkDay(d.date)"></div>
+                  </div>
+                </template>
+              </div>
+              <div class="src-note" x-show="!quotaTrend.length">暂无逐日用量数据——凭证开始调用产生计量后，这里会显示近 7 日趋势。</div>
+            </div>
+
+            <div class="src-note" id="quota-caliber-note" x-text="quotaCaliberNote()"></div>
+          </div>
+        </template>
+      </section>
+    </aside>
+
+  </div>
+
+</div>
+
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,257 @@
+# ============================================================
+# OneServe AppKey 发放登记（service/registry/appkeys.yaml）——中性演示样例
+#
+# 这是什么：控制台签发凭证注册表的可入库演示样例。正式文件
+#   service/registry/appkeys.yaml 承载运行期签发数据，按安全纪律
+#   不入库（见 .gitignore），fresh clone 后缺该文件会让部分测试
+#   （meta 库 e2e 夹具等）环境性报错——因此提供本 example。
+#
+# 如何启用（fresh clone 后执行一次）：
+#   cp service/registry/appkeys.yaml.example service/registry/appkeys.yaml
+#   （跑 pytest 全量前也需要：tests/test_admin_api_db_e2e.py、
+#    tests/test_meta_writer_db.py、tests/test_tenants_api.py、
+#    tests/test_meta_migrate.py 的夹具会读取该文件。）
+#
+# 演示口径：
+#   - 前三把＝service/auth_matrix.yaml 三个演示租户（demo_bank／
+#     partner-demo／demo-1020）的登记凭证，grants 与矩阵逐字一致
+#     （业务鉴权行为等价；meta 装载时与矩阵行做两源合并）；
+#   - 第四把＝「控制台签发」演示凭证（注册表自身口径的展示，
+#     ak_0000000000000001 为演示占位，不是生产密钥）。
+#
+# 安全纪律（与 service/app/appkeys.py 头注一致）：
+#   secret 明文永不落盘——注册表只存 sha256:<64hex> 摘要。
+#   本样例所有摘要同源，对应演示明文
+#   sk_demo00000000000000000000000000000000000001，
+#   仅供本地演示/测试，不得用于任何生产环境。
+# ============================================================
+meta:
+  updated: '2026-10-28T00:00:00+00:00'
+  updated_by: bootstrap-example
+keys:
+- appkey: uat-7f3a9c21e5b84d06
+  secret_hash: sha256:a4ed22f346994bd56706a26b873374460b953ae6fca05a54b238b829528fc8fe
+  tenant: demo_bank
+  caller_name: demo-bank-console
+  app_name: demo_bank 演示凭证
+  key_type: formal
+  oa_ticket: OA-20260929-001
+  tag_sets: []
+  quota_qps: 50
+  quota_daily: 10000
+  status: active
+  expires_at: permanent
+  issued_at: '2026-10-28T00:00:00+00:00'
+  grants:
+  - service: v1-svc-usr-basic-info
+    fields:
+    - gender_cd
+    - age_band
+    - city_code
+    - open_date
+    - cust_level
+    - risk_level
+    - edu_level
+    - occupation_cd
+    - marital_sts
+    - channel_cd
+    - vip_flag
+    - blacklist_flag
+    endpoint: /v1/svc/usr-basic-info
+  - service: v1-svc-usr-asset-tag
+    fields:
+    - active_m3_flag
+    - aum_band
+    - churn_risk_band
+    - credit_limit_band
+    - cross_sell_cnt_band
+    - dep_bal_band
+    - dormant_m12_flag
+    - fund_hold_flag
+    - ins_hold_flag
+    - loan_flag
+    - login_cnt_band
+    - ltv_band
+    - mk_response_band
+    - mortgage_flag
+    - overdue_cnt_band
+    - pay_cnt_band
+    endpoint: /v1/svc/usr-asset-tag
+  - service: v1-svc-usr-asset-tag1
+    fields:
+    - active_m3_flag
+    - aum_band
+    - churn_risk_band
+    - credit_limit_band
+    - cross_sell_cnt_band
+    - dep_bal_band
+    - dormant_m12_flag
+    - fund_hold_flag
+    - ins_hold_flag
+    - loan_flag
+    - login_cnt_band
+    - ltv_band
+    - mk_response_band
+    - mortgage_flag
+    - overdue_cnt_band
+    - pay_cnt_band
+    - salary_in_flag
+    - wealth_hold_flag
+    endpoint: /v1/svc/usr-asset-tag1
+  - service: proxy-local-usr-asset-tag
+    endpoint: /proxy/local/usr-asset-tag
+    fields:
+    - aum_band
+    - active_m3_flag
+  - service: v1-svc-card-acct-summary
+    fields:
+    - acct_sts
+    - annual_fee_waived_flag
+    - bal_band
+    - card_age_band
+    - card_sts
+    - cash_adv_flag
+    - install_cnt_flag
+    - last_txn_days
+    - open_days
+    - overseas_txn_flag
+    - points_band
+    - qpay_flag
+    - txn_amt_m1_band
+    - txn_cnt_m1_band
+    endpoint: /v1/svc/card-acct-summary
+  - service: v1-svc-usr-asset-tag1014
+    endpoint: /v1/svc/usr-asset-tag1014
+    fields:
+    - active_m3_flag
+    - aum_band
+    - churn_risk_band
+    - credit_limit_band
+    - cross_sell_cnt_band
+    - dep_bal_band
+    - dormant_m12_flag
+    - fund_hold_flag
+    - ins_hold_flag
+    - loan_flag
+    - login_cnt_band
+    - ltv_band
+    - mk_response_band
+    - mortgage_flag
+    - overdue_cnt_band
+    - pay_cnt_band
+    - salary_in_flag
+    - wealth_hold_flag
+- appkey: uat-c49d18ab72e03f55
+  secret_hash: sha256:a4ed22f346994bd56706a26b873374460b953ae6fca05a54b238b829528fc8fe
+  tenant: partner-demo
+  caller_name: partner-demo-console
+  app_name: partner-demo 演示凭证
+  key_type: formal
+  oa_ticket: OA-20260929-002
+  tag_sets: []
+  quota_qps: 50
+  quota_daily: 10000
+  status: active
+  expires_at: permanent
+  issued_at: '2026-10-28T00:00:00+00:00'
+  grants:
+  - service: v1-svc-usr-basic-info
+    fields:
+    - gender_cd
+    - age_band
+    - city_code
+    - open_date
+    - cust_level
+    - risk_level
+    - edu_level
+    - occupation_cd
+    - marital_sts
+    - channel_cd
+    - vip_flag
+    - blacklist_flag
+    endpoint: /v1/svc/usr-basic-info
+- appkey: uat-58b0d2e7a9c14613
+  secret_hash: sha256:a4ed22f346994bd56706a26b873374460b953ae6fca05a54b238b829528fc8fe
+  tenant: demo-1020
+  caller_name: demo-1020-trial
+  app_name: demo-1020 沙箱演示凭证
+  key_type: sandbox
+  oa_ticket: OA-DEMO-1020
+  tag_sets: []
+  quota_qps: 50
+  quota_daily: 10000
+  status: active
+  expires_at: permanent
+  issued_at: '2026-10-28T00:00:00+00:00'
+  grants:
+  - service: v1-svc-usr-asset-tag1020
+    endpoint: /v1/svc/usr-asset-tag1020
+    fields:
+    - active_m3_flag
+    - aum_band
+    - churn_risk_band
+    - credit_limit_band
+    - cross_sell_cnt_band
+    - dep_bal_band
+    - dormant_m12_flag
+    - fund_hold_flag
+    - ins_hold_flag
+    - loan_flag
+    - login_cnt_band
+    - ltv_band
+    - mk_response_band
+    - mortgage_flag
+    - overdue_cnt_band
+    - pay_cnt_band
+    - salary_in_flag
+    - wealth_hold_flag
+  - service: proxy-ext-asset-tag-1020
+    endpoint: /proxy/ext/asset-tag-1020
+    fields:
+    - key
+    - active_m3_flag
+    - aum_band
+    - churn_risk_band
+    - credit_limit_band
+    - cross_sell_cnt_band
+    - dep_bal_band
+    - dormant_m12_flag
+    - fund_hold_flag
+    - ins_hold_flag
+    - loan_flag
+    - login_cnt_band
+    - ltv_band
+    - mk_response_band
+    - mortgage_flag
+    - overdue_cnt_band
+    - pay_cnt_band
+    - salary_in_flag
+- appkey: ak_0000000000000001
+  secret_hash: sha256:a4ed22f346994bd56706a26b873374460b953ae6fca05a54b238b829528fc8fe
+  tenant: partner-demo
+  caller_name: partner-demo-console
+  app_name: partner-demo 控制台演示凭证
+  key_type: formal
+  oa_ticket: OA-20260929-002
+  tag_sets: []
+  quota_qps: 50
+  quota_daily: 10000
+  status: active
+  expires_at: permanent
+  issued_at: '2026-10-28T00:00:00+00:00'
+  grants:
+  - service: v1-svc-usr-basic-info
+    fields:
+    - gender_cd
+    - age_band
+    - city_code
+    - open_date
+    - cust_level
+    - risk_level
+    - edu_level
+    - occupation_cd
+    - marital_sts
+    - channel_cd
+    - vip_flag
+    - blacklist_flag
+    endpoint: /v1/svc/usr-basic-info

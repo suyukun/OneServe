@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="dark"><!-- P-1R：随全站切深色（仅令牌层生效，断言逻辑不变） -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneServe 门户 · P-2 自测断言页（SM3 口径＋校验）</title>
+<!-- P-2 自测：sm-crypto（assets/sm3.min.js）国标向量断言＋规范化口径移植等价性＋手机号校验；无外部引用 -->
+<link rel="stylesheet" href="assets/tokens.css">
+<style>
+  body { font-family: var(--font-sans); background: var(--bg-page); color: var(--text-body); padding: 24px; font-size: 13px; }
+  h1 { font-size: 16px; color: var(--text-strong); margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; max-width: 920px; background: var(--bg-card); }
+  th, td { border: 1px solid var(--border-strong); padding: 8px; text-align: left; font-size: 12px; }
+  th { background: var(--bg-subtle); color: var(--text-strong); }
+  td.mono { font-family: var(--font-mono); word-break: break-all; }
+  .pass { color: var(--status-ok); font-weight: 600; }
+  .fail { color: var(--status-error); font-weight: 600; }
+  #summary { margin: 16px 0; font-size: 14px; }
+  .group { margin: 16px 0 8px; font-weight: 600; color: var(--text-strong); }
+</style>
+</head>
+<body>
+<h1>P-2 自测断言（SM3 实现＋官方口径移植＋表单校验）</h1>
+<div id="summary">运行中…</div>
+<div id="results"></div>
+<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
+     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
+<script src="site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<script src="assets/sm3.min.js"></script>
+<script src="assets/trial.js"></script>
+<script>
+(function () {
+  var T = window.TrialSM3;                       // trial.js 导出（Node 亦可 require 同源断言）
+  var PHONE_RE = /^1[3-9]\d{9}$/;               // 与 service/app/main.py PHONE_RE 同口径
+  var CASES = [
+    // ── 组1：国标向量（GM/T 0004-2012 附录 A） ──
+    ['国标向量', 'sm3("abc")＝国标值', function () { return T.sm3Hex('abc'); },
+     '66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0'],
+    ['国标向量', '常量与向量一致（自检锚点）', function () { return T.SM3_ABC_VECTOR; },
+     '66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0'],
+    ['国标向量', '中文 UTF-8 交叉向量（与 testkit/sm3pure.py 对齐）', function () { return T.sm3Hex(T.SM3_UTF8_VECTOR.input); },
+     T.SM3_UTF8_VECTOR.expect],
+    // ── 组2：规范化口径（access/sm3_ref.py 四条规则 JS 移植等价性） ──
+    ['口径移植', '+86 138-0013-8000 ≡ 13800138000', function () { return T.phoneSm3('+86 138-0013-8000'); },
+     T.phoneSm3('13800138000')],
+    ['口径移植', '全角空格/连字符样式 ≡ 紧凑样式', function () { return T.phoneSm3('138\u30000013\uff0d8000'); },
+     T.phoneSm3('13800138000')],
+    ['口径移植', '裸 86 前缀不去除（口径红线）', function () { return T.phoneSm3('8613800138000') === T.phoneSm3('13800138000') ? '等值(错)' : '不等(对)'; },
+     '不等(对)'],
+    ['口径移植', 'normalize(" +8613800138000 ")＝去前缀去空格', function () { return T.normalizePhone(' +8613800138000 '); },
+     '13800138000'],
+    ['口径移植', 'normalize 大写兜底小写', function () { return T.normalizePhone('A13F'); },
+     'a13f'],
+    // ── 组3：手机号校验（11 位 · 1[3-9] 开头，与后端 PHONE_RE 同口径） ──
+    ['校验', '13800138000 → 合法', function () { return PHONE_RE.test('13800138000'); }, 'true'],
+    ['校验', '10999999999 → 非法（10 开头）', function () { return PHONE_RE.test('10999999999'); }, 'false'],
+    ['校验', '1380013800（10 位）→ 非法', function () { return PHONE_RE.test('1380013800'); }, 'false'],
+    ['校验', '138001380001（12 位）→ 非法', function () { return PHONE_RE.test('138001380001'); }, 'false'],
+    ['校验', '规范化后再校验：带样式输入可过', function () { return PHONE_RE.test(T.normalizePhone('+86 138-0013-8000')); }, 'true'],
+    // ── 组4：trial.js selfTest 聚合（组件加载即跑的同款断言） ──
+    ['聚合自检', 'selfTest() 返回空清单＝全过', function () { return T.selfTest().join(',') || '(空)'; }, '(空)']
+  ];
+  var pass = 0, html = '', group = '';
+  // #36 XSS 全扫（2026-10-15）：actual＝断言函数返回值（可能含服务端回显/异常 message），
+  // 插值进 innerHTML 即注入面——escapeHtml 基线同款。
+  var _esc = function (s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  };
+  CASES.forEach(function (c) {
+    var actual, ok = false, err = '';
+    try { actual = String(c[2]()); ok = actual === c[3]; }
+    catch (e) { actual = 'EXCEPTION: ' + e.message; }
+    if (ok) pass++;
+    if (c[0] !== group) { group = c[0]; html += '<div class="group">' + _esc(group) + '</div>'; }
+    html += '<tr><td>' + _esc(c[1]) + '</td><td class="mono">' + _esc(actual) + '</td><td class="mono">' + _esc(c[3]) +
+            '</td><td class="' + (ok ? 'pass">PASS' : 'fail">FAIL') + '</td></tr>';
+  });
+  document.getElementById('results').innerHTML =
+    '<table><tr><th>断言</th><th>实际</th><th>期望</th><th>结果</th></tr>' + html + '</table>';
+  var all = pass === CASES.length;
+  document.getElementById('summary').innerHTML =
+    '<span class="' + (all ? 'pass' : 'fail') + '">' + pass + ' / ' + CASES.length +
+    (all ? ' 全过 ✓' : ' 存在失败 ✗') + '</span>' +
+    '　依赖：assets/sm3.min.js（sm-crypto@0.5.7 官方 dist/sm3.js，SHA256 见 sm3.min.js.sha256）';
+  document.title = all ? 'P-2 自测：全过' : 'P-2 自测：失败';
+})();
+</script>
+</body>
+</html>

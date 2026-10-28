@@ -1,0 +1,183 @@
+/* ============================================================
+ * OneServe 门户 · P-3 运行视图驾驶舱（assets/ops.css，新增文件）
+ * 纪律：仅引用 tokens.css 既有令牌（不直写 HEX）；间距只用 8/16/24；
+ *      无常驻循环动画、无 count-up（图表已 animation:false）；
+ *      KPI 辉光=单层 text-shadow（v1.1 允许的上限）。
+ * ============================================================ */
+
+.ops-cockpit {
+  --ops-glow: rgba(123, 147, 236, 0.22);   /* 深底 --chart-1 提亮值 #7b93ec 的单层辉光 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--space-3) var(--container-pad);
+  min-height: calc(100vh - var(--topbar-height) - 56px);
+}
+
+/* ── 顶栏：运行视图大字＋环境标识＋时钟＋动作 ── */
+.ops-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 56px;
+}
+.ops-title { display: flex; align-items: baseline; gap: var(--space-2); }
+.ops-title-big {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.ops-title-sub { font-size: var(--fs-small); color: var(--text-muted); }
+/* 环境标识移入全站环境条（portal.css .os-envbar，P0-1）；本页原 .ops-env-chip 删除不重复 */
+.ops-top-spacer { flex: 1; }
+/* P0-1 小样本「样本量不足」在 KPI 位的放大版（与首页 .sample-note 同语义同色系） */
+.ops-sample-lg {
+  display: inline-block;
+  margin: var(--space-1) 0 var(--space-2);
+  padding: 3px 12px;
+  font-size: var(--fs-body);
+  line-height: 22px;
+  border-radius: 999px;
+}
+.ops-clock {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.ops-updated { font-size: var(--fs-tiny); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── KPI 大数字（4 卡） ── */
+.ops-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--grid-gutter);
+}
+.ops-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-2) var(--space-3);
+  min-height: 132px;
+}
+.ops-kpi-label { font-size: var(--fs-small); color: var(--text-muted); }
+.ops-kpi-value {
+  font-size: calc(var(--fs-kpi) + 10px);
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-shadow: 0 0 16px var(--ops-glow);   /* KPI 单层辉光（v1.1 上限 1 层） */
+}
+.ops-kpi-value .unit { font-size: var(--fs-title); font-weight: 600; color: var(--text-muted); margin-left: 4px; }
+.ops-kpi-note { font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.6; }
+.ops-src {
+  margin-top: auto;
+  font-size: var(--fs-tiny);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+/* ── 中部两图 ── */
+.ops-charts {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--grid-gutter);
+}
+.ops-chart-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-2) var(--space-3);
+  min-height: 404px;
+}
+.ops-chart-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.ops-chart-title { font-size: var(--fs-title); font-weight: 600; color: var(--text-strong); }
+.ops-chart-sub { font-size: var(--fs-small); color: var(--text-muted); }
+.ops-chart-head .spacer { flex: 1; }
+.ops-chart-body { position: relative; height: 328px; }
+.ops-chart-body .chart {
+  position: absolute;
+  inset: 0;
+}
+.ops-chart-cover {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-card);
+  z-index: 1;
+}
+
+/* ── 底部状态带（网关/服务/Redis/审计：灯旁必配文字＋来源） ── */
+.ops-statusband {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--grid-gutter);
+}
+.ops-comp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-2) var(--space-3);
+}
+.ops-comp-head { display: flex; align-items: center; gap: var(--space-1); }
+.ops-comp-light {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex: none;
+  box-shadow: 0 0 0 3px var(--bg-card), 0 0 0 4px var(--border-strong);
+}
+.ops-comp-light.is-ok { background: var(--status-ok); }
+.ops-comp-light.is-warn { background: var(--status-warn); }
+.ops-comp-light.is-error { background: var(--status-error); }
+.ops-comp-light.is-off { background: var(--text-faint); }
+/* P1-6：未探到＝灰灯（不是绿）；页面文案「未知」，不回退「正常」 */
+.ops-comp-light.is-unknown { background: var(--text-faint); }
+.ops-comp-name { font-size: var(--fs-body); font-weight: 600; color: var(--text-strong); }
+.ops-comp-tech { font-size: var(--fs-tiny); color: var(--text-muted); margin-left: auto; }
+.ops-comp-detail { font-size: var(--fs-small); color: var(--text-body); font-variant-numeric: tabular-nums; }
+/* 2026-10-15 修：mono 数据类（probe URL/path）横滚不折行 */
+.ops-comp-detail .mono { white-space: nowrap; overflow-x: auto; display: inline-block; max-width: 100%; vertical-align: bottom; }
+/* P1-6：探活时刻行（真状态）与实测档案副注（非实时）视觉分层，不混排 */
+.ops-comp-live { font-size: var(--fs-tiny); color: var(--text-muted); }
+.ops-archive-src { opacity: .72; font-style: italic; }
+
+/* ── 响应式（大屏投影优先；1280 保底沿用全站断点） ── */
+@media (min-width: 1920px) {
+  .ops-kpi-value { font-size: calc(var(--fs-kpi) + 16px); }
+  .ops-chart-body { height: 360px; }
+}
+@media (max-width: 1024px) {
+  .ops-kpi-bar { grid-template-columns: repeat(2, 1fr); }
+  .ops-charts { grid-template-columns: 1fr; }
+  .ops-statusband { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  .ops-kpi-bar, .ops-statusband { grid-template-columns: 1fr; }
+  .ops-top { flex-wrap: wrap; }
+  .ops-clock { font-size: 16px; }
+}

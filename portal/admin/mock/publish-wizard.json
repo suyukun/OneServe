@@ -1,0 +1,169 @@
+{
+  "note": "卡3 五步发布向导挡板（m25_selftest_browser.mjs 以同源 API 伺服；页面零 mock 逻辑）。表源＝assets（已装载资产），字段源＝schema（表级元数据），与卡2 冻结契约同形。",
+  "assets": {
+    "ok": true,
+    "tables": [
+      {
+        "table": "usr_basic_info",
+        "domain": "usr_basic_info",
+        "tableCnName": "用户基本信息",
+        "tableDesc": "客户人口属性与开户信息（12 列）",
+        "versions": [
+          {
+            "version": "20260929",
+            "rows": 10000,
+            "tagCols": 12,
+            "dataAsOf": "2026-09-29",
+            "loadedAt": "2026-09-29T10:00:00+00:00",
+            "reconPass": true,
+            "schemaFieldCount": 12,
+            "live": false
+          },
+          {
+            "version": "20260930",
+            "rows": 10000,
+            "tagCols": 12,
+            "dataAsOf": "2026-09-30",
+            "loadedAt": "2026-09-30T10:00:00+00:00",
+            "reconPass": true,
+            "schemaFieldCount": 12,
+            "live": true
+          }
+        ]
+      }
+    ]
+  },
+  "schema": {
+    "ok": true,
+    "table": "usr_basic_info",
+    "version": "20260930",
+    "fieldCount": 12,
+    "source": "hbase+dict",
+    "generatedAt": "2026-09-30T10:00:00+00:00",
+    "fields": [
+      {
+        "name": "gender_cd",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "性别代码",
+        "desc": ""
+      },
+      {
+        "name": "age_band",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "年龄段",
+        "desc": ""
+      },
+      {
+        "name": "city_code",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "城市代码",
+        "desc": ""
+      },
+      {
+        "name": "open_date",
+        "cf": "cf",
+        "type": "timestamp",
+        "cnName": "开户日期",
+        "desc": ""
+      },
+      {
+        "name": "cust_level",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "客户等级",
+        "desc": ""
+      },
+      {
+        "name": "risk_level",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "风险等级",
+        "desc": ""
+      },
+      {
+        "name": "edu_level",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "教育程度",
+        "desc": ""
+      },
+      {
+        "name": "occupation_cd",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "职业代码",
+        "desc": ""
+      },
+      {
+        "name": "marital_sts",
+        "cf": "cf",
+        "type": "character varying(8)",
+        "cnName": "婚姻状况",
+        "desc": ""
+      },
+      {
+        "name": "channel_cd",
+        "cf": "cf",
+        "type": "character varying(16)",
+        "cnName": "开户渠道",
+        "desc": ""
+      },
+      {
+        "name": "vip_flag",
+        "cf": "cf",
+        "type": "tinyint",
+        "cnName": "VIP 标志",
+        "desc": ""
+      },
+      {
+        "name": "blacklist_flag",
+        "cf": "cf",
+        "type": "tinyint",
+        "cnName": "黑名单标志",
+        "desc": ""
+      }
+    ]
+  },
+  "console": {
+    "services": [
+      {
+        "id": "v1-svc-usr-basic-info",
+        "serviceName": "用户基本信息查询",
+        "routePath": "/v1/svc/usr-basic-info",
+        "status": "published",
+        "version": "V1",
+        "loadSource": {
+          "table": "usr_basic_info",
+          "cf": "cf",
+          "keyType": "phone_sm3",
+          "version": "20260930"
+        },
+        "fields": [
+          "gender_cd",
+          "age_band",
+          "city_code",
+          "open_date",
+          "cust_level",
+          "risk_level",
+          "edu_level",
+          "occupation_cd",
+          "marital_sts",
+          "channel_cd",
+          "vip_flag",
+          "blacklist_flag"
+        ]
+      }
+    ]
+  },
+  "syncStatus": {
+    "ok": true,
+    "liveVersion": "20260930",
+    "versionMeta": {
+      "rows": 10000
+    },
+    "recentSwitches": []
+  }
+}

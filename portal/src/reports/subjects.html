@@ -1,0 +1,161 @@
+<!-- ══ 主体用量（1b-9 报表专区一期 · 设计稿 §3.2）：逐凭证行＋服务明细展开（掩码口径） ══ -->
+<div class="os-container reveal" x-data="reportsSubjects" x-cloak>
+
+  <div class="page-header d-print-none os-page-header">
+    <div class="page-pretitle">报表中心</div>
+    <h1 class="page-title">主体用量</h1>
+  </div>
+
+  <!-- 三态：加载（本地）/空/降级（端点随行） -->
+  <div class="rpt-state-banner" x-show="status === 'loading'" x-cloak>
+    <span class="os-spinner" aria-hidden="true"></span>聚合中…
+  </div>
+  <div class="rpt-state-banner is-degraded" x-show="status === 'degraded'" x-cloak x-text="message"></div>
+
+  <!-- 工具条：时间窗／租户／登记状态／搜索（q 前缀，出口仍掩码） -->
+  <section class="card" id="usage-subjects-toolbar" aria-label="主体用量筛选">
+    <div class="card-body rpt-toolbar">
+      <div class="rpt-window-group" role="group" aria-label="时间窗">
+        <button type="button" class="btn btn-sm" :class="days === 1 ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="setDays(1)">今日</button>
+        <button type="button" class="btn btn-sm" :class="days === 7 ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="setDays(7)">近 7 天</button>
+      </div>
+      <div>
+        <label for="rpt-subjects-tenant" class="form-label">所属租户</label>
+        <select id="rpt-subjects-tenant" class="form-select form-select-sm" x-model="tenant" @change="query()">
+          <option value="">全部</option>
+          <template x-for="t in tenants" :key="t"><option :value="t" x-text="t"></option></template>
+        </select>
+      </div>
+      <div>
+        <label for="rpt-subjects-reg" class="form-label">登记状态</label>
+        <select id="rpt-subjects-reg" class="form-select form-select-sm" x-model="registered" @change="query()">
+          <option value="">全部</option>
+          <option value="true">已登记</option>
+          <option value="false">未登记</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:180px">
+        <label for="rpt-subjects-q" class="form-label">搜索（登记名或凭证编号前缀）</label>
+        <input id="rpt-subjects-q" class="form-control form-control-sm mono" type="text"
+               autocomplete="off" spellcheck="false" x-model="q"
+               @keydown.enter="query()" placeholder="如 sb_a1b2 或登记名前缀">
+      </div>
+      <div>
+        <label for="rpt-subjects-sort" class="form-label">排序</label>
+        <select id="rpt-subjects-sort" class="form-select form-select-sm" x-model="sort" @change="query()">
+          <option value="calls">按调用量</option>
+          <option value="success_rate">按成功率</option>
+          <option value="avg_ms">按平均耗时</option>
+          <option value="name">按登记名</option>
+        </select>
+      </div>
+      <div>
+        <label for="rpt-subjects-size" class="form-label">每页</label>
+        <select id="rpt-subjects-size" class="form-select form-select-sm" x-model.number="pageSize" @change="query()">
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div style="align-self:flex-end">
+        <button type="button" class="btn btn-sm btn-primary" @click="query()">查询</button>
+      </div>
+    </div>
+    <div class="card-body" x-show="serviceDrill" x-cloak>
+      <span class="badge text-bg-secondary">已按服务筛选：<span class="mono" x-text="serviceDrill"></span></span>
+      <a class="btn btn-sm btn-outline-secondary" :href="'subjects.html?days=' + days">清除服务筛选</a>
+    </div>
+  </section>
+
+  <!-- 空态（未产生调用是真实状态） -->
+  <div class="rpt-state-banner" x-show="status === 'empty'" x-cloak>窗口内暂无调用记录（未产生调用是真实状态，非缺数）。</div>
+
+  <!-- 主表 -->
+  <section class="card" id="usage-subjects-table" style="margin-top:12px">
+    <div class="table-scroll">
+      <table aria-label="主体用量明细表">
+        <thead><tr>
+          <th>调用方</th>
+          <th>所属租户</th>
+          <th>登记状态</th>
+          <th class="num">调用量</th>
+          <th class="num">成功量</th>
+          <th class="num">失败量</th>
+          <th class="num">成功率</th>
+          <th class="num">平均耗时</th>
+          <th>日趋势（次/日）</th>
+          <th>服务明细</th>
+        </tr></thead>
+        <tbody>
+          <template x-for="row in items" :key="row.callerMasked">
+            <tr>
+              <td>
+                <div x-text="row.appName || row.callerMasked"></div>
+                <div class="muted mono" style="font-size:11px" x-text="row.callerMasked"></div>
+              </td>
+              <td x-text="row.tenant || '—'"></td>
+              <td><span class="rpt-badge" :class="row.registered ? 'is-on' : 'is-off'"
+                        x-text="row.registered ? '已登记' : '未登记'"></span></td>
+              <td class="num" x-text="RPT.fmtNum(row.calls)"></td>
+              <td class="num" x-text="RPT.fmtNum(row.success)"></td>
+              <td class="num" x-text="RPT.fmtNum(row.fail)"></td>
+              <td class="num" x-text="RPT.pctText(row.successRate)"></td>
+              <td class="num" x-text="RPT.msText(row.avgMs)"></td>
+              <td>
+                <div class="rpt-bars">
+                  <template x-for="t in row.trend" :key="t.date">
+                    <div class="rpt-bar" :class="t.calls ? '' : 'is-zero'"
+                         :style="'height:' + barH(row, t) + 'px'"
+                         :title="t.date + ' · ' + RPT.fmtNum(t.calls) + ' 次（成功量 ' + t.success + ' / 失败量 ' + t.fail + '）'"></div>
+                  </template>
+                </div>
+              </td>
+              <td>
+                <button class="btn btn-sm" type="button" @click="toggle(row)"
+                        x-text="expanded[row.callerMasked] ? '收起' : '展开（' + row.services.length + '）'"></button>
+                <div x-show="expanded[row.callerMasked]" x-cloak style="margin-top:6px">
+                  <template x-for="s in row.services" :key="s.endpoint">
+                    <div class="rpt-svc-row">
+                      <span class="mono" x-text="s.endpoint"></span>
+                      <span x-text="RPT.fmtNum(s.calls) + ' 次 · 成功量 ' + RPT.fmtNum(s.success) +
+                                 ' / 失败量 ' + RPT.fmtNum(s.fail) + ' · 均 ' + RPT.msText(s.avgMs)"></span>
+                    </div>
+                  </template>
+                  <div class="rpt-svc-row" x-show="serviceDim === false">
+                    服务维度未就绪（待服务维度补丁）——此处暂显示「—」
+                  </div>
+                  <a class="btn btn-sm btn-outline-secondary" :href="'services.html?subject=' + encodeURIComponent(row.callerMasked) + '&days=' + days">看该调用方的服务榜 → 服务用量</a>
+                </div>
+              </td>
+            </tr>
+          </template>
+          <tr x-show="status === 'loading'" x-cloak>
+            <td colspan="10" class="muted"><span class="os-spinner" aria-hidden="true"></span>聚合中…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- 分页（服务端分页；越界页由端点幂等处理） -->
+    <div class="rpt-pager">
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="go(page - 1)"
+              :disabled="page <= 1">上一页</button>
+      <span>第 <span x-text="page"></span> / <span x-text="pageCount()"></span> 页 · 共 <span x-text="RPT.fmtNum(total)"></span> 行</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="go(page + 1)"
+              :disabled="page >= pageCount()">下一页</button>
+    </div>
+    <details class="footnote">
+      <summary>口径与数据时点</summary>
+      <ul>
+        <li>调用方主列＝登记名优先，副行为凭证编号（掩码显示，完整凭证不出页面）。</li>
+        <li>平均耗时＝窗口内算术平均；无耗时样本显示「—」。</li>
+        <li>数据时点：今日视图随消费者节拍，秒至分钟级；快照为热展示账面，以重放产物为准。</li>
+        <li>时间窗按北京时间（每日 0 点切换）。</li>
+        <li x-show="caliber" x-text="caliber && caliber.usageSource"></li>
+        <li x-show="caliber" x-text="caliber && caliber.notIncluded"></li>
+      </ul>
+    </details>
+  </section>
+</div>
+<script src="assets/reports.js"></script>

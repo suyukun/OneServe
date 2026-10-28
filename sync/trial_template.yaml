@@ -1,0 +1,27 @@
+# ============================================================
+# OneServe 平台试用模板种子（卡-1b7 步4 · 卡待核#3 已裁默认处置）
+# 来源：现状沙箱演示继承字段集（demo_bank × v1-svc-usr-asset-tag 已批字段）平移；
+# 内容维护随管理面演进（1b-8 授权页 / 步 6 写侧切换后归 meta 库）。
+# 消费方：沙箱签发默认试用口径（appkeys._trial_grants 的库后继来源）；本文件为平移种子，
+# 运行态读取切换前 appkeys.py 仍读矩阵，行为不变。
+# ============================================================
+trial_template:
+- service: v1-svc-usr-asset-tag
+  endpoint: /v1/svc/usr-asset-tag
+  fields:
+  - active_m3_flag
+  - aum_band
+  - churn_risk_band
+  - credit_limit_band
+  - cross_sell_cnt_band
+  - dep_bal_band
+  - dormant_m12_flag
+  - fund_hold_flag
+  - ins_hold_flag
+  - loan_flag
+  - login_cnt_band
+  - ltv_band
+  - mk_response_band
+  - mortgage_flag
+  - overdue_cnt_band
+  - pay_cnt_band

@@ -1,0 +1,57 @@
+/* ============================================================
+ * OneServe 门户 · 申请接入页样式（P0-10 · assets/apply.css，新增文件）
+ * 仅引用既有令牌（tokens.css）；只定义本页私有结构类，不动全局。
+ * ============================================================ */
+
+/* 引导句 */
+.apply-lead { margin: 0 0 8px; font-size: var(--fs-body); color: var(--text-body); line-height: 1.7; }
+.apply-lead:last-child { margin-bottom: 0; }
+
+/* OA 入口行动条 */
+.apply-contact { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* 四步时间线（评审中→审批中→待发放凭证→已生效） */
+.apply-timeline { list-style: none; margin: 0 0 12px; padding: 0; }
+.apply-step { position: relative; display: flex; gap: var(--space-2); padding: 0 0 var(--space-3) var(--space-2);
+  border-left: 2px solid var(--border-strong); }
+.apply-step:last-child { border-left-color: transparent; padding-bottom: 0; }
+.apply-step-dot { position: absolute; left: -7px; top: 0; width: 12px; height: 12px;
+  border-radius: var(--radius-full); background: var(--bg-inset); border: 2px solid var(--border-strong);
+  box-sizing: content-box; background-clip: padding-box; }
+.apply-step.is-done { border-left-color: var(--status-ok); }
+.apply-step.is-done .apply-step-dot { border-color: var(--status-ok); background: var(--status-ok); }
+.apply-step-body { min-width: 0; }
+.apply-step-name { font-size: var(--fs-body); font-weight: 600; color: var(--text-strong); }
+.apply-step-name .num { color: var(--text-muted); font-weight: 400; font-size: var(--fs-small); }
+.apply-step-desc { margin: 2px 0 0; font-size: var(--fs-small); color: var(--text-body); line-height: 1.6; }
+.apply-timeline.is-demo .apply-step-dot { opacity: 0.7; }   /* 演示态整体弱化一档 */
+
+/* 演示条目块（角标＋说明＋模拟行；弱化底，不与真数据混淆） */
+.apply-demo-row { border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  padding: var(--space-2); background: var(--bg-subtle); }
+.apply-demo-note { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap;
+  font-size: var(--fs-small); color: var(--text-body); margin-bottom: var(--space-1); }
+.apply-demo-item { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  padding: 4px 0; font-size: var(--fs-small); color: var(--text-body); }
+.apply-demo-ticket { word-break: break-all; }
+.apply-demo-tenant { color: var(--text-muted); }
+.apply-demo-state { font-size: 11px; background: var(--bg-inset); color: var(--text-body); }
+
+/* 已批字段清单示例（真实授权登记数据） */
+.apply-grant { margin-top: var(--space-2); }
+.apply-grant-head { display: flex; align-items: baseline; gap: var(--space-1); margin-bottom: 6px; }
+.apply-grant-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.apply-grant-table th { text-align: left; font-weight: 600; color: var(--text-muted);
+  padding: 6px 8px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+.apply-grant-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-light);
+  vertical-align: top; }
+/* 2026-10-15 修：mono 服务名 nowrap（全局 td.mono 覆盖）；字段列表用 break-word */
+.apply-grant-svc { white-space: nowrap; }
+.apply-grant-fields { overflow-wrap: break-word; word-break: normal; font-size: 12.5px; }
+
+/* 窄屏（P0-12）：≤720px 无横向溢出——已批字段表容器滚动（SPEC §5 P0-12），长句可断行 */
+@media (max-width: 720px) {
+  .apply-grant-table-wrap, .apply-demo-row { overflow-x: auto; }
+  .card-head { flex-wrap: wrap; }
+  .apply-step-desc, .apply-step-name, .apply-note { word-break: break-word; min-width: 0; }
+}

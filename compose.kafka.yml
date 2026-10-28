@@ -1,0 +1,77 @@
+# OneServe 本地 Kafka 测试栈（#76 审计管线分支可行性实证，2026-10-15）
+# 单节点 KRaft 模式，无 ZooKeeper；镜像官方源（国内网络受限时可自配镜像加速）
+# 与主栈隔离：容器名 -test 后缀，独立卷，宿主端口 9092（起栈前已核对空闲，被占则改 19092）
+name: oneserve-kafka-test
+
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: oneserve-kafka-test
+    ports:
+      - "9092:9092"            # 宿主 EXTERNAL；若被占用改为 "19092:9092"
+    environment:
+      # ---- KRaft 单节点（broker+controller 合体）----
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # ---- 监听器：内部 29092 / 控制器 29093 / 宿主 9092 / 网内 29094（2026-10-15 冒烟补：
+      #      原 EXTERNAL 广播 localhost:9092 仅宿主可用，service 容器内解析到自己=死；
+      #      加 INTERNAL 广播容器名，service 走 oneserve-net 直连 29094）----
+      KAFKA_LISTENERS: PLAINTEXT://:29092,CONTROLLER://:29093,EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:29094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092,INTERNAL://oneserve-kafka-test:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      # ---- 单节点必要参数 ----
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"   # 测试显式建 topic，贴近生产行为
+      # ---- 数据与集群标识 ----
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: GTM6xRxxcN-hy0EwFwtzOg
+    networks:
+      - default
+      - oneserve-net
+    volumes:
+      - kafka-test-data:/var/lib/kafka/data      # 持久化：重启容器数据不丢
+    # ---- 资源限制（测试栈上限，非生产配置）----
+    mem_limit: 768m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  # ---------- Topic 初始化（#76：auto-create 关闭，须显式建 oneserve-audit）----------
+  # 等待 kafka healthy 后创建 topic；幂等（已存在不报错）。
+  topic-init:
+    image: apache/kafka:3.9.0
+    container_name: oneserve-kafka-topic-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
+          --create --topic oneserve-audit --partitions 1 --replication-factor 1 \
+          --if-not-exists && echo "topic oneserve-audit ready"
+    restart: "no"
+
+networks:
+  oneserve-net:
+    # 网络名/external 参数化（2026-10-20 prod 四文件叠加适配）：dev 不设两变量＝缺省渲染
+    # external oneserve-net（与参数化前逐字节一致，dev 行为零变化）；ECS 全量档四文件叠加
+    # （-f×4 -p oneserve-prod）必须在 .env 设 ONESERVE_NET_NAME=oneserve-prod-net 与
+    # ONESERVE_NET_EXTERNAL=false，否则叠加件声明覆盖 prod 专属网（干净环境报
+    # external network not found）。两变量口径详 .env.example。
+    external: ${ONESERVE_NET_EXTERNAL:-true}
+    name: ${ONESERVE_NET_NAME:-oneserve-net}
+
+volumes:
+  kafka-test-data:

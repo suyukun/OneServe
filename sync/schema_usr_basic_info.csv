@@ -1,0 +1,13 @@
+attnum,字段名,数据类型,cn_name,业务口径,敏感级
+1,gender_cd,VARCHAR(16),性别代码,人口属性枚举：0未知 1男 2女,内部
+2,age_band,VARCHAR(16),年龄段,年龄分档：A<18 B18-25 C26-35 D36-50 E>50,内部
+3,city_code,VARCHAR(16),城市代码,开户行所在城市行政代码（4 位枚举）,内部
+4,open_date,DATE,开户日期,客户首次开户日期（YYYY-MM-DD）,内部
+5,cust_level,VARCHAR(16),客户等级,客户分级：L1普通 L2潜力 L3成长 L4高价值 L5高净值,内部
+6,risk_level,VARCHAR(16),风险等级,风险承受能力评估：R1保守-R5激进（适当性口径）,敏感
+7,edu_level,VARCHAR(16),学历,学历枚举：1初中及以下 2高中/中专 3大专 4本科 5硕士 6博士,内部
+8,occupation_cd,VARCHAR(16),职业代码,职业大类码（2 位枚举，适当性/授信口径）,敏感
+9,marital_sts,VARCHAR(16),婚姻状况,婚姻状况枚举：10未婚 20已婚 30离异 40丧偶 90未知,敏感
+10,channel_cd,VARCHAR(16),开户渠道,首次开户渠道枚举：APP/WEB/MINI/BRANCH/API,内部
+11,vip_flag,TINYINT,VIP标志,VIP 客户标志：0否 1是,内部
+12,blacklist_flag,TINYINT,黑名单标志,风控黑名单标志：0否 1是（命中即拦截）,敏感

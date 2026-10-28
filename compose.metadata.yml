@@ -1,0 +1,57 @@
+# -*- coding: utf-8 -*-
+# 元数据库编排（卡-1b7 步1 · ADR-0021 v1.1）：oneserve-metadata-db 独立文件。
+# 纯新增、不动 dev 主编排（docker-compose.yml）；可单起可叠加：
+#   单起（隔离验证/独立栈，本卡验证口径）：docker compose -f compose.metadata.yml -p oneserve-meta up -d
+#   叠加（后续与主编排同批收口时）：docker compose -f docker-compose.yml -f compose.metadata.yml up -d metadata-db
+# 网络：复用 oneserve-net，与 compose.hbase.yml / compose.kafka.yml 同款参数化——顶屋声明
+#   external/name 两变量缺省 external oneserve-net（dev 单起行为与在网栈零冲突）；
+#   四文件叠加（-f×4 -p oneserve-prod）场景由 ONESERVE_NET_NAME / ONESERVE_NET_EXTERNAL 接管，口径详 .env.example。
+# 镜像：postgres:17-alpine 同 casdoor-db tag（本机已有镜像直用；2026-10-14 实测 docker.io 直连拉取慢）。
+# 凭据：六变量全部 env 注入必填报错式（:? 缺失即拒绝渲染/起栈）——实例引导三件套＋三角色口令；
+#   口令永不进仓（AGENTS.md 安全红线），占位值与真值口径详 .env.example。
+# 端口：仅容器网内，无宿主端口映射（与 casdoor-db 同款；psql 验证走 docker compose exec）。
+# 卷加密（ADR-0026）：本机 named volume 无静态加密；云上卷创建时即启加密——归 compose.prod.yml
+#   同批注释与 DR runbook（卡-1b7 步9 交付），此处先登记口径不夹带实现。
+x-log-rotation: &log-rotation
+  # 独立文件不能跨文件引用 docker-compose.yml 的 x-log-rotation 锚点，就地同值复制
+  # （json-file 10m×3，蓝图 1a 监控最小集同款）。
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  metadata-db:
+    image: postgres:17-alpine
+    container_name: oneserve-metadata-db
+    logging: *log-rotation
+    environment:
+      # 实例引导三件套（initdb 用；引导超户仅作初始化，业务库不授权超户直连——暗道封堵详 init 脚本头注）
+      - POSTGRES_USER=${META_DB_USER:?META_DB_USER 未设置——cp .env.example .env 后填真值（凭证不进代码仓）}
+      - POSTGRES_PASSWORD=${META_DB_PASSWORD:?META_DB_PASSWORD 未设置——cp .env.example .env 后填真值（凭证不进代码仓）}
+      - POSTGRES_DB=${META_DB_NAME:?META_DB_NAME 未设置——cp .env.example .env 后填真值（凭证不进代码仓）}
+      # 三角色口令（configs/metadata-db/init/01_roles.sh 消费；ADR-0021 v1.1「DB 权限三角色」）
+      - META_APP_PASSWORD=${META_APP_PASSWORD:?META_APP_PASSWORD 未设置——cp .env.example .env 后填真值（凭证不进代码仓）}
+      - META_RO_PASSWORD=${META_RO_PASSWORD:?META_RO_PASSWORD 未设置——cp .env.example .env 后填真值（凭证不进代码仓）}
+      - META_MIGRATE_PASSWORD=${META_MIGRATE_PASSWORD:?META_MIGRATE_PASSWORD 未设置——cp .env.example .env 后填真值（凭证不进代码仓）}
+    volumes:
+      - oneserve-metadata-db-data:/var/lib/postgresql/data
+      # 三角色＋schema 分域初始化（仅空卷首启执行一次；幂等语义归 migrations/0001_meta_init.sql）
+      - ./configs/metadata-db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 5s
+    networks:
+      - oneserve-net
+
+volumes:
+  oneserve-metadata-db-data:
+
+networks:
+  oneserve-net:
+    # 与 compose.hbase.yml / compose.kafka.yml 同款参数化（2026-10-20 prod 四文件叠加先例）
+    external: ${ONESERVE_NET_EXTERNAL:-true}
+    name: ${ONESERVE_NET_NAME:-oneserve-net}

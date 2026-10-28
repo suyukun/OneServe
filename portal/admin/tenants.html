@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<!-- OneServe 门户 · P-1R 深色多页版：本文件为构建期模板（partials），由 scripts/build_portal.py 拼接产出 portal/*.html，请勿直接引用 -->
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>租户管理 · 运营控制台 · OneServe 门户</title>
+<script>
+/* JS 错误探针：页面出错时红条显示错误原文；正常浏览不显示任何条 */
+window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||document.createElement('div');b.id='js-canary';b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#CB272D;color:#fff;font:12px monospace;padding:4px 8px;white-space:pre-wrap';(document.body||document.documentElement).appendChild(b);b.textContent='JS错误: '+m+' @ '+(s||'?')+':'+(l||'?');};
+</script>
+<noscript><div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#D4760A;color:#fff;font:12px monospace;padding:4px 8px">JavaScript 被禁用/拦截——本站需要 JS</div></noscript>
+<!-- 本地资源自托管：无任何外部引用，目标环境无互联网 -->
+<!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
+     Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
+     → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/tokens.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/portal.css?v=266daaf925e8">
+<link rel="stylesheet" href="../assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<style>
+  :root {
+    --admin-bg: #1c222b; --admin-card: #242b36; --admin-inset: #1b2029;
+    --admin-accent: #E85B6B; --admin-line: #35404d; --admin-text: #E6E9EE;
+    --admin-muted: #98A2AE; --admin-note: #ACB8C4;
+    --admin-ok: #3FBE95; --admin-warn: #D89A3C; --admin-danger: #E05252;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-text);
+         font-family: var(--font-sans); font-size: var(--fs-body, 13px); line-height: 1.6; }
+  [x-cloak] { display: none !important; }
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--space-3, 24px);
+           min-height: calc(100vh - var(--topbar-height, 56px));   /* 视觉评审⑥①：内容区撑满视口，页脚贴内容流 */
+           display: flex; flex-direction: column; }
+  details.caliber { flex: 1; }   /* 视觉评审⑦①：最后一张卡自身生长撑满剩余高度，页脚真贴内容流 */
+  /* 构建壳 flex 链（实测探针驱动：壳把 .page 包装替换为 os-content>os-container，
+     须让该链成列并撑满，口径卡 flex:1 才生效——仅本页样式块，不改壳全局） */
+  main.os-content { display: flex; flex-direction: column;
+                     min-height: calc(100vh - var(--topbar-height, 56px) - 52px); }
+  .os-content .os-container { display: flex; flex-direction: column; flex: 1;
+                              max-width: none; width: 100%; }   /* 视觉评审⑨②：与顶栏面包屑同宽对齐，恢复全局左缘基准 */
+  h1 { font-size: var(--fs-title, 16px); margin: 0 0 var(--space-1, 8px); }
+  /* 视觉评审③①：本页次级文字整体提亮一档（#98A2AE → #B7C1CC），脚注限宽换行 */
+  .hint { color: #C4CDD7; font-size: var(--fs-small, 12px); margin: 0 0 var(--space-2, 16px); }
+  .card { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+          padding: var(--space-2, 16px); margin-bottom: var(--space-3, 24px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 16px);
+               margin-bottom: var(--space-1, 8px); flex-wrap: wrap; }
+  .card-title { font-size: var(--fs-title, 16px); margin: 0; font-weight: 600; }
+  .btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: var(--admin-text);
+         border-radius: var(--radius, 8px); padding: 6px 14px; font-size: var(--fs-small, 12px); cursor: pointer;
+         transition: border-color var(--motion-duration, 240ms) var(--motion-ease, ease); }
+  .btn:hover:not(:disabled) { border-color: var(--admin-accent); }
+  /* 视觉评审②：禁用态须可辨——降不透明度去描边感＋禁止光标（区别于纯文本） */
+  .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  /* 视觉评审①：解冻＝恢复操作用中性绿描边，红只留给危险语义 */
+  .btn-safe { border-color: var(--admin-ok); color: var(--admin-ok); }
+  .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #14161A; font-weight: 600; }
+  .btn-secondary { background: var(--admin-inset); }
+  .btn:disabled { background: var(--admin-inset); border-color: var(--admin-line);
+                  color: var(--admin-muted); cursor: not-allowed; }
+  .btn-sm { padding: 3px 10px; }
+  .btn-danger { border-color: var(--admin-danger); color: var(--admin-danger); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--admin-line);
+           font-size: var(--fs-small, 12px); vertical-align: top; }
+  th { color: var(--admin-muted); font-weight: 500; white-space: nowrap; }
+  .mono { font-family: var(--font-mono, ui-monospace, monospace); }
+  .badge { display: inline-block; border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px); }
+  .badge-active { color: var(--admin-ok); border: 1px solid var(--admin-ok); }
+  .badge-warn { color: var(--admin-warn); border: 1px solid var(--admin-warn); }
+  .badge-danger { color: var(--admin-danger); border: 1px solid var(--admin-danger); }
+  .badge-muted { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .badge-plain { color: var(--admin-muted); border: 1px solid var(--admin-line); }
+  .badge-sandbox { color: var(--admin-warn); border: 1px dashed var(--admin-warn); background: rgba(216,154,60,.08); }
+  .muted { color: #B7C1CC; }
+  .num { font-family: var(--font-mono, monospace); }
+  .toolbar { display: flex; gap: var(--space-1, 8px); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2, 16px); }
+  .toolbar input, .toolbar select { background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .toolbar input#tenant-search { min-width: 240px; }   /* 视觉评审：占位文案不截断 */
+  .toolbar input:focus, .toolbar select:focus, .dlg input:focus, .dlg select:focus, .dlg textarea:focus {
+    outline: none; border-color: var(--admin-accent); }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2, 16px);
+             margin-bottom: var(--space-3, 24px); }
+  .metric { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+            padding: var(--space-2, 16px); }
+  .metric .k { color: #B7C1CC; font-size: var(--fs-tiny, 11px); }
+  .metric .v { font-size: 22px; font-weight: 600; }
+  .metric .sub { color: #A9B5C1; font-size: var(--fs-tiny, 11px); }
+  /* 视觉评审③②：「未登记」＝异常警示，橙红虚线与「沙箱」黄脱钩 */
+  .badge-unreg { color: #E5634F; border: 1px solid #E5634F; background: rgba(229,99,79,.10); }   /* 视觉评审⑩③：偏红橙一档，与沙箱黄再拉色相 */
+  /* 视觉评审④②：frozen＝深琥珀实线，与「沙箱」虚线浅黄脱钩 */
+  .badge-frozen { color: #B08D57; border: 1px solid #B08D57; background: rgba(176,141,87,.12); }   /* 青铜：与沙箱黄/未登记橙拉开色相 */
+  /* 视觉评审⑥③：操作列按钮间距统一 */
+  #tenant-table td:last-child > * { margin-right: 6px; }
+  #tenant-table td:last-child > *:last-child { margin-right: 0; }
+  /* 视觉评审③③：「ⓘ 详情」＝描边小钮（点开口径折叠区），明示可点 */
+  .hint-btn { border: 1px solid var(--admin-line); background: var(--admin-inset); color: #B7C1CC;
+              border-radius: var(--radius, 8px); padding: 1px 8px; font-size: var(--fs-tiny, 11px);
+              cursor: pointer; }
+  .hint-btn:hover { border-color: var(--admin-accent); color: var(--admin-text); }
+  .dlg input[type=text], .dlg select, .dlg textarea {
+    width: 100%; background: var(--admin-inset); border: 1px solid var(--admin-line); color: var(--admin-text);
+    border-radius: var(--radius, 8px); padding: 7px 10px; font-size: var(--fs-small, 12px); font-family: inherit; }
+  .dlg input:disabled { color: var(--admin-muted); cursor: not-allowed; }
+  label.f { display: block; color: var(--admin-muted); font-size: var(--fs-small, 12px); margin-bottom: 4px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2, 16px); }
+  .req { color: var(--admin-accent); }
+  .err { color: var(--admin-danger); font-size: var(--fs-small, 12px); min-height: 18px; }
+  .footnote { margin-top: var(--space-1, 8px); font-size: var(--fs-tiny, 11px); color: #B7C1CC; max-width: 96em; line-height: 1.7; }
+  .overlay { position: fixed; inset: 0; background: rgba(10, 12, 15, .72); display: flex;
+             align-items: center; justify-content: center; padding: var(--space-3, 24px); z-index: 50; }
+  .dlg { background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+         max-width: 680px; width: 100%; max-height: 88vh; overflow: auto; padding: var(--space-3, 24px); }
+  .modal-actions { display: flex; gap: var(--space-1, 8px); flex-wrap: wrap; margin-top: var(--space-2, 16px); }
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small, 12px); }
+  .diff-box { background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+              padding: var(--space-2, 16px); font-size: var(--fs-small, 12px); margin: var(--space-1, 8px) 0; }
+  .trace-bar { display: flex; align-items: center; gap: var(--space-1, 8px); flex-wrap: wrap;
+               background: var(--admin-inset); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+               padding: 8px 12px; margin-bottom: var(--space-2, 16px); font-size: var(--fs-small, 12px); }
+  .trace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-ok); flex: none; }
+  .warn-bar { border: 1px dashed var(--admin-warn); color: var(--admin-warn); border-radius: var(--radius, 8px);
+              padding: 8px 12px; font-size: var(--fs-small, 12px); margin-bottom: var(--space-2, 16px); }
+  .pager { display: flex; gap: var(--space-1, 8px); align-items: center; margin-top: var(--space-2, 16px);
+           font-size: var(--fs-small, 12px); color: var(--admin-muted); }
+  /* 视觉评审⑤②③：口径块容器化（浅底小标题行距收敛）＋下边距收紧消残余空白 */
+  details.caliber[open] { display: flex; flex-direction: column; }   /* 视觉评审⑩①：口径卡成列，读侧行 margin-top:auto 才能沉底 */
+  /* Chrome 将 details 非 summary 子元素包进 ::details-content 匿名槽——该内层不成列则
+     margin-top:auto 永不生效（探针实测 footMargin=0 的真因） */
+  details.caliber[open]::details-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  details.caliber { margin-top: var(--space-2, 16px); margin-bottom: 0; font-size: var(--fs-tiny, 11px); color: #C4CDD7;
+                    background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: var(--radius, 8px);
+                    padding: 10px 14px; }
+  details.caliber summary { cursor: pointer; color: #B7C1CC; font-weight: 600; }
+  details.caliber .caliber-title { color: var(--admin-text); font-size: var(--fs-small, 12px); }
+  details.caliber p { margin: 4px 0; line-height: 1.6; }
+  details.caliber p b { color: var(--admin-text); font-weight: 600; }   /* 视觉评审⑥②：分组词与关键术语强调 */
+  details.caliber[open] .caliber-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--admin-line);
+                  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  @media (max-width: 720px) {
+    .topbar, .os-topbar { flex-wrap: wrap; height: auto; min-height: var(--topbar-height, 56px); padding: 8px var(--space-3, 24px); }
+    .card-head { flex-wrap: wrap; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+<!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
+<!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
+<!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
+<!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
+<!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
+     本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
+<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
+     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
+     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
+     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="../site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
+     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
+     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<script defer src="../site-gate.js?v=266daaf925e8"></script>
+<script defer src="../data-format.js?v=266daaf925e8"></script>
+<script defer src="../api.js?v=266daaf925e8"></script>
+<script defer src="../assets/app.js?v=266daaf925e8"></script>
+<script defer src="../assets/trial.js?v=266daaf925e8"></script>
+
+<script defer src="../assets/pages.js?v=266daaf925e8"></script>
+<script defer src="../assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+
+</head>
+<body class="os-layout" x-data="tenantsAdmin()" x-init="boot()">
+<!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
+<aside class="os-sidebar" id="app-sidebar" aria-label="主导航">
+  <a class="os-brand" href="../index.html" aria-label="OneServe 首页">
+    <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
+    <span class="os-brand-text">
+      <span class="os-brand-name">OneServe</span>
+      <span class="os-brand-sub">统一数据服务平台</span>
+    </span>
+  </a>
+  <nav class="os-nav">
+    <div class="os-nav-group">
+      <div class="os-nav-label">平台</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../index.html"><i class="bi bi-house-door" aria-hidden="true"></i><span class="os-nav-text">首页</span></a></li>
+        <li><a class="os-nav-link" href="../catalog.html"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="os-nav-text">服务目录</span></a></li>
+        <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
+        <li><a class="os-nav-link" href="../trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
+        <li><a class="os-nav-link" href="../my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
+             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
+        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <li><a class="os-nav-link" href="../apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">运维与支持</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
+<li><a class="os-nav-link" href="../docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+        <li><a class="os-nav-link" href="../errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">管理</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="load.html" title="数据装载：HBase 真表全量装载成 Redis 热数据版本（表:版本）"><i class="bi bi-database-down" aria-hidden="true"></i><span class="os-nav-text">数据装载</span></a></li>
+        <li><a class="os-nav-link" href="publish.html" title="服务发布：把已装载的表发布成对外服务（流程②）"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i><span class="os-nav-text">服务发布</span></a></li>
+        <li><a class="os-nav-link" href="published.html" title="已发布服务：全部已上线服务一览（字段/授权聚合）＋下线管理"><i class="bi bi-card-checklist" aria-hidden="true"></i><span class="os-nav-text">已发布服务</span></a></li>
+        <li><a class="os-nav-link" href="appkeys.html" title="AppKey 自助发放"><i class="bi bi-key" aria-hidden="true"></i><span class="os-nav-text">AppKey 发放</span></a></li>
+        <!-- 管理功能群一期·租户管理（管理组第五链，插于 AppKey 发放之后、授权管理之前；
+             设计稿 D 节 4.2）：租户主体实体生命周期面（登记/冻结/解冻）——域模型 §5 全链
+             次序「租户登记→授权登记→凭证签发」中位于授权页上游；读 viewer／写 admin -->
+        <li><a class="os-nav-link is-active" aria-current="page" href="tenants.html" title="租户管理：租户登记（类型三选）/冻结解冻/生命周期——审批在 OA，此处只登记"><i class="bi bi-buildings" aria-hidden="true"></i><span class="os-nav-text">租户管理</span></a></li>
+        <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
+             登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
+        <li><a class="os-nav-link" href="grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+             设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
+             读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
+        <li><a class="os-nav-link" href="pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
+        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
+             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
+        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
+        <li><a class="os-nav-link" href="versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
+        <li><a class="os-nav-link" href="perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
+        <li><a class="os-nav-link" href="upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
+        <li><a class="os-nav-link" href="monitor.html" title="异常与批量监控：异常下钻＋错误样本＋追踪详情＋批量运行视角（P1-6）"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><span class="os-nav-text">异常监控</span></a></li>
+      </ul>
+    </div>
+    <!-- 报表中心（1b-9 报表专区一期 · 设计稿 §2）：一级分组置于「合规」组之前；
+         图标沿用量统计（bi-graph-up）。四页：用量总览/主体用量/服务用量/用量趋势；
+         管理功能群一期增第五链「月账单」（reports_bills，页面产物＝C 节 admin/billing.html）。 -->
+    <div class="os-nav-group">
+      <div class="os-nav-label">报表中心</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../reports/overview.html" title="用量总览：窗口调用量/成功率/活跃调用方/热门服务＋近 7 日趋势（1b-9）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量总览</span></a></li>
+        <li><a class="os-nav-link" href="../reports/subjects.html" title="主体用量：逐凭证调用量/成功量/失败量/平均耗时＋服务明细展开（掩码口径）"><i class="bi bi-person-badge" aria-hidden="true"></i><span class="os-nav-text">主体用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/services.html" title="服务用量：按服务聚合调用量/调用方数＋下钻该服务调用方"><i class="bi bi-hdd-network" aria-hidden="true"></i><span class="os-nav-text">服务用量</span></a></li>
+        <li><a class="os-nav-link" href="../reports/trend.html" title="用量趋势：近 7 日逐日折线（调用方/服务双维；更长时间窗随用量库上线）"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="os-nav-text">用量趋势</span></a></li>
+        <!-- 管理功能群一期·月账单（报表中心第五链，用量趋势之后；设计稿 D 节 4.2）：
+             账期状态/三硬前置留痕/账单行明细＋CSV 导出（页面产物＝C 节 admin/billing.html） -->
+        <li><a class="os-nav-link" href="billing.html" title="月账单：账期状态/三硬前置留痕/账单行明细＋CSV 导出"><i class="bi bi-receipt" aria-hidden="true"></i><span class="os-nav-text">月账单</span></a></li>
+      </ul>
+    </div>
+    <div class="os-nav-group">
+      <div class="os-nav-label">合规</div>
+      <ul class="os-nav-list">
+        <li><a class="os-nav-link" href="../audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
+        <li><a class="os-nav-link" href="../grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <!-- selftest*.html 断言页移出用户可见导航（选型 v0 §2），不经页面入口暴露 -->
+  <!-- P5（走查 2026-10-16 维护者 拍）：foot 区原「N 项待办」计数与降级标注文案已移除，仅保留认证/登出区 #os-sidebar-auth（DESIGN §1.5 落地件，勿删）。 -->
+  <div class="os-sidebar-foot"><div id="os-sidebar-auth" style="margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--border-light);"></div></div>
+</aside>
+
+<div class="os-main">
+<!-- ══ 顶栏（partials）：面包屑构建期注入 （admin 页=系统路径两段）。
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+<header class="os-topbar" id="app-topbar">
+  <nav class="crumb" id="admin-crumb" aria-label="面包屑"><span>管理</span><span class="crumb-sep">›</span><span aria-current="page">租户管理</span></nav>
+  <span class="os-topbar-spacer"></span>
+  <a class="os-topbar-icon" href="../docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
+</header>
+
+<main class="os-content" id="app-content">
+<div class="os-container">
+  <div class="card-head">
+    <div>
+      <h1>租户管理</h1>
+      <p class="hint">租户＝签约使用主体；审批在 OA，此处只做登记与生命周期管理。单号只做格式提醒，平台不做任何审批系统对接。读全角色可达；新建/冻结/解冻仅管理员。</p>
+    </div>
+    <button class="btn btn-primary" type="button" id="create-btn" @click="openCreate()"
+            :disabled="!canWrite()" title="新建租户（登记实体；授权归授权管理页）">新建租户</button>
+  </div>
+
+  <!-- ══ yaml 模式降级横幅（§1.8 文案；置灰提示的服务端同源串） ══ -->
+  <div class="warn-bar" id="yaml-banner" x-show="mode === 'yaml'" x-cloak
+       x-text="T8.YAML_LIFECYCLE_COPY"></div>
+
+  <!-- ══ 生效与留痕条 ══ -->
+  <div class="trace-bar" id="trace-bar" x-show="lastTrace" x-cloak>
+    <span class="trace-dot"></span>
+    <span id="trace-text" x-text="lastTrace"></span>
+  </div>
+  <p class="err" id="page-error" x-show="pageError" x-text="pageError" x-cloak></p>
+
+  <!-- ══ 摘挂不完整告警（partial：重试摘除入口） ══ -->
+  <div class="warn-bar" id="partial-banner" x-show="partialInfo" x-cloak>
+    <span x-text="partialInfo ? partialInfo.text : ''"></span>
+    <button class="btn btn-sm" type="button" id="resync-btn" @click="resync(partialInfo ? partialInfo.tenant : null)">重试摘除（幂等对账）</button>
+  </div>
+
+  <!-- ══ 指标卡三张（§1.2） ══ -->
+  <div class="metrics" id="metrics" x-show="summary">
+    <div class="metric" id="metric-total">
+      <div class="k">租户总数</div>
+      <div class="v num" x-text="summary ? summary.tenants : '—'"></div>
+      <div class="sub">内部 <span class="num" x-text="summary ? summary.byType.internal : 0"></span> ·
+        外部 <span class="num" x-text="summary ? summary.byType.external : 0"></span> ·
+        沙箱 <span class="num" x-text="summary ? summary.byType.sandbox : 0"></span></div>
+    </div>
+    <div class="metric" id="metric-active">
+      <div class="k">在册（active）</div>
+      <div class="v num" x-text="summary ? summary.active : '—'"></div>
+      <div class="sub">停用中 <span class="num" x-text="summary ? summary.terminating : 0"></span> ·
+        已注销 <span class="num" x-text="summary ? summary.cancelled : 0"></span>（注销流不在一期，恒 0 如实展示）</div>
+    </div>
+    <div class="metric" id="metric-frozen">
+      <div class="k">已冻结（frozen）</div>
+      <div class="v num" x-text="summary ? summary.frozen : '—'"></div>
+      <div class="sub">冻结＝调用全量拒、凭证/授权写面禁止；历史账照出</div>
+    </div>
+  </div>
+
+  <!-- ══ 筛选行＋主表 ══ -->
+  <section class="card" id="tenant-list-section" aria-label="租户列表">
+    <div class="toolbar" id="tenant-toolbar">
+      <input id="tenant-search" type="text" placeholder="搜索租户 ID／显示名（前缀）"
+             x-model="search" @input="debouncedFetch()" aria-label="搜索租户">
+      <select id="tenant-type-filter" x-model="typeFilter" @change="fetchList()" aria-label="按类型过滤">
+        <option value="">全部类型</option>
+        <option value="internal">内部</option>
+        <option value="external">外部</option>
+        <option value="sandbox">沙箱</option>
+      </select>
+      <select id="tenant-status-filter" x-model="statusFilter" @change="fetchList()" aria-label="按状态过滤">
+        <option value="">全部状态</option>
+        <option value="active">在册</option>
+        <option value="frozen">已冻结</option>
+        <option value="terminating">停用中</option>
+        <option value="cancelled">已注销</option>
+      </select>
+      <span class="muted" style="font-size:var(--fs-tiny,11px)" id="list-source"
+            x-text="loadError ? '加载失败' : (mode === 'db' ? '数据源：元数据库快照' : '数据源：yaml 矩阵投影')"></span>
+    </div>
+    <div class="table-scroll">
+    <table id="tenant-table" aria-label="租户一览">
+      <thead><tr>
+        <th>租户 ID</th><th>显示名</th><th>类型</th><th>状态</th><th>active 凭证</th>
+        <th>在册授权</th><th>开通 OA 单号</th><th>创建时间</th><th>操作</th>
+      </tr></thead>
+      <tbody>
+        <template x-for="t in tenants" :key="t.tenant">
+          <tr :data-testid="'tenant-row-' + t.tenant">
+            <td class="mono" x-text="t.tenant"></td>
+            <td x-text="t.displayName"></td>
+            <td><span class="badge" :class="T8.typeBadgeClass(t.tenantType)"
+                      x-text="T8.typeLabel(t.tenantType)"></span></td>
+            <td><span class="badge" :class="T8.statusBadgeClass(t.status)"
+                      x-text="T8.statusLabel(t.status)"></span></td>
+            <td class="num" x-text="t.activeKeys"></td>
+            <td class="num" x-text="t.grantsCount"></td>
+            <td class="mono" x-text="t.oaTicket || '—'"></td>
+            <td class="muted" x-text="t.createdAt || '—'" title="快照投影无创建时间戳，一期如实展示「—」"></td>
+            <td style="white-space:nowrap">
+              <a class="btn btn-sm" type="button" style="text-decoration:none" id="view-grants-btn"
+                 :href="'grants.html?tenant=' + encodeURIComponent(t.tenant)"
+                 :title="'查看 ' + t.tenant + ' 的授权登记'">查看授权</a>
+              <template x-if="t.registered">
+                <button class="btn btn-sm" type="button" data-action="freeze"
+                        :disabled="!canWrite() || mode !== 'db' || t.status !== 'active'"
+                        :title="lifecycleButtonTitle(t)" @click="askFreeze(t)">冻结</button>
+              </template>
+              <template x-if="t.registered">
+                <button class="btn btn-sm btn-safe" type="button" data-action="unfreeze"
+                        :disabled="!canWrite() || mode !== 'db' || t.status !== 'frozen'"
+                        :title="lifecycleButtonTitle(t)" @click="askUnfreeze(t)">解冻</button>
+              </template>
+              <!-- 未登记凭证租户串：无生命周期操作按钮（§1.8）；整句提示收进行 title，
+                   防长句挤爆操作列（视觉评审③），完整口径见下方脚注 -->
+              <template x-if="!t.registered">
+                <button class="badge-unreg" type="button" data-testid="unregistered-hint" data-action="unreg-hint"
+                        :title="T8.UNREGISTERED_COPY"
+                        @click="openCaliber()">未登记 ⓘ</button>
+              </template>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="tenants.length === 0"><td colspan="9" class="muted" id="empty-row"
+            x-text="loadError || '没有符合条件的租户——调整搜索或筛选。'"></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="pager" id="pager" x-show="total > 0">
+      <button class="btn btn-sm" type="button" id="pager-prev" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+      <span>第 <span class="num" x-text="page"></span> 页 · 共 <span class="num" x-text="total"></span> 条</span>
+      <button class="btn btn-sm" type="button" id="pager-next" :disabled="page * pageSize >= total"
+              @click="goPage(page + 1)">下一页</button>
+    </div>
+    <p class="footnote" id="list-footnote" style="max-width:72em">active 凭证数只计启用中凭证（域模型 §3 额度口径）；在册授权数含已停用行（可溯源）。未登记串口径见下方「口径与降级说明」。</p>
+  </section>
+
+  <details class="caliber" id="caliber-note" open @toggle="caliberOpen = $el.open">
+    <summary><span class="caliber-title">口径与降级说明</span>（<span x-text="caliberOpen ? '收起' : '点开'"></span>）</summary>
+    <p><b>读</b> · 数据源＝快照矩阵投影（<b>ADR-0021 读侧永不直读 DB</b>）；分页沿计量报表先例（page/page_size）。</p>
+    <p><b>写</b> · yaml 配置模式（dev 缺省）：新建可用（写矩阵登记行，矩阵即租户真源）；冻结/解冻需元数据库模式（<b>META_WRITER=db</b>）——yaml 态无生命周期状态源。</p>
+    <p><b>写·兜底</b> · 元数据库暂不可达：租户写操作已冻结（数据面不受影响），稍后重试或联系管理员；写入已提交但快照导出暂失败：已触发告警，请重试导出（重试幂等，无需重做操作）。</p>
+    <p><b>冻结/解冻</b> · 先库后网关；摘除不完整＝回执告警＋「重试摘除」幂等对账（执行时点重核冻结态）。</p>
+    <p id="caliber-unregistered"><b>未登记串</b> · 凭证注册表存在该租户但无登记实体——无生命周期操作；补登记归元数据迁移工具（域模型 §7 迁移动作）。</p>
+    <!-- 视觉评审⑨①：卡底真实次要信息（读侧口径＋刷新入口），不留空腔 -->
+    <div class="caliber-foot" id="caliber-foot">
+      <span class="muted" id="caliber-freshness">数据新鲜度＝最近一次快照导出；本页读侧不直连库，操作后即时重取。</span>
+      <button class="btn btn-sm" type="button" id="refresh-list-btn" @click="refreshList()">刷新列表</button>
+    </div>
+  </details>
+
+  <!-- ══ 新建租户抽屉（§1.2 两段式表单） ══ -->
+  <div class="overlay" id="create-modal" x-show="create.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="create-title">
+    <div class="dlg">
+      <h2 class="card-title" id="create-title">新建租户</h2>
+      <p class="muted" style="font-size:var(--fs-small,12px)">登记即分配租户 ID——双不复用：一经分配永不改写、永不复用。</p>
+      <div class="form-grid">
+        <div><label class="f" for="create-tenant-id">租户 ID <span class="req">*</span></label>
+          <input id="create-tenant-id" type="text" placeholder="小写字母/数字/_-，2~64 位" x-model="create.tenantId">
+          <p class="err" id="create-id-hint" x-text="T8.tenantIdFormatHint(create.tenantId)"></p></div>
+        <div><label class="f" for="create-display-name">显示名</label>
+          <input id="create-display-name" type="text" placeholder="缺省同租户 ID" x-model="create.displayName"></div>
+      </div>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f">类型 <span class="req">*</span>（三选一）</label>
+        <div class="switch-row" style="gap:16px;flex-wrap:wrap">
+          <label><input type="radio" id="create-type-internal" name="create-type" value="internal" x-model="create.tenantType"> 内部</label>
+          <label><input type="radio" id="create-type-external" name="create-type" value="external" x-model="create.tenantType"> 外部</label>
+          <label><input type="radio" id="create-type-sandbox" name="create-type" value="sandbox" x-model="create.tenantType"> 沙箱</label>
+        </div>
+        <p class="muted" id="create-type-note" style="font-size:var(--fs-tiny,11px)"
+           x-text="typeNote(create.tenantType)"></p>
+      </div>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f" for="create-oa-ticket">开通 OA 单号 <span class="req" x-show="create.tenantType !== 'sandbox'">*</span></label>
+        <input id="create-oa-ticket" type="text" placeholder="如 DEMO-2026-000123"
+               x-model="create.oaTicket" :disabled="create.tenantType === 'sandbox'"
+               title="沙箱免开通单号（自动置灰留空）">
+        <p class="err" id="create-ticket-hint" x-text="ticketHintLive()"></p>
+      </div>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f" for="create-remark">备注<span class="muted">（仅 db 模式持久化）</span></label>
+        <input id="create-remark" type="text" placeholder="可空" x-model="create.remark">
+      </div>
+      <p class="err" id="create-error" x-show="create.err" x-text="create.err" x-cloak></p>
+      <p class="err" id="create-ok" x-show="create.ok" style="color:var(--admin-ok)" x-text="create.ok" x-cloak></p>
+      <div class="modal-actions">
+        <button class="btn" id="create-submit" type="button" @click="submitCreate()"
+                :class="createSubmitDisabled() ? 'btn-secondary' : 'btn-primary'"
+                :disabled="createSubmitDisabled()" title="校验通过后可提交">登记</button>
+        <button class="btn btn-secondary" id="create-cancel" type="button" @click="closeCreate()">取消</button>
+      </div>
+      <p class="footnote">登记成功后可前往授权管理页登记授权；沙箱租户首次签发 AppKey 时自动挂平台演示模板授权（测试用，正式凭证另行审批）。</p>
+    </div>
+  </div>
+
+  <!-- ══ 冻结确认弹层（两段式＋影响域预览 §1.2） ══ -->
+  <div class="overlay" id="freeze-modal" x-show="freeze.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="freeze-title">
+    <div class="dlg">
+      <h2 class="card-title" id="freeze-title">冻结租户 <span class="mono" x-text="freeze.tenant"></span></h2>
+      <div class="diff-box" id="freeze-plan" x-show="freeze.plan">
+        <div class="k muted">影响域预览</div>
+        <template x-for="(line, i) in (freeze.plan ? freeze.plan.impacts : [])" :key="i">
+          <div :data-testid="'freeze-impact-' + i" x-text="'· ' + line"></div>
+        </template>
+      </div>
+      <p class="err" x-show="freeze.stage === 2">第二段确认：勾选下方确认开关后，才会真正执行。</p>
+      <div class="switch-row" x-show="freeze.stage === 2" x-cloak>
+        <input type="checkbox" id="freeze-switch" x-model="freeze.armed" @change="freeze.hint = ''">
+        <label for="freeze-switch">我确认冻结该租户（调用即刻被拒，可凭解冻工单号恢复）</label>
+      </div>
+      <p class="err" id="freeze-hint" x-show="freeze.hint" x-text="freeze.hint"></p>
+      <div class="modal-actions">
+        <button class="btn" id="freeze-step-btn" type="button" @click="freezeStep()"
+                x-text="freeze.stage === 1 ? '继续（进入二次确认）' : '确认冻结'"></button>
+        <button class="btn btn-secondary" id="freeze-cancel-btn" type="button" @click="closeFreeze()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 解冻弹层（必填工单号 §1.3-3） ══ -->
+  <div class="overlay" id="unfreeze-modal" x-show="unfreeze.open" x-cloak role="dialog" aria-modal="true" aria-labelledby="unfreeze-title">
+    <div class="dlg">
+      <h2 class="card-title" id="unfreeze-title">解冻租户 <span class="mono" x-text="unfreeze.tenant"></span></h2>
+      <div style="margin-top:var(--space-2,16px)">
+        <label class="f" for="unfreeze-ticket">解冻工单号 <span class="req">*</span>（纯登记留痕——域模型 §4：解冻走工单）</label>
+        <input id="unfreeze-ticket" type="text" placeholder="如 DEMO-2026-000456" x-model="unfreeze.ticket">
+        <p class="err" id="unfreeze-ticket-hint" x-text="T8.ticketFormatHint(unfreeze.ticket)"></p>
+      </div>
+      <p class="err" id="unfreeze-error" x-show="unfreeze.err" x-text="unfreeze.err" x-cloak></p>
+      <div class="modal-actions">
+        <button class="btn" id="unfreeze-submit" type="button" @click="submitUnfreeze()"
+                :class="unfreeze.ticket ? 'btn-primary' : 'btn-secondary'"
+                :disabled="!unfreeze.ticket">确认解冻（恢复名下在用凭证）</button>
+        <button class="btn btn-secondary" id="unfreeze-cancel-btn" type="button" @click="closeUnfreeze()">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<!-- ══ 页脚（partials · 全站共享） ══ -->
+<footer class="os-footer" id="page-footer">
+  <span>OneServe 统一数据服务平台</span>
+  <span class="os-footer-spacer"></span>
+</footer>
+
+</div>
+<script defer src="admin-gate.js?v=266daaf925e8"></script>
+<script defer src="tenants.js?v=266daaf925e8"></script>
+<script defer src="../assets/alpine.min.js?v=266daaf925e8"></script>
+</body>
+</html>
