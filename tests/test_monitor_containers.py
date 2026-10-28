@@ -2,22 +2,19 @@
 # -*- coding: utf-8 -*-
 """常驻容器健康聚合断言套件（蓝图 1a 批·监控最小集 2026-10-20）。
 
-被测对象：service/app/monitor.py containers_view（纯编排，探活原语来自 app/healthz）＋
-healthz.probe_http_get（casdoor OIDC 发现端点 HTTP 轻探）＋ compose 日志滚动契约。
-纯逻辑直测：monkeypatch healthz 探活原语（零真实网络；HTTP 用本机回环临时 server）。
+被测对象：service/app/monitor.py containers_view（纯编排，探活原语来自 app/healthz）
+＋ compose 日志滚动契约。纯逻辑直测：monkeypatch healthz 探活原语（零真实网络）。
+（原统一登录两容器探针与 probe_http_get 已随无登录模式 ADR-0029 退役，见 git 史。）
 
 覆盖：
-  ① 出参形状：九行全量（八常驻＋可选 hbase）、字段齐全、顺序稳定；
+  ① 出参形状：七行全量（六常驻＋可选 hbase）、字段齐全、顺序稳定；
   ② overall 评级：redis error→error；其余 degraded→degraded；全 ok→ok；off 不降级；
-  ③ probe_http_get：2xx→ok（带 latencyMs）；拒绝连接→degraded；
-  ④ 端点/页面/脚本三处接线机检＋compose 日志滚动锚点契约（防漂移）。
+  ③ 端点/页面/脚本三处接线机检＋compose 日志滚动锚点契约（防漂移）。
 """
 from __future__ import annotations
 
 import asyncio
-import http.server
 import sys
-import threading
 from pathlib import Path
 
 import pytest
@@ -29,13 +26,13 @@ from app import healthz as hlz          # noqa: E402
 from app import monitor as mon          # noqa: E402
 
 EXPECTED_CONTAINERS = [
-    "oneserve-etcd", "oneserve-apisix", "oneserve-redis", "oneserve-casdoor-db",
-    "oneserve-casdoor", "oneserve-service", "oneserve-batch-worker",
+    "oneserve-etcd", "oneserve-apisix", "oneserve-redis",
+    "oneserve-service", "oneserve-batch-worker",
     "oneserve-portal", "oneserve-hbase",
 ]
 
 
-def _patch_probes(monkeypatch, *, tcp="ok", redis="ok", http="ok", hbase="off"):
+def _patch_probes(monkeypatch, *, tcp="ok", redis="ok", hbase="off"):
     """healthz 探活原语全量替换为可控假件（零真实网络）。"""
     async def fake_tcp(host, port, *, what):
         return {"status": tcp, "detail": f"[fake] {what} {tcp}"}
@@ -43,20 +40,16 @@ def _patch_probes(monkeypatch, *, tcp="ok", redis="ok", http="ok", hbase="off"):
     async def fake_redis(r):
         return {"status": redis, "detail": f"[fake] redis {redis}"}
 
-    async def fake_http(url, *, what):
-        return {"status": http, "detail": f"[fake] {what} {http}", "latencyMs": 1}
-
     async def fake_hbase():
         return {"status": hbase, "detail": f"[fake] hbase {hbase}"}
 
     monkeypatch.setattr(hlz, "probe_tcp", fake_tcp)
     monkeypatch.setattr(hlz, "probe_redis", fake_redis)
-    monkeypatch.setattr(hlz, "probe_http_get", fake_http)
     monkeypatch.setattr(hlz, "probe_hbase", fake_hbase)
 
 
 def test_containers_view_shape_and_order(monkeypatch):
-    """九行全量（八常驻＋可选 hbase）＋字段齐全＋顺序稳定。"""
+    """七行全量（六常驻＋可选 hbase）＋字段齐全＋顺序稳定。"""
     _patch_probes(monkeypatch)
     out = asyncio.run(mon.containers_view(redis=None))
     assert out["overall"] == "ok"
@@ -73,8 +66,6 @@ def test_overall_grades(monkeypatch):
     assert asyncio.run(mon.containers_view(None))["overall"] == "error"
     _patch_probes(monkeypatch, tcp="degraded")
     assert asyncio.run(mon.containers_view(None))["overall"] == "degraded"
-    _patch_probes(monkeypatch, http="degraded")
-    assert asyncio.run(mon.containers_view(None))["overall"] == "degraded"
     _patch_probes(monkeypatch, hbase="off")
     assert asyncio.run(mon.containers_view(None))["overall"] == "ok"
 
@@ -87,32 +78,6 @@ def test_batch_worker_and_hbase_off_honesty(monkeypatch):
     assert by["oneserve-batch-worker"]["status"] == "off"
     assert "无网络探针" in by["oneserve-batch-worker"]["probe"] + by["oneserve-batch-worker"]["detail"]
     assert by["oneserve-hbase"]["status"] == "off"
-
-
-def test_probe_http_get_ok_and_refused():
-    """本机回环临时 HTTP server＝ok 带 latency；拒绝连接＝degraded 如实。"""
-    class _H(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"ok")
-
-        def log_message(self, *args):
-            pass
-
-    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _H)
-    t = threading.Thread(target=srv.serve_forever, daemon=True)
-    t.start()
-    try:
-        url = f"http://127.0.0.1:{srv.server_address[1]}/.well-known/openid-configuration"
-        out = asyncio.run(hlz.probe_http_get(url, what="Casdoor"))
-        assert out["status"] == "ok" and out["latencyMs"] is not None
-        bad = asyncio.run(hlz.probe_http_get(
-            "http://127.0.0.1:1/.well-known/openid-configuration", what="Casdoor"))
-        assert bad["status"] == "degraded"
-    finally:
-        srv.shutdown()
-        srv.server_close()
 
 
 def test_endpoint_and_page_wiring():
@@ -132,9 +97,9 @@ def test_compose_log_rotation_contract():
     assert "x-log-rotation: &log-rotation" in src
     assert 'max-size: "10m"' in src and 'max-file: "3"' in src
     referenced = src.count("logging: *log-rotation")
-    # 9 个服务全接（etcd/apisix/redis/casdoor-db/casdoor/casdoor-init/service/
-    # batch-worker/portal）；prod 形态经 compose merge 继承本配置
-    assert referenced >= 9, f"logging 引用数不足：{referenced}"
+    # 6 个服务全接（etcd/apisix/redis/service/batch-worker/portal；无登录模式
+    # ADR-0029 起统一登录三服务已移除）；prod 形态经 compose merge 继承本配置
+    assert referenced == 6, f"logging 引用数应为 6（6 服务）：{referenced}"
 
 
 if __name__ == "__main__":

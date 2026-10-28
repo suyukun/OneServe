@@ -12,18 +12,22 @@
 
 ### Added
 
-- **内置本地账号登录**：账号与口令校验内置到服务层（口令以 bcrypt 哈希存储，不落明文），
-  登录后签发签名会话令牌；不再强制依赖外部统一登录组件（Casdoor 降级为可选路径，
-  不使用本地账号模式时可不部署）。
 - **开源物料**：`LICENSE`（Apache-2.0）、`NOTICE`（依赖与镜像许可清单）、
   `CONTRIBUTING.md`、`SECURITY.md`、本 `CHANGELOG.md`。
-- **决策记录草稿**：KV 镜像由 Redis 替换为 Valkey（`docs/opensource/ADR-0028-Valkey替换.md`）。
+- **决策记录草稿**：KV 镜像由 Redis 替换为 Valkey（`docs/opensource/ADR-0028-Valkey替换.md`）；
+  开源版无登录模式（`docs/opensource/ADR-0029-开源版无登录模式.md`）。
 
 ### Changed
 
-- **登录链路（进行中）**：默认走本地账号登录；OIDC 校验路径作为可选能力保留。
-  *部分兑现*：后端双模已落地，管理面与页面侧的收敛仍在进行，完成前 README 按
-  "默认本地账号、OIDC 可选" 表述。
+- **无登录模式（ADR-0029，维护者 2026-10-28 拍板）**：开源版彻底拆除人机登录——
+  打开门户就是首页，管理台公开可访、无任何人机登录/账号概念（开箱即用演示优先）。
+  参考栈由 9 容器收口为 6 容器（etcd/apisix/redis/service/batch-worker/portal，
+  统一登录三服务与配套卷/探针/路由全数退役）；`.env.example` 与 compose 的登录链
+  环境变量（AUTH_PROVIDER/ONESERVE_AUTH_SECRET/ONESERVE_SEED_ADMIN_*/OIDC 及
+  统一登录凭证）全部移除。**AppKey 机器凭证鉴权不受影响**：数据面
+  `/v1/query|/v1/tags/query|/v1/batch|/proxy` 与凭证面 `/v1/admin/*` 仍按既有
+  体系鉴权。登录相关模块文件（auth_oidc/auth_native/auth_view*/users.yaml 等）
+  保留不删、无任何路径触发，尸体清理归 v0.1.1。
 - **依赖版本口径**：运行与分发版本以 `service/requirements.lock` 为准；
   `service/requirements.txt` 仅表达允许的版本区间。
 
@@ -43,7 +47,7 @@
 
 | 里程碑 | 状态 | 说明 |
 |---|---|---|
-| 登录本地化（去 Casdoor） | 进行中 | 后端双模已落地；管理面与页面侧收敛未完成 |
+| 无登录模式（ADR-0029，去人机登录） | 已实施 | 登录链路整体拆除（页面/端点/编排/凭证键）；模块尸体清理归 v0.1.1 |
 | 开源准备 | 进行中 | 物料已起草；依赖许可逐包机器复核、敏感词自检、镜像许可替换（ADR-0028）待完成 |
 | 首次公开发布 | 未开始 | 判据：第三方可独立复现 quickstart |
 

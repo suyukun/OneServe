@@ -60,15 +60,6 @@
       "url": "http://localhost:8000/trial.html"
     },
     {
-      "label": "login",
-      "url": "http://localhost:8000/login.html"
-    },
-    {
-      "label": "admin-accounts",
-      "url": "http://localhost:8000/admin/accounts.html",
-      "onReadyScript": "backstop_onready.js"
-    },
-    {
       "label": "admin-appkeys",
       "url": "http://localhost:8000/admin/appkeys.html",
       "onReadyScript": "backstop_onready.js"

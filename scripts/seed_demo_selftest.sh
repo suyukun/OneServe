@@ -93,8 +93,6 @@ docker run -d --name "$SERVICE_NAME" --network "$NET_NAME" \
   -p "${SERVICE_PORT}:8000" \
   -v "$REPO_ROOT/service:/app:ro" \
   -e REDIS_URL="redis://${REDIS_NAME}:6379/0" \
-  -e AUTH_OIDC_MODE=off \
-  -e AUDIT_LOGIN_CONSUME=off \
   -e AUDIT_DIR=/tmp/audit \
   -e APISIX_ADMIN=http://localhost:1 \
   -e APISIX_ADMIN_KEY=seed-demo \

@@ -32,9 +32,8 @@
 <div id="summary">运行中…</div>
 <iframe id="wiz-frame" src="publish.html" title="服务发布向导（挡板 API 驱动）"></iframe>
 <div id="results"></div>
-<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
-     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
-<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<!-- 无登录模式：site-gate.js 为兼容空壳，仍先于页面脚本装载（非 defer，取数前置硬规矩）。 -->
+<script src="../site-gate.js"></script>
 <script src="selftest-publish.js"></script>
 </body>
 </html>

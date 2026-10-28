@@ -39,23 +39,22 @@ curl -s -X POST http://localhost:8000/v1/query/v1-svc-usr-basic-info \
 
 Expected: HTTP 200 with `found: true` and 12 whitelisted fields (`gender_cd`, `age_band`, `city_code`, ...).
 
-> The `apikey` above is the **demo credential of the `partner-demo` tenant declared in [`service/auth_matrix.yaml`](service/auth_matrix.yaml)** — it is a committed demo value, not a production key. The request header locates the tenant and drives the field whitelist when calling the service directly. On the minimal stack the site login wall is off by default (`AUTH_OIDC_MODE` defaults to off outside compose); the full compose stack turns it on.
+> The `apikey` above is the **demo credential of the `partner-demo` tenant declared in [`service/auth_matrix.yaml`](service/auth_matrix.yaml)** — it is a committed demo value, not a production key. The request header locates the tenant and drives the field whitelist when calling the service directly. The portal and admin console are public (no human login — see `docs/opensource/ADR-0029-开源版无登录模式.md`); machine callers always authenticate with an AppKey at the gateway.
 
 Also handy: `bash scripts/seed_demo_selftest.sh` runs the same flow (isolated ports, throwaway containers) as an end-to-end self-test using the built service image.
 
-## Full stack (Docker Compose, 9 services)
+## Full stack (Docker Compose, 6 services)
 
 ```bash
 bash scripts/up.sh          # cp .env.example .env (first run) -> docker compose up -d --build -> wait healthy -> init APISIX routes
 ```
 
-Brings up 9 containers: `etcd`, `redis`, `apisix`, `casdoor`, `casdoor-db`, `casdoor-init`, `service`, `batch-worker`, `portal`. Entrypoints after startup:
+Brings up 6 containers: `etcd`, `redis`, `apisix`, `service`, `batch-worker`, `portal`. Entrypoints after startup:
 
 | Entry | URL | Notes |
 |---|---|---|
-| Portal + admin console | http://localhost:8000 | Site-wide login wall (Casdoor OIDC behind a local password flow); roles: admin > operator > viewer |
-| Gateway (machine data plane) | http://localhost:9080 | `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*` — AppKey self-auth, no login wall |
-| Casdoor (IAM) | http://localhost:19000 | Backing issuer/JWKS for the login wall; business users never hit it directly |
+| Portal + admin console | http://localhost:8000 | Public, no login (ADR-0029): open the portal and you are on the home page; the admin console is directly usable |
+| Gateway (machine data plane) | http://localhost:9080 | `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*` — AppKey self-auth, no login |
 
 **Base image note (production build):** the dev compose builds `service` from [`service/Dockerfile`](service/Dockerfile) on the official `python:3.13-slim` — nothing to pre-build. The **prod** image [`Dockerfile.prod`](Dockerfile.prod) however builds on a locally pre-built hardened base:
 
@@ -73,8 +72,8 @@ docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/servic
 | Credential lifecycle (sandbox / formal / rotation) | `service/app/appkeys.py`, `service/registry/appkeys.yaml.example` | Time-boxed `sb_` trial keys, `ak_` formal keys (OA ticket), rotation with overlap window; secrets stored only as sha256 digests |
 | Auth matrix (OA-granted tenants & fields) | `service/auth_matrix.yaml` | Registry-first auth with matrix fallback; demo tenants: `demo_bank`, `partner-demo`, `demo-1020` |
 | Service publishing & admin API | `service/app/admin_api.py`, `admin/` | Publish/unpublish services, grants, upstreams; every write lands in an admin event ledger |
-| Portal + catalog | `portal/` | Multi-page portal, service catalog/detail pages, admin console (login-walled) |
-| Site login wall (OIDC) | `service/app/auth_oidc.py`, `service/app/auth_native.py` | Casdoor OIDC or native bcrypt password mode; three roles with 403 on escalation |
+| Portal + catalog | `portal/` | Multi-page portal, service catalog/detail pages, admin console (public, no login) |
+| No-login mode (ADR-0029) | `docs/opensource/ADR-0029-开源版无登录模式.md` | Human login removed: portal/admin console open out of the box; machine callers still authenticate via the AppKey credential system (`/v1/admin/*` included) |
 | Audit pipeline + usage metering | `service/app/audit.py`, `scripts/audit_consumer.py`, `service/app/metering.py` | JSONL / Kafka / dual sinks; per-caller x per-service x per-day aggregation, masked appkeys in every view |
 | Meta database twin (PostgreSQL) | `migrations/`, `scripts/meta_migrate.py`, `scripts/meta_reconcile.py` | YAML registries loaded into a meta DB; three-way reconcile + snapshot export |
 | Batch delivery | `service/app/batch_api.py`, `service/app/batch_worker.py` | Asynchronous bulk queries with quota, snapshots and result files |

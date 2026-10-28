@@ -14,12 +14,12 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 <!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
      Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
      → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
-<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=266daaf925e8">
-<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=266daaf925e8">
-<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=266daaf925e8">
-<link rel="stylesheet" href="../assets/tokens.css?v=266daaf925e8">
-<link rel="stylesheet" href="../assets/portal.css?v=266daaf925e8">
-<link rel="stylesheet" href="../assets/trial.css?v=266daaf925e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=6169338440e8">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=6169338440e8">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=6169338440e8">
+<link rel="stylesheet" href="../assets/tokens.css?v=6169338440e8">
+<link rel="stylesheet" href="../assets/portal.css?v=6169338440e8">
+<link rel="stylesheet" href="../assets/trial.css?v=6169338440e8"><!-- P-2 试用台（仅引用既有令牌） -->
 <style>
   /* ── 独立简化深色样式（同 admin/grants 页惯例；不依赖组件库） ── */
   :root {
@@ -115,23 +115,23 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 <!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
 <!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
      本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
-<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
-     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
-     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
-     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="../site-gate.js"
-     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
-     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
-     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
-<script defer src="../site-gate.js?v=266daaf925e8"></script>
-<script defer src="../data-format.js?v=266daaf925e8"></script>
-<script defer src="../api.js?v=266daaf925e8"></script>
-<script defer src="../assets/app.js?v=266daaf925e8"></script>
-<script defer src="../assets/trial.js?v=266daaf925e8"></script>
+<!-- site-gate.js（无登录模式兼容空壳）：历史整站登录守卫位，现为空壳
+     仍居壳内第一个脚本位——先于 data-format/api/pages 装载（加载序由 build_portal
+     门禁断言，壳页引用契约不变）。
+     cache-busting：构建期由 build_portal 给下方 src="../site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数，旧缓存 URL 自然失效。
+     本注释刻意保留未版本化 src 字样（构建期不受版本参数改写），作为加载序门禁的
+     产物级检索锚点，勿删。 -->
+<script defer src="../site-gate.js?v=6169338440e8"></script>
+<script defer src="../data-format.js?v=6169338440e8"></script>
+<script defer src="../api.js?v=6169338440e8"></script>
+<script defer src="../assets/app.js?v=6169338440e8"></script>
+<script defer src="../assets/trial.js?v=6169338440e8"></script>
 
-<script defer src="../assets/pages.js?v=266daaf925e8"></script>
-<script defer src="../assets/detail.js?v=266daaf925e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
-<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=266daaf925e8"></script>
-<script defer src="../assets/vendor/tabler.min.js?v=266daaf925e8"></script>
+<script defer src="../assets/pages.js?v=6169338440e8"></script>
+<script defer src="../assets/detail.js?v=6169338440e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=6169338440e8"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=6169338440e8"></script>
 
 </head>
 <body class="os-layout" x-data="billingAdmin()" x-init="boot()">
@@ -181,13 +181,10 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
         <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
              登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
         <li><a class="os-nav-link" href="grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
-        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后（账号管理项随无登录模式拆除）；
              设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
              读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
         <li><a class="os-nav-link" href="pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
-        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
-             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
-        <li data-os-admin-only style="display:none"><a class="os-nav-link" href="accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
         <li><a class="os-nav-link" href="versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
         <li><a class="os-nav-link" href="perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
         <li><a class="os-nav-link" href="upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>
@@ -442,7 +439,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 </footer>
 
 </div>
-<script defer src="admin-gate.js?v=266daaf925e8"></script>
+<script defer src="admin-gate.js?v=6169338440e8"></script>
 <script>
 function billingAdmin() {
   return {
@@ -578,6 +575,6 @@ function billingAdmin() {
   };
 }
 </script>
-<script defer src="../assets/alpine.min.js?v=266daaf925e8"></script>
+<script defer src="../assets/alpine.min.js?v=6169338440e8"></script>
 </body>
 </html>

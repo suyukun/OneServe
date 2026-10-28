@@ -81,6 +81,15 @@ was exposed, rotate it first, then report.
 This project is a general-purpose data service platform. It is not a
 compliance control for any regulated industry.
 
+Per `docs/opensource/ADR-0029-开源版无登录模式.md`, this distribution ships with
+**no human login**: the portal and admin console are public by design, and the
+trust boundary for who may reach them is the deployer's network layer (intranet,
+security groups, or a fronting reverse proxy with access control). Machine
+callers are always authenticated by AppKey credentials at the gateway and the
+service layer. Reports about the admin console being reachable "without
+authentication" on a publicly exposed deployment fall under the weakened-
+deployment clause in **Out of scope** above.
+
 ## License
 
 This project is licensed under the Apache License, Version 2.0 (see `LICENSE`).

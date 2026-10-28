@@ -519,15 +519,13 @@ async def components_view(redis: Any, services: dict, *, version: str,
     ]
 
 # ══ 常驻容器健康聚合（蓝图 1a 批·监控最小集 2026-10-20） ══
-# 全部常驻容器一屏只读视图。探活原语单一来源＝healthz（TCP/HTTP/PING/hbase 装配），
+# 全部常驻容器一屏只读视图。探活原语单一来源＝healthz（TCP/PING/hbase 装配），
 # 本模块只做编排与出参形状（分层同 components_view）。无网络探针的容器如实 off 标注，
-# 不造状态；casdoor 判据＝OIDC 发现端点 HTTP GET（与其 compose healthcheck 同源）。
+# 不造状态。无登录模式（ADR-0029）：原统一登录两容器探针行随 compose 收口移除（形态见 git 史）。
 _CONTAINER_ROWS = (   # (容器名, 角色, 探针描述, 探活协程工厂名)——顺序＝页面呈现顺序
     ("oneserve-etcd", "配置存储（etcd）", "TCP", "etcd"),
     ("oneserve-apisix", "网关（APISIX）", "TCP", "gateway"),
     ("oneserve-redis", "KV 缓存", "PING", "redis"),
-    ("oneserve-casdoor-db", "统一登录 DB", "TCP", "casdoor_db"),
-    ("oneserve-casdoor", "统一登录（Casdoor）", "HTTP OIDC 发现", "casdoor"),
     ("oneserve-service", "服务层（本端点宿主）", "本进程存活", "self"),
     ("oneserve-batch-worker", "批量 worker", "无网络探针", "batch_worker"),
     ("oneserve-portal", "门户静态站", "TCP", "portal"),
@@ -539,9 +537,9 @@ async def containers_view(redis: Any) -> dict:
     """常驻容器健康一屏（只读；GET /v1/admin/monitor/containers 出参口径）。
 
     探活判据（与既有判据同源，不新造）：redis=PING（error 致命，对齐 /healthz 编排
-    口径）；etcd/apisix/casdoor-db/portal/hbase=TCP 三次握手；casdoor=
-    OIDC 发现端点 HTTP GET；service=本端点进程存活；batch-worker 无网络探针＝如实
-    off（进程级判据归 compose healthcheck，本视图不越权造状态）。
+    口径）；etcd/apisix/portal/hbase=TCP 三次握手；service=本端点进程存活；
+    batch-worker 无网络探针＝如实 off（进程级判据归 compose healthcheck，
+    本视图不越权造状态）。
     overall：任一 error→error（现仅 redis）；其余任一 degraded→degraded；否则 ok
     （off 不参与评级——hbase 未配置/batch-worker 无探针＝常态非故障）。
     """
@@ -550,14 +548,11 @@ async def containers_view(redis: Any) -> dict:
         hlz.probe_tcp(hlz.ETCD_PROBE_HOST, hlz.ETCD_PROBE_PORT, what="etcd"),
         hlz.probe_tcp(hlz.GATEWAY_PROBE_HOST, hlz.GATEWAY_PROBE_PORT, what="APISIX"),
         hlz.probe_redis(redis),
-        hlz.probe_tcp(hlz.CASDOOR_DB_PROBE_HOST, hlz.CASDOOR_DB_PROBE_PORT, what="Casdoor DB"),
-        hlz.probe_http_get(hlz.CASDOOR_PROBE_BASE + "/.well-known/openid-configuration", what="Casdoor"),
         hlz.probe_tcp(hlz.PORTAL_PROBE_HOST, hlz.PORTAL_PROBE_PORT, what="门户"),
         hlz.probe_hbase(),
     )
     by_key = {"etcd": results[0], "gateway": results[1], "redis": results[2],
-              "casdoor_db": results[3], "casdoor": results[4],
-              "portal": results[5], "hbase": results[6],
+              "portal": results[3], "hbase": results[4],
               "self": {"status": "ok", "detail": "本端点进程存活（聚合视图宿主）"},
               "batch_worker": {"status": "off",
                                "detail": "无网络探针（纯脚本容器）；进程级判据归 compose healthcheck——如实标注不造状态"}}
@@ -566,8 +561,6 @@ async def containers_view(redis: Any) -> dict:
         "etcd": f"TCP {hlz.ETCD_PROBE_HOST}:{hlz.ETCD_PROBE_PORT}",
         "gateway": f"TCP {hlz.GATEWAY_PROBE_HOST}:{hlz.GATEWAY_PROBE_PORT}",
         "redis": "PING",
-        "casdoor_db": f"TCP {hlz.CASDOOR_DB_PROBE_HOST}:{hlz.CASDOOR_DB_PROBE_PORT}",
-        "casdoor": f"HTTP {hlz.CASDOOR_PROBE_BASE}/.well-known/openid-configuration",
         "self": "本进程存活",
         "batch_worker": "—",
         "portal": f"TCP {hlz.PORTAL_PROBE_HOST}:{hlz.PORTAL_PROBE_PORT}",

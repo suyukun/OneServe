@@ -725,8 +725,8 @@
     {
       "code": "auth_required",
       "http_status": 401,
-      "meaning": "管理写操作需登录（Bearer OIDC 令牌缺失或无效）",
-      "solution": "经统一登录页登录后重试（页面会自动跳转；Casdoor 集成见 auth_oidc）",
+      "meaning": "管理写操作需登录态（Bearer 令牌缺失或无效）",
+      "solution": "本开源版为无登录模式（ADR-0029），此码为休眠登记不应出现；若出现请检查部署配置",
       "param": "Authorization",
       "source": "service",
       "scope": "http",
@@ -735,8 +735,8 @@
     {
       "code": "role_forbidden",
       "http_status": 403,
-      "meaning": "已登录但角色不足（admin/operator/viewer 三角色，Casdoor 用户 tag 定）",
-      "solution": "改用具备所需角色的账号登录（角色由平台管理员在账号管理分配，ADR-0016）；或联系管理员调整",
+      "meaning": "登录角色不足（admin/operator/viewer 三角色）",
+      "solution": "本开源版为无登录模式（ADR-0029），此码为休眠登记不应出现；若出现请检查部署配置",
       "param": "Authorization",
       "source": "service",
       "scope": "http",

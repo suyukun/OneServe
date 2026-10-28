@@ -6,10 +6,10 @@
 # 网络：复用 oneserve-net，与 compose.hbase.yml / compose.kafka.yml 同款参数化——顶屋声明
 #   external/name 两变量缺省 external oneserve-net（dev 单起行为与在网栈零冲突）；
 #   四文件叠加（-f×4 -p oneserve-prod）场景由 ONESERVE_NET_NAME / ONESERVE_NET_EXTERNAL 接管，口径详 .env.example。
-# 镜像：postgres:17-alpine 同 casdoor-db tag（本机已有镜像直用；2026-10-14 实测 docker.io 直连拉取慢）。
+# 镜像：postgres:17-alpine（本机已有镜像直用；2026-10-14 实测 docker.io 直连拉取慢）。
 # 凭据：六变量全部 env 注入必填报错式（:? 缺失即拒绝渲染/起栈）——实例引导三件套＋三角色口令；
 #   口令永不进仓（AGENTS.md 安全红线），占位值与真值口径详 .env.example。
-# 端口：仅容器网内，无宿主端口映射（与 casdoor-db 同款；psql 验证走 docker compose exec）。
+# 端口：仅容器网内，无宿主端口映射（psql 验证走 docker compose exec）。
 # 卷加密（ADR-0026）：本机 named volume 无静态加密；云上卷创建时即启加密——归 compose.prod.yml
 #   同批注释与 DR runbook（卡-1b7 步9 交付），此处先登记口径不夹带实现。
 x-log-rotation: &log-rotation

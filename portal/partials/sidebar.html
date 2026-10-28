@@ -44,13 +44,10 @@
         <!-- 1b-8 授权管理（管理组链，居租户管理之后）：租户级授权
              登记写面——审批已在 OA 完成，此处仅登记结果；只读详情全角色可达，写操作仅管理员 -->
         <li><a class="os-nav-link@@A_admin_grants@@"@@C_admin_grants@@ href="admin/grants.html" title="授权管理：租户授权登记（服务与整路由代理混排＋字段白名单＋审批单号留痕）"><i class="bi bi-shield-lock" aria-hidden="true"></i><span class="os-nav-text">授权管理</span></a></li>
-        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后、账号管理之前；
+        <!-- 管理功能群一期·价目管理（管理组第七链，插于授权管理之后（账号管理项随无登录模式拆除）；
              设计稿 D 节 4.2）：三模型价目＋生效区间——历史账按成交快照不回改；
              读 viewer／写 admin（ROUTE_MIN_ROLE 域9） -->
         <li><a class="os-nav-link@@A_admin_pricing@@"@@C_admin_pricing@@ href="admin/pricing.html" title="价目管理：按次/套餐/阶梯三模型＋生效区间——历史账按成交快照不回改"><i class="bi bi-tags" aria-hidden="true"></i><span class="os-nav-text">价目管理</span></a></li>
-        <!-- W5 账号管理（设计稿 B2：导航仅 admin 可见）——默认 display:none，
-             site-gate.js 按 JWT tag=admin 解锁（纯展示；鉴权在后端 require_role） -->
-        <li data-os-admin-only style="display:none"><a class="os-nav-link@@A_admin_accounts@@"@@C_admin_accounts@@ href="admin/accounts.html" title="账号管理：建/禁/删/改密/角色分配（仅管理员）"><i class="bi bi-people" aria-hidden="true"></i><span class="os-nav-text">账号管理</span></a></li>
         <li><a class="os-nav-link@@A_admin_versions@@"@@C_admin_versions@@ href="admin/versions.html" title="版本管理：Redis 版本空间一览＋定期清理（线上版保护闸；P3 2026-10-08）"><i class="bi bi-layers" aria-hidden="true"></i><span class="os-nav-text">版本管理</span></a></li>
         <li><a class="os-nav-link@@A_admin_perf@@"@@C_admin_perf@@ href="admin/perf.html" title="性能测试：梯子压测触发/状态轮询/历史报告页内查看（P3 2026-10-08）"><i class="bi bi-speedometer2" aria-hidden="true"></i><span class="os-nav-text">性能测试</span></a></li>
         <li><a class="os-nav-link@@A_admin_upstreams@@"@@C_admin_upstreams@@ href="admin/upstreams.html" title="上游/模拟代理配置"><i class="bi bi-diagram-3" aria-hidden="true"></i><span class="os-nav-text">上游代理</span></a></li>

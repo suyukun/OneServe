@@ -134,7 +134,7 @@ ok "快照版本号（md5 四件套）已留证"
 docker run -d --rm --name oneserve-drill-redis -p 127.0.0.1:$PORT_REDIS:6379 \
   library/redis:7-alpine >/dev/null
 ( cd service && REDIS_URL=redis://127.0.0.1:$PORT_REDIS/0 AUDIT_DIR="$AUDIT_DIR" \
-    AUTH_OIDC_MODE=off META_WRITER=db META_SNAPSHOT_DIR="$SNAP" \
+    META_WRITER=db META_SNAPSHOT_DIR="$SNAP" \
     REGISTRY_POLL_INTERVAL_S=3 nohup python3 -m uvicorn app.main:app \
     --host 127.0.0.1 --port $PORT_SVC > "$WORK/uvicorn.log" 2>&1 & echo $! > "$WORK/uvicorn.pid" )
 UV_PID=$(cat "$WORK/uvicorn.pid")

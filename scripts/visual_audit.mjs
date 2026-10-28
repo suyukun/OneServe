@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * OneServe 视觉走查批代理 · 布局断言扫描器 v4
- * 
- * 修复：使用真实 JWT token 登录，解决 admin 页重定向问题。
+ * OneServe 视觉走查批代理 · 布局断言扫描器 v5
+ *
+ * 无登录模式（ADR-0029）：门户/管理台公开可访，直接开页扫描（历史 JWT 登录
+ * 注入逻辑随登录拆除移除，形态见 git 史）。
  * 断言：折行（精准）+ 对齐 + 横向溢出。
  */
 
 import puppeteer from 'puppeteer';
-import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,45 +18,13 @@ const EVIDENCE_DIR = path.join(ROOT, 'tests/evidence/visual-audit-20261015');
 const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const BASE_URL = 'http://localhost:8000';
 
-// 读取 .env 获取密码
-const envContent = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
-const ADMIN_USER = (envContent.match(/ONESERVE_BOOTSTRAP_ADMIN_USER=(.+)/) || [])[1]?.trim() || 'admin';
-const ADMIN_PASS = (envContent.match(/ONESERVE_BOOTSTRAP_ADMIN_PASSWORD=(.+)/) || [])[1]?.trim();
-
 const backstopConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'backstop.json'), 'utf8'));
 const SCENARIOS = backstopConfig.scenarios;
-
-// 需要登录的页面：admin 页 + 有 site-gate 守卫的 portal 页
-// login.html 本身不需要
-const NEED_AUTH = new Set(SCENARIOS.filter(s => !s.label.startsWith('login')).map(s => s.label));
 
 const VIEWPORTS = [
   { label: 'wide', width: 1440, height: 900 },
   { label: 'narrow', width: 800, height: 900 },
 ];
-
-async function getAuthToken() {
-  if (!ADMIN_PASS) throw new Error('未找到 ONESERVE_BOOTSTRAP_ADMIN_PASSWORD');
-  return new Promise((resolve, reject) => {
-    const postData = JSON.stringify({ username: ADMIN_USER, password: ADMIN_PASS });
-    const req = http.request({
-      hostname: 'localhost', port: 8000, path: '/v1/admin/auth/login',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
-      timeout: 5000,
-    }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try { resolve(JSON.parse(data).accessToken); }
-        catch(e) { reject(new Error('Login parse err: ' + data.slice(0, 200))); }
-      });
-    });
-    req.on('error', reject);
-    req.write(postData);
-    req.end();
-  });
-}
 
 const WORST_CASE_INJECT = () => {
   const longName = '测试用超长中文名称单位机构企业名称字段验证数据填充';
@@ -200,17 +168,7 @@ const RUN_ASSERTIONS = () => {
 };
 
 async function main() {
-  console.log('🔍 OneServe 视觉走查扫描器 v4');
-  
-  // 获取 auth token
-  let authToken;
-  try {
-    authToken = await getAuthToken();
-    console.log('✅ Auth token obtained (exp:', new Date(JSON.parse(Buffer.from(authToken.split('.')[1], 'base64')).exp * 1000).toISOString() + ')');
-  } catch (e) {
-    console.log('⚠️ Auth token failed:', e.message, '— admin 页可能重定向');
-    authToken = null;
-  }
+  console.log('🔍 OneServe 视觉走查扫描器 v5（无登录模式：直接开页扫描）');
   
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
@@ -219,12 +177,11 @@ async function main() {
   });
   
   const allResults = {};
-  const stats = { wrap: 0, align: 0, overflow: 0, total: 0, pagesFailed: 0, redirected: 0 };
+  const stats = { wrap: 0, align: 0, overflow: 0, total: 0, pagesFailed: 0 };
   
   for (const scenario of SCENARIOS) {
     const label = scenario.label;
     const url = scenario.url;
-    const needsAuth = NEED_AUTH.has(label);
     allResults[label] = {};
     
     for (const vp of VIEWPORTS) {
@@ -236,22 +193,10 @@ async function main() {
         page = await browser.newPage();
         await page.setViewport({ width: vp.width, height: vp.height });
         
-        // 注入 auth token
-        if (needsAuth && authToken) {
-          // 先导航到同域页面建立 origin，再注入 localStorage
-          await page.goto(BASE_URL + '/login.html', { waitUntil: 'domcontentloaded', timeout: 8000 });
-          await page.evaluate((token) => {
-            localStorage.setItem('oneserve-oidc-token', token);
-          }, authToken);
-          await new Promise(r => setTimeout(r, 200));
-        }
-        
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
         await new Promise(r => setTimeout(r, 2000));
         
         const currentUrl = page.url();
-        const redirected = currentUrl.includes('login.html') && !url.includes('login.html');
-        if (redirected) stats.redirected++;
         
         // 注入最坏数据
         await page.evaluate(WORST_CASE_INJECT);
@@ -264,14 +209,13 @@ async function main() {
         
         allResults[label][vp.label] = {
           violations, screenshot: screenshotName,
-          elapsed: Date.now() - t0, redirected, finalUrl: currentUrl,
+          elapsed: Date.now() - t0, finalUrl: currentUrl,
         };
         
         violations.forEach(v => { stats[v.type]++; stats.total++; });
         
         const icon = violations.length === 0 ? '✅' : '⚠️';
-        const note = redirected ? ' [→login]' : '';
-        console.log(icon + ' ' + tag + ': ' + violations.length + '违例 (' + (Date.now()-t0) + 'ms)' + note);
+        console.log(icon + ' ' + tag + ': ' + violations.length + '违例 (' + (Date.now()-t0) + 'ms)');
         
       } catch (err) {
         console.log('❌ ' + tag + ': ' + err.message.slice(0, 80));
@@ -289,7 +233,7 @@ async function main() {
     JSON.stringify({ stats, results: allResults }, null, 2));
   
   console.log('\n📊 折行=' + stats.wrap + ' 对齐=' + stats.align + ' 溢出=' + stats.overflow + 
-    ' 总计=' + stats.total + ' 失败=' + stats.pagesFailed + ' 重定向=' + stats.redirected);
+    ' 总计=' + stats.total + ' 失败=' + stats.pagesFailed);
 }
 
 main().catch(err => { console.error('FATAL:', err); process.exit(1); });

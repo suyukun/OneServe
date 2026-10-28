@@ -52,12 +52,16 @@ from app import proxy_hub                  # B 型代理中枢（2026-10-15 自�
 # 执行器模块本身保留——上游代理链方向待 维护者 另裁）。
 from app import stats as live_stats
 from app import admin_api   # P0-4：凭证发放/热加载端点（/v1/admin/*）；2026-10-09 闸异常类
-from app import auth_oidc   # OIDC 登录闸（Casdoor 2026-10-14：401 auth_required 信封＋登录闭环端点）
-from app.admin_api import router as admin_router
-from app.admin_accounts import router as admin_accounts_router   # W5：账号管理代理（/v1/admin/accounts/*，Casdoor 管理 API 五件）
-from app.auth_oidc import router as auth_router
+from app.admin_api import router as admin_router   # /v1/admin/*：凭证发放/禁用/热加载/装载/发布
+# 【无登录模式 ADR-0029·已摘接线】开源版拆除人机登录（维护者 2026-10-28 拍板）：
+# · auth_router（/v1/admin/auth/* 登录闭环）不再挂载；
+# · admin_accounts_router（/v1/admin/accounts/*，Casdoor 管理 API 代理）不再挂载；
+# · Casdoor 登录审计消费（audit_casdoor_puller）线程不再启动；
+# · auth_oidc.py / auth_native.py / admin_accounts.py / audit_casdoor_puller.py /
+#   users.yaml 文件保留不删（v0.1.1 再清尸体），admin 写闸里的 require_login /
+#   adjudicate_route_role 挂点保留（off 态恒放行，登录行为零触发）；历史接线见 git 史。
 from app.audit import AuditWriter, make_entry
-from app import audit_casdoor_puller as login_audit   # task-029：Casdoor 登录审计消费（原生记录→八元组）
+from app import auth_oidc   # 休眠骨架（ADR-0029）：仅错误信封 handler 与 admin 写闸挂点引用（off 态恒放行）；登录闭环端点已不挂载
 from app.my_api import router as my_router     # P0-7：我的接入自助端点（/v1/portal/my/*）
 from app.audit_api import router as audit_router   # P1-1：审计查询端点（/v1/portal/audit/*）
 from app.monitor_api import router as monitor_router  # P1-6：异常与批量监控端点（/v1/admin/monitor/*）
@@ -90,7 +94,6 @@ hbase_pool_error: Exception | None = None     # 最近一次建池失败底因�
 registry_mtime: float | None = None   # services.yaml 当前生效 mtime（M2-3.5 热加载水位）
 registry_watcher: asyncio.Task | None = None  # mtime 轮询后台任务（lifespan 建/取消）
 upstreams_watcher: asyncio.Task | None = None  # upstreams.yaml 看门（B 型代理路由热加载，lifespan 建/取消）
-login_audit_puller = None                     # task-029：Casdoor 登录审计拉取器（线程；off=不建）
 
 # 演示通道：大陆手机号口径（gen_mock_source.fake_phone 生成的假号段一致）
 PHONE_RE = re.compile(r"^1[3-9]\d{9}$")
@@ -135,7 +138,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """启动：恢复 WAL → 连 redis → 预置 ping 值 → 加载服务注册与授权矩阵。"""
     global redis_client, audit, services, auth_matrix, appkeys_registry, hbase_client
     global registry_mtime, registry_watcher, hbase_connection
-    global upstreams_watcher, login_audit_puller
+    global upstreams_watcher
     audit = AuditWriter(AUDIT_DIR)
     recovered = audit.recover()
     if recovered:
@@ -184,34 +187,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _app.state.hbase_client = hbase_client   # M2-4：admin 数据源发现（AC-4）取用
     _app.state.hbase_connection = hbase_connection  # 卡1：诊断文案取当前生效 host:port/auth_mode
     _app.state.audit = audit                  # M15-1：批量端点经 app.state 取审计写入器
-    # ADR-0027 步1（登录本地化·双模）：native 模式首启种子——ONESERVE_SEED_ADMIN_*
-    # 都设置且 users.yaml 无该用户时建 admin（bcrypt；幂等，已存在即跳过不改密）。
-    # 密码明文不落日志；种子失败不阻断启动（登录链 fail-closed 自报错，数据面照常）。
-    try:
-        from app import auth_native
-        if auth_oidc._provider() == "native":
-            if auth_native.seed_admin():
-                logger.info("native 首启种子：已创建管理员账号 %s（users.yaml）",
-                            os.environ.get("ONESERVE_SEED_ADMIN_USER", ""))
-            if auth_oidc.auth_enabled() and not auth_native.has_secret():
-                logger.warning("native 模式未设置 ONESERVE_AUTH_SECRET：登录/验签将 "
-                               "fail-closed 拒绝（cp .env.example .env 填真值后重启）")
-    except Exception:   # noqa: BLE001 —— 种子失败不影响业务启动
-        logger.warning("native 首启种子失败（不影响启动；native 登录将不可用直至修复）",
-                       exc_info=True)
-    # task-029：Casdoor 登录审计消费（登录层＝原生记录）。AUDIT_LOGIN_CONSUME=off 或
-    # 凭证缺失＝不建线程；装配/启动异常不阻断服务（登录审计降级，业务审计照常）。
-    try:
-        login_audit_puller = login_audit.start_from_env(audit, audit_dir=AUDIT_DIR)
-    except Exception:   # noqa: BLE001 —— 拉取侧故障不影响业务启动
-        login_audit_puller = None
-        logger.warning("登录审计消费启动失败（不影响业务；AUDIT_LOGIN_CONSUME 可关）",
-                       exc_info=True)
+    # 【无登录模式 ADR-0029·已摘】native 首启种子（ONESERVE_SEED_ADMIN_* 建 admin 账号）
+    # 与 Casdoor 登录审计消费线程随登录拆除一并退役（历史接线见 git 史；users.yaml
+    # 保留空表在仓，无任何路径再写入）。
     _app.state.started_monotonic = time.monotonic()   # P1-6：大盘「服务」组件 uptime 真值起点
     yield
-    if login_audit_puller is not None:       # 先停登录审计线程（不再取数/落账）再收尾
-        login_audit_puller.stop()
-        login_audit_puller = None
     for _watcher in (registry_watcher, upstreams_watcher):
         if _watcher is not None:
             _watcher.cancel()            # 优雅退出：先停看门（services.yaml＋upstreams.yaml 两只）再收尾
@@ -338,7 +318,9 @@ app.state.auth_matrix = []
 app.state.appkeys_path = APPKEYS_PATH
 app.state.auth_matrix_path = kvx.AUTH_MATRIX_YAML   # 1b-8 授权管理写面（grants 端点落盘路径；lifespan 起按快照优先重定向）
 app.include_router(portal_router)   # /v1/portal/*：门户 KPI/目录/新鲜度/公告（只读，nginx 同源反代）
-app.include_router(auth_router)     # /v1/auth/*：OIDC 登录闭环（config 发现＋授权码换 token；Casdoor 集成）
+# 【无登录模式 ADR-0029·已摘挂载】登录闭环与账号管理代理不再挂载（文件保留，v0.1.1 清尸体）：
+# app.include_router(auth_router)          # /v1/admin/auth/*：登录闭环（config 发现/login/callback/refresh）
+# app.include_router(admin_accounts_router)  # /v1/admin/accounts/*：账号管理代理（Casdoor 管理 API 五件）
 app.include_router(batch_router)    # /v1/batch/jobs*：批量查询异步任务（M15-1 提交/状态；AC-1/2/4）
 app.include_router(admin_router)    # /v1/admin/*：凭证发放/禁用/热加载（P0-4，nginx 反代＋管理令牌）
 app.include_router(my_router)       # /v1/portal/my/*：我的接入自助视图（P0-7，只读掩码口径）
@@ -346,7 +328,6 @@ app.include_router(audit_router)    # /v1/portal/audit/*：C 面审计查询（P
 app.include_router(grants_router)   # /v1/portal/grants/*：C 面授权全景/字段反查/OA 溯源（P1-8，只读）
 app.include_router(monitor_router)  # /v1/admin/monitor/*：异常与批量监控（P1-6，只读，管理令牌闸）
 app.include_router(metering_router) # /v1/admin/metering/*：计量报表（P1 首批，只读聚合，审计 JSONL 真源）
-app.include_router(admin_accounts_router)  # /v1/admin/accounts/*：账号管理代理（W5，Casdoor 管理 API 五件＋审计；收口批 2a 合流——联调项 1 兑现）
 app.include_router(tenants_api.router)  # /v1/admin/tenants/*：管理功能群 A 节·租户管理（登记/冻结解冻/对账摘挂；收口批挂载）
 app.include_router(pricing_api.router)  # /v1/admin/pricing/*：管理功能群 B 节·价目管理（三模型价目＋命中预演/覆盖率；收口批挂载）
 app.include_router(billing_api.router)  # /v1/admin/billing/*：管理功能群 C 节·月账单（列表/详情/CSV/确认/补录；收口批挂载）
@@ -386,30 +367,11 @@ def _caller_grant(caller: str, service_id: str) -> dict:
     return kvx.tenant_grant(auth_matrix, service_id, appkey=caller)
 
 
-@app.middleware("http")
-async def site_wall_middleware(request: Request, call_next):
-    """W1 站点墙（登录墙设计 A1 · ADR-0015）：整站登录墙的后端数据闸。
-
-    AUTH_OIDC_MODE=on 时，命中墙域（/v1/portal/*、/v1/admin/* 含 GET、/demo）且
-    不在豁免最小集（/v1/admin/auth/*、/healthz、/v1/ping、数据面 AppKey 域）的
-    请求 → 复用 verify_access_token 验签；无/坏令牌一律 401 auth_required 同形
-    信封（fail-closed 不降级）。验签成功把 claims 注入 request.state（角色闸
-    require_role 消费），后续 require_login 短路免重复验算。
-    off＝恒放行（宿主机单测/裸跑口径），现状行为零变化；admin 写闸 20 条依赖级
-    require_login 保留双保险。注册序：本中间件先于 trace_middleware 定义（Starlette
-    后注册者在外层）→ trace 保持最外层，墙 401 信封同经 traceId/docs_url 注入，
-    与依赖级 401 完全同形。
-    """
-    if auth_oidc.auth_enabled() and auth_oidc.site_wall_hit(request.url.path):
-        authz = request.headers.get("authorization", "")
-        if not authz.lower().startswith("bearer "):
-            return auth_oidc.auth_required_response(auth_oidc.AuthRequiredError("missing_token"))
-        try:
-            claims = await asyncio.to_thread(auth_oidc.verify_access_token, authz[7:].strip())
-        except auth_oidc.AuthRequiredError as exc:   # bad_token/jwks_unavailable 等 → 同形 401
-            return auth_oidc.auth_required_response(exc)
-        request.state.oidc_claims = claims
-    return await call_next(request)
+# 【无登录模式 ADR-0029·已摘】W1 站点墙中间件（ADR-0015 整站登录墙的后端数据闸，
+# AUTH_OIDC_MODE=on 时墙域 401 auth_required）随登录拆除整体退役：全放行、零拦截，
+# 打开门户/管理台即用。分域清单与验签逻辑仍留在 auth_oidc.py（保留文件）；
+# admin 写闸里的 require_login/adjudicate_route_role 挂点保留（off 态恒放行）。
+# 历史实现见 git 史（site_wall_middleware，注册序口径：原先于 trace_middleware 定义）。
 
 
 @app.middleware("http")

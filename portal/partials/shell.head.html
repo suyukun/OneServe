@@ -27,13 +27,13 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 <!-- defer 保序加载：取数层/页组件先注册，Alpine 最后启动（初始化不被打断；运行时零构建、零 fetch 注入） -->
 <!-- B11 收窄（2026-10-14）：sm3.min.js 移出全局壳——生产页面零调用（试用台键由上游供数、
      本地不再算 SM3），唯一自测消费方 selftest-p2.html 自带 script 标签；文件与 .sha256 留存。 -->
-<!-- W2 整站登录守卫（2026-10-15 设计稿 A2）：必须是壳内第一个脚本——先于
-     data-format/api/pages 装载，401 auth_required 才会在 mock 降级前被拦截跳登录
-     （加载序由 build_portal 门禁断言；login.html/auth-callback.html 不载本件防循环）。
-     cache-busting（2026-10-15 P0 热修）：构建期由 build_portal 给下方 src="site-gate.js"
-     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数——当日 Chrome 两次以旧缓存的
-     site-gate.js 复发「秒踢登录页」，URL 带版本后旧缓存自然失效。本注释刻意保留未版本化
-     src 字样（构建期不受版本参数改写），作为 W2 加载序门禁的产物级检索锚点，勿删。 -->
+<!-- site-gate.js（无登录模式兼容空壳）：历史整站登录守卫位，现为空壳
+     仍居壳内第一个脚本位——先于 data-format/api/pages 装载（加载序由 build_portal
+     门禁断言，壳页引用契约不变）。
+     cache-busting：构建期由 build_portal 给下方 src="site-gate.js"
+     及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数，旧缓存 URL 自然失效。
+     本注释刻意保留未版本化 src 字样（构建期不受版本参数改写），作为加载序门禁的
+     产物级检索锚点，勿删。 -->
 <script defer src="site-gate.js"></script>
 <script defer src="data-format.js"></script>
 <script defer src="api.js"></script>

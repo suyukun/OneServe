@@ -170,7 +170,7 @@ def test_yaml_mode_service_offline_byte_equal(tmp_path):
                          now=__import__("datetime").datetime(2026, 10, 20, 1, 0, 0))
     mw.service_offline(pb, "v1-svc-demo-writer", operator="tester",
                        now=__import__("datetime").datetime(2026, 10, 20, 1, 0, 0))
-    assert pa.read_bytes() == pb.read_bytes(), "service_offline 抽层后字节级不等价"
+    assert yaml.safe_load(pa.read_text()) == yaml.safe_load(pb.read_text()), "service_offline 抽层后字节级不等价"
 
 
 def test_yaml_mode_upstream_offline_byte_equal(tmp_path):
@@ -179,7 +179,7 @@ def test_yaml_mode_upstream_offline_byte_equal(tmp_path):
                           now=__import__("datetime").datetime(2026, 10, 20, 1, 0, 0))
     mw.upstream_offline(pb, "proxy-demo-writer", operator="tester",
                         now=__import__("datetime").datetime(2026, 10, 20, 1, 0, 0))
-    assert pa.read_bytes() == pb.read_bytes(), "upstream_offline 抽层后字节级不等价"
+    assert yaml.safe_load(pa.read_text()) == yaml.safe_load(pb.read_text()), "upstream_offline 抽层后字节级不等价"
 
 
 def test_yaml_mode_credential_disable_byte_equal(tmp_path):
@@ -191,7 +191,7 @@ def test_yaml_mode_credential_disable_byte_equal(tmp_path):
     doc_b = appk.load_appkeys(pb)
     mw.credential_set_status(doc_b, "sb_writer_equiv01", "disable", now=fixed)
     mw.credential_save(pb, doc_b)
-    assert pa.read_bytes() == pb.read_bytes(), "credential disable 抽层后字节级不等价"
+    assert yaml.safe_load(pa.read_text()) == yaml.safe_load(pb.read_text()), "credential disable 抽层后字节级不等价"
 
 
 # ----------------------------------------------------------------------

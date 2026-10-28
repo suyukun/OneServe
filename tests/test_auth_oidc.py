@@ -550,81 +550,11 @@ def test_usage_report_routes_min_role_guard():
             f"{key} 地板非 viewer（报表专区只读面拍板＝viewer）：{AO.ROUTE_MIN_ROLE[key]!r}"
 
 
-# ---------- 2.6 W1 站点墙 on 态真栈探测（TestClient 真 main.app） ----------
-
-def _wall_probe_client():
-    """真 main.app TestClient（不进 lifespan——redis 等组件态缺位即端点自报错，
-    与墙无关；墙 401 生成于中间件，先于一切 handler）。
-
-    raise_server_exceptions=False：无 lifespan 态下个别豁免/放行端点会裸
-    AttributeError，TestClient 默认会把它重抛给用例——这里要的是与线上同形的
-    500 信封（全局 Exception handler 产出），不是重抛。"""
-    from app import main as svc
-    return TestClient(svc.app, raise_server_exceptions=False)
-
-
-def test_site_wall_on_state_probe():
-    """W1 站点墙 on 态（ADR-0015）：真 main.app 全墙域无 token → 401 auth_required
-    同形信封（含 traceId——trace 中间件在墙外层的注册序证明）；豁免最小集放行
-    （探活/登录闭环/数据面）；admin 角色token 过墙＋矩阵全链 200；viewer 同路
-    403 role_forbidden；off 态恒放行（现状行为零变化）。"""
-    if not (_HAS_FASTAPI and _HAS_JWT):
-        pytest.skip("依赖缺席：fastapi/httpx＋pyjwt（站点墙真栈探测）")
-    issue = _make_jwks_env()
-    client = _wall_probe_client()
-    os.environ["AUTH_OIDC_MODE"] = "on"
-    try:
-        # ① 全墙域无 token → 401（清单驱动，新墙内端点自动进探测，防漏挂）
-        wall_rows = [(m, p) for _mod, _fn, m, p in _enumerate_all_routes()
-                     if AO.site_wall_hit(p)]
-        assert len(wall_rows) >= 56, f"墙域路由盘点异常偏少：{len(wall_rows)}"
-        seen = set()
-        for method, path in wall_rows:
-            if (method, path) in seen:
-                continue
-            seen.add((method, path))
-            r = client.request(method, path, json={}) if method != "GET" else client.get(path)
-            body = r.json()
-            assert r.status_code == 401, f"{method} {path} 墙域无 token 须 401：实得 {r.status_code}"
-            assert body.get("error") == E.AUTH_REQUIRED, f"{method} {path} 信封码：{body}"
-            assert body.get("traceId"), f"{method} {path} 401 缺 traceId（trace 须在墙外层）"
-            assert body.get("docs_url") == "errors.html#auth_required", f"{method} {path} docs_url 缺失"
-        # ② 豁免最小集放行（pre-token 闭环/探活/数据面 AppKey 域）
-        r = client.get("/v1/admin/auth/config")
-        assert r.status_code == 200 and r.json().get("siteWall") is True, \
-            f"登录闭环豁免须放行（config 发现）：{r.status_code}"
-        r = client.post("/v1/admin/auth/login", json={})
-        assert r.status_code == 400 and r.json().get("error") == E.INVALID_REQUEST, \
-            f"login 豁免须达端点（缺字段 400 非 401）：{r.status_code}"
-        r = client.post("/v1/query/nope", json={"key": "x"})
-        assert r.status_code == 404 and r.json().get("error") == E.SERVICE_NOT_FOUND, \
-            f"数据面豁免须达端点：{r.status_code}"
-        r = client.get("/healthz")
-        assert r.status_code != 401, f"探活豁免不得拦：{r.status_code}"
-        r = client.get("/v1/ping")
-        assert r.status_code != 401, f"端到端验证豁免不得拦：{r.status_code}"
-        r = client.post("/v1/batch/jobs", json={})
-        assert r.status_code != 401, f"批量 AppKey 域豁免不得拦：{r.status_code}"
-        # ③ 角色 token 全链：admin 过墙＋矩阵 → 端点真 200（reload 只读文件，进程内安全）
-        r = client.post("/v1/admin/reload", json={},
-                        headers={"Authorization": "Bearer " + issue(tag=AO.ROLE_ADMIN)})
-        assert r.status_code == 200, f"admin token 过墙＋矩阵须达端点 200：{r.status_code} {r.text[:150]}"
-        # viewer 过墙（登录 ✓）越权矩阵 → 403 role_forbidden（含 docs_url/param 同源）
-        r = client.post("/v1/admin/reload", json={},
-                        headers={"Authorization": "Bearer " + issue(tag=AO.ROLE_VIEWER)})
-        body = r.json()
-        assert r.status_code == 403 and body.get("error") == E.ROLE_FORBIDDEN, \
-            f"viewer 越权须 403 role_forbidden：{r.status_code} {body}"
-        assert body.get("docs_url") == "errors.html#role_forbidden", body
-        assert body.get("traceId"), "403 信封同形（traceId 注入）"
-    finally:
-        os.environ["AUTH_OIDC_MODE"] = "off"
-    # ④ off＝恒放行（现状行为零变化：墙域 GET 直达端点，不再 401）
-    r = client.get("/v1/portal/overview")
-    assert r.status_code != 401, f"off 态墙域须放行（现状口径）：{r.status_code}"
-    r = client.get("/v1/admin/appkeys")
-    assert r.status_code != 401, f"off 态 admin GET 须放行：{r.status_code}"
-    print(f"  ok test_site_wall_on_state_probe（墙域 {len(seen)} 端点全 401＋豁免放行＋角色 200/403＋off 恒放行）")
+# ---------- 2.6 【无登录模式 ADR-0029·已删】W1 站点墙 on 态真栈探测 ----------
+# 站点墙中间件已随无登录模式拆除（main.py 不再注册；全放行零拦截），原
+# test_site_wall_on_state_probe（墙域 401/豁免放行/角色 200-403/off 恒放行）随机制
+# 退役移除；依赖级语义仍由上方 require_login/角色闸用例覆盖（保留模块的休眠契约）。
+# 历史实现见 git 史。
 
 
 # ---------- 3. live 集成（Casdoor 容器可达才跑；不可达 SKIP 标注） ----------
@@ -1064,27 +994,26 @@ def test_admin_write_endpoints_401_live():
 
 
 def test_frontend_401_redirect_wiring():
-    """清单断言 C：前端 401 拦截闭环——admin-gate.js 包装器识别 auth_required 跳
-    登录页；抽 3 管理页（appkeys/publish/upstreams）闸脚本先于业务 js 加载、写
-    请求头统一走 AdminGate.adminHeaders()（无 token 时空对象→写操作必收 401 信
-    封→包装器跳转；全站 fetch 包装免逐页接线，加载序是拦截生效的前提）。"""
+    """清单断言 C（无登录模式 ADR-0029 改锚）：admin-gate.js 为空壳——不得含 401
+    拦截/登录跳转机制；管理页仍保持「闸脚本先于业务 js 加载、写请求头统一走
+    AdminGate.adminHeaders()（空壳下恒空对象）」的接线契约。历史拦截闭环见 git 史。"""
     gate_src = (REPO / "portal" / "admin" / "admin-gate.js").read_text(encoding="utf-8")
     assert (REPO / "admin" / "admin-gate.js").read_text(encoding="utf-8") == gate_src, \
         "admin/admin-gate.js 与 portal/admin 产物不同步（源/产物必须一致）"
-    for needle in ("resp.status === 401", "j.error === 'auth_required'",
-                   "redirectToLogin()", "/login.html"):
-        assert needle in gate_src, f"admin-gate.js 401 拦截链缺环：{needle}"
+    for needle in ("resp.status === 401", "auth_required",
+                   "redirectToLogin()", "/login.html", "root.fetch = function"):
+        assert needle not in gate_src, f"admin-gate.js 空壳不得含登录拦截链：{needle}"
     for page in _FRONTEND_SAMPLE_PAGES:
         html = (REPO / "portal" / "admin" / f"{page}.html").read_text(encoding="utf-8")
         # cache-busting 后产物可带构建期版本参数，断言容忍可选 ?v=<hex>（只放宽匹配不改序契约）
         pos_gate = re.search(r'src="admin-gate\.js(\?v=[0-9a-f]+)?"', html)
         pos_js = re.search(rf'src="{page}\.js(\?v=[0-9a-f]+)?"', html)
         assert pos_gate and pos_js and pos_js.start() > pos_gate.start(), \
-            f"{page}.html 须 admin-gate.js 先于 {page}.js 加载（包装器先装，拦截才生效）"
+            f"{page}.html 须 admin-gate.js 先于 {page}.js 加载（组件工厂引用 AdminGate）"
         js = (REPO / "portal" / "admin" / f"{page}.js").read_text(encoding="utf-8")
         assert "AdminGate.adminHeaders" in js, f"{page}.js 写请求头须统一走 AdminGate.adminHeaders()"
-        assert "fetch(" in js, f"{page}.js 须走全局 fetch（401 拦截中间层）"
-    print(f"  ok test_frontend_401_redirect_wiring（gate 包装器＋{len(_FRONTEND_SAMPLE_PAGES)} 页接线）")
+        assert "fetch(" in js, f"{page}.js 须走全局 fetch（页面取数链路不回退）"
+    print(f"  ok test_frontend_401_redirect_wiring（空壳无拦截＋{len(_FRONTEND_SAMPLE_PAGES)} 页接线）")
 
 
 if __name__ == "__main__":

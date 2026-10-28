@@ -220,7 +220,7 @@
       </div><!-- /.table-scroll -->
     </template>
     <template x-if="!containers && !containersError"><div class="empty-tags">探活中…</div></template>
-    <div class="mon-src">数据来源：GET /v1/admin/monitor/containers · 探活判据与各容器 compose healthcheck 同源（casdoor＝OIDC 发现端点 HTTP；redis＝PING；其余＝TCP）；oneserve-batch-worker 无网络探针＝如实 off（进程级判据归 compose healthcheck）；hbase 未配置＝off 不参与评级</div>
+    <div class="mon-src">数据来源：GET /v1/admin/monitor/containers · 探活判据与各容器 compose healthcheck 同源（redis＝PING；其余＝TCP）；oneserve-batch-worker 无网络探针＝如实 off（进程级判据归 compose healthcheck）；hbase 未配置＝off 不参与评级</div>
   </section>
 
   <!-- ══ 检索条件（与审计查询同口径：时间窗/caller/endpoint/状态/追踪号；多条件 AND） ══ -->

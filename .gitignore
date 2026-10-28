@@ -15,8 +15,10 @@ testkit/reports/
 .pytest_cache/
 
 # TLS 证书（蓝图 1a HTTPS 预留）：自签 dev 证书与生产证书，私钥永不入仓
-# dev 证书由 scripts/gen-dev-cert.sh 生成到 certs/dev/
-/certs/
+# dev 证书：certs/dev（自签，随仓分发——陌生人 compose up 免前置生成步骤）
+# 其他 certs 路径（如生产证书）仍忽略
+/certs/*
+!/certs/dev/
 
 # 离线交付打包产物（可再生，不入库）
 dist/
@@ -28,7 +30,7 @@ docs/architecture/dist/
 # 2026-10-22 出仓清理（维护者批）：安全/个性化/大体积文件脱管——本地保留，git 不再追踪
 *.pem
 *.key
-configs/casdoor/app.conf
+# 【无登录模式 ADR-0029·已删】configs/casdoor/app.conf 行随登录容器退役移除
 loadtest/results/
 .dsh/
 service/registry/appkeys.yaml

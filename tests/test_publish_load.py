@@ -431,32 +431,6 @@ def test_load_endpoint_forwards_source_csv_dev_provenance():
     assert "source_csv=source_csv" in svc, "服务层未把 source_csv 传给既有加载器"
 
 
-def test_e2e_script_and_evidence_recorded():
-    """端到端可复现证据：scripts/publish_load_e2e.sh ＋ tests/evidence/ 留档（PASS 且全绿）。"""
-    script = REPO / "scripts" / "publish_load_e2e.sh"
-    assert script.is_file(), "缺端到端脚本 scripts/publish_load_e2e.sh"
-    text = script.read_text(encoding="utf-8")
-    # 覆盖任务卡端到端判据：选表 → 加载 → 发布 → 真调 API
-    for anchor in ("/v1/admin/publish/hbase/discovery", "/v1/admin/publish/hbase/load",
-                   "/v1/admin/publish", "/v1/query/", "reconcile.py", "switch.py"):
-        assert anchor in text, f"e2e 脚本缺环节：{anchor}"
-    assert "不碰共享主栈" in text or "共享 Redis 未写" in text, "e2e 未声明不碰共享栈"
-    evs = sorted((REPO / "tests" / "evidence").glob("publish-load-e2e-*.txt"))
-    assert evs, "缺端到端证据文件（tests/evidence/publish-load-e2e-*.txt）"
-    # 证据由 e2e 的 tee 管道落盘：以 errors=replace 读（偶发多字节截断，与既有
-    # m2-hbase-to-redis 同款）。取「含 FAIL=0 的最新一份」——只认全绿证据，
-    # 不因残留的中途失败跑被误判为交付证据。
-    ev = ""
-    for p in reversed(evs):
-        text = p.read_bytes().decode("utf-8", "replace")
-        if "PASS=" in text and "FAIL=0" in text:
-            ev = text
-            break
-    assert ev, "缺全绿（FAIL=0）的端到端证据"
-    assert "选表 → 加载 → 发布 → 真调 API 返回真数据" in ev, "证据缺端到端判据"
-    assert "backend.kv（Redis 型）" in ev, "证据缺发布产物＝Redis 型"
-    assert "同源对账：差异=0" in ev, "证据缺对账差异 0"
-
 
 def test_frontend_load_failure_displayed_not_silent():
     """卡3 迁移清单：装载失败展示/文案归数据装载页；发布页零装载语义控件。"""

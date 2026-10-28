@@ -3,8 +3,9 @@
 #   -f compose.runtime-fixes.yml -p oneserve-prod up -d（scripts/deploy.sh 已自动带上）。
 # 为什么存在（2026-10-23 生产 ECS 部署五病根之二/之四，docker 18.09 实证）：
 #   ① Kylin V10 + docker 18.09 默认 seccomp profile 误杀新 glibc 镜像的线程创建
-#      （现象 can't start new thread）——service/batch-worker/casdoor-init
-#      三容器需 seccomp=unconfined 才能起（与镜像内代码无关，纯引擎 profile 过旧）。
+#      （现象 can't start new thread）——service/batch-worker
+#      两容器需 seccomp=unconfined 才能起（与镜像内代码无关，纯引擎 profile 过旧；
+#      原第三容器 casdoor-init 已随无登录模式 ADR-0029 退役）。
 #   ② apisix 镜像 /usr/local/apisix/conf 属主是 uid 1001，而镜像默认用户 636 无权读挂载
 #      进来的 config.prod.yaml——需 user: "1001:0"。
 # 解除条件（docker 升级后回收本文件）：
@@ -17,9 +18,6 @@ services:
     security_opt:
       - seccomp=unconfined
   batch-worker:
-    security_opt:
-      - seccomp=unconfined
-  casdoor-init:
     security_opt:
       - seccomp=unconfined
   # ② apisix conf 目录属主 uid 1001、镜像默认用户 636 无权读（详见头注②）

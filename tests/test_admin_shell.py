@@ -65,8 +65,7 @@ PAGES = {
     "perf": ("perf.html", "perf.js", "性能测试", "perf.html"),              # P3 压测管理页：接壳
     "upstreams": ("upstreams.html", "upstreams.js", "上游代理", "upstreams.html"),
     "monitor": ("monitor.html", "monitor.js", "异常监控", "monitor.html"),  # P2c 导航一致性：接壳
-    # W5 账号管理台（2026-10-15 设计稿 B2）：accounts 接壳（导航项仅 admin 可见）
-    "accounts": ("accounts.html", "accounts.js", "账号管理", "accounts.html"),
+    # 【已删·碑注】W5 账号管理台（accounts）随无登录模式（ADR-0029）拆除；历史见 git 史。
 }
 
 # 门户壳同一套标识（与 portal 正页逐一对齐；本卡"不再是两个系统"的机检口径）

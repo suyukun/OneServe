@@ -14,7 +14,8 @@
 #     协商 API 而被守护进程拒连——必须 export 后再调用。
 # ── 为何有 runtime-fixes（五病根之二/之四）──
 # docker 18.09 默认 seccomp profile 误杀新 glibc 镜像的线程创建（can't start new thread），
-#   service/batch-worker/casdoor-init 三容器需 seccomp=unconfined；apisix 镜像
+#   service/batch-worker 两容器需 seccomp=unconfined（原第三容器 casdoor-init 已随
+#   无登录模式 ADR-0029 退役）；apisix 镜像
 #   conf 目录属主 uid 1001 而默认用户 636 无权读，需 user: "1001:0"。docker 升级后按
 #   deploy/compose.runtime-fixes.yml 头注的解除条件回收。
 set -euo pipefail
@@ -25,9 +26,9 @@ DC_BIN=/usr/local/bin/docker-compose          # 只认 v5.6.0（头注；v2.6.0 
 PROBE_IMAGE="${ONESERVE_PROBE_IMAGE:-hello-world}"   # 开源批 B2：镜像官方源，探针改拉公共小镜像
 # META_APP_PASSWORD 暂不查：元数据库（compose.metadata.yml 叠加层）尚未部署；
 # 接入元数据库当天把该键加回本清单（ADR-0021 DR runbook §6 前置步会用到）
+# 无登录模式（ADR-0029）：登录链凭证键（OIDC/CASDOOR/BOOTSTRAP）已全部移除。
 REQUIRED_ENV_KEYS=(
-  PROD_PUBLIC_ORIGIN OIDC_CLIENT_SECRET CASDOOR_ADMIN_PASSWORD
-  ONESERVE_BOOTSTRAP_ADMIN_USER ONESERVE_BOOTSTRAP_ADMIN_PASSWORD
+  PROD_PUBLIC_ORIGIN
   APISIX_ADMIN_KEY
 )
 COMPOSE_FILES=(-f docker-compose.yml -f compose.prod.yml -f compose.runtime-fixes.yml)
@@ -64,21 +65,14 @@ done
 [ "$(id -u)" -eq 0 ] || die "本脚本须以 root 运行（要写 $DEPLOY_DIR 并操作 docker）"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# 扫描 oneserve-prod 容器健康态：不健康/异常退出者记入 bad_containers。
-# casdoor-init 是一次性容器，允许 Exited (0)（running+healthy 也算过）。
+# 扫描 oneserve-prod 容器健康态：不健康/异常退出者记入 bad_containers
+# （原一次性容器 casdoor-init 的 Exited (0) 豁免已随无登录模式 ADR-0029 退役移除）。
 scan_bad_containers() {
   bad_containers=()
   local name status total=0
   while IFS=$'\t' read -r name status; do
     [ -n "$name" ] || continue
     total=$((total + 1))
-    case "$name" in
-      oneserve-prod-casdoor-init)
-        case "$status" in
-          "Exited (0)"*) continue ;;
-        esac
-        ;;
-    esac
     if [[ "$status" != *"(healthy)"* ]]; then
       bad_containers+=("$name [$status]")
     fi
@@ -238,7 +232,7 @@ if [ "$SMOKE" -eq 0 ]; then
   log "步骤⑤ 冒烟：--no-smoke 跳过"
 elif [ "$DRY_RUN" -eq 1 ]; then
   log "[dry-run] 冒烟将检查：curl 127.0.0.1:20000＝200；curl -k https://127.0.0.1:20443＝200；"
-  log "[dry-run] 容器内 healthz＝200；oneserve-prod 全容器 healthy（casdoor-init 允许 Exited 0）"
+  log "[dry-run] 容器内 healthz＝200；oneserve-prod 全容器 healthy"
 else
   log "步骤⑤ 冒烟"
   code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:20000 || echo 000)"

@@ -7,8 +7,8 @@
 //   2. compose 侧真源：docker-compose.yml（主栈）＋ compose.hbase.yml ＋ compose.kafka.yml
 //      ＋ compose.metadata.yml（元数据库叠加栈，2026-10-21 起纳入——1b 批已实施，保持图=真相）。
 //      不入对账：compose.m26-iso.yml、compose.sync.yml（一次性起撤临时栈，deployment.c4 头注已声明）。
-//   3. 容器名→service 名映射（kebab 差异）：batchWorker→batch-worker、casdoorDb→casdoor-db、
-//      metadataDb→metadata-db，其余 1:1。
+//   3. 容器名→service 名映射（kebab 差异）：batchWorker→batch-worker、
+//      metadataDb→metadata-db，其余 1:1（原统一登录两映射已随 ADR-0029 移除）。
 //   4. 双向比对：
 //      图有 compose 无 ＝ 疑似过期图（模型该删）；
 //      compose 有 图无 ＝ 疑似漏画（模型该补；一次性 init job 亦计入，如实暴露）。
@@ -24,20 +24,20 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const archDir = join(root, 'docs/architecture');
 
 // ---------- 图侧：解析 deployment 块里的 node 实例 ----------
-//   一次性 init job（casdoorInit/topicInit）与主容器同 instanceOf，需显式映射到各自 service 名。
-const nameMap = { batchWorker: 'batch-worker', casdoorDb: 'casdoor-db', metadataDb: 'metadata-db', casdoorInit: 'casdoor-init', topicInit: 'topic-init' };
+//   一次性 init job（topicInit 等）与主容器同 instanceOf，需显式映射到各自 service 名。
+const nameMap = { batchWorker: 'batch-worker', metadataDb: 'metadata-db', topicInit: 'topic-init' };
 const graphServices = new Set();
 for (const f of readdirSync(archDir).filter(f => f.endsWith('.c4'))) {
   const src = readFileSync(join(archDir, f), 'utf8');
   // 2026-10-19：模型容器按说明书 §3.3 分组后 instanceOf 为嵌套 FQN（oneserve.dataPlane.apisix 等），
-  //   取路径末段为容器 id 再映射；node id 优先（casdoorInit 与 casdoorN 同容器，靠 id 区分）。
+  //   取路径末段为容器 id 再映射；node id 优先（同容器的一次性任务靠 id 区分）。
   // 写法A（直挂式）：node x '标题' { instanceOf oneserve.fqn }
   for (const m of src.matchAll(/node\s+(\w+)\s+'[^']*'\s*\{\s*instanceOf\s+oneserve\.([\w.]+)/g)) {
     const containerId = m[2].split('.').pop();
     graphServices.add(nameMap[m[1]] ?? nameMap[containerId] ?? containerId);
   }
   // 写法B（分区实例赋值式，2026-10-19 1fa6e57 起）：xxxI = instanceOf oneserve.fqn '标题'
-  //   实例 id 优先（casdoorInitI→casdoor-init 靠 id 区分同容器的一次性任务），去尾 I 后查映射；否则用 FQN 末段。
+  //   实例 id 优先（initJobI→init-job 靠 id 区分同容器的一次性任务），去尾 I 后查映射；否则用 FQN 末段。
   for (const m of src.matchAll(/(\w+)\s*=\s*instanceOf\s+oneserve\.([\w.]+)/g)) {
     const instId = m[1].replace(/I$/, '');
     const containerId = m[2].split('.').pop();

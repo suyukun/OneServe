@@ -32,13 +32,8 @@ GATEWAY_PROBE_PORT = int(os.environ.get("APISIX_PROBE_PORT", "9080"))
 ETCD_PROBE_HOST = os.environ.get("ETCD_PROBE_HOST", "oneserve-etcd")
 ETCD_PROBE_PORT = int(os.environ.get("ETCD_PROBE_PORT", "2379"))
 # 常驻容器健康聚合探活目标（蓝图 1a 批·监控最小集 2026-10-20）：与 compose 容器名
-# 同源（dev/prod/m26 三形态网络别名一致），本机/异构部署可经 env 覆盖。casdoor 走
-# OIDC_INTERNAL_BASE 同值基址（发现端点＝compose casdoor healthcheck 同判据）。
-CASDOOR_DB_PROBE_HOST = os.environ.get("CASDOOR_DB_PROBE_HOST", "oneserve-casdoor-db")
-CASDOOR_DB_PROBE_PORT = int(os.environ.get("CASDOOR_DB_PROBE_PORT", "5432"))
-CASDOOR_PROBE_BASE = os.environ.get(
-    "CASDOOR_PROBE_BASE",
-    os.environ.get("OIDC_INTERNAL_BASE", "http://oneserve-casdoor:8000")).rstrip("/")
+# 同源（dev/prod/m26 三形态网络别名一致），本机/异构部署可经 env 覆盖。
+# 无登录模式（ADR-0029）：原统一登录两容器的探针目标随 compose 收口移除（形态见 git 史）。
 PORTAL_PROBE_HOST = os.environ.get("PORTAL_PROBE_HOST", "oneserve-portal")
 PORTAL_PROBE_PORT = int(os.environ.get("PORTAL_PROBE_PORT", "80"))
 
@@ -128,25 +123,6 @@ async def probe_redis(redis: Any) -> dict:
     except Exception as exc:  # noqa: BLE001 —— 探活失败如实报，不降级成「正常」
         return {"status": "error", "detail": f"PING 失败（{type(exc).__name__}: {exc}）"}
 
-async def probe_http_get(url: str, *, what: str) -> dict:
-    """HTTP GET 轻探（蓝图 1a 监控最小集 2026-10-20）：casdoor OIDC 发现端点等。
-
-    与 compose healthcheck 同判据（wget -qO- 发现端点）；2xx 即 ok，连接失败/超时/
-    非 2xx＝degraded（casdoor 挂不算 service 致命——编排不重启，可见性交给监控面）。
-    urllib 走 to_thread（纯逻辑模块零三方依赖；分层同 probe_tcp）。
-    """
-    def _get() -> int:
-        import urllib.request
-        with urllib.request.urlopen(url, timeout=HEALTHZ_PROBE_TIMEOUT_S) as resp:
-            return int(resp.status)
-    t0 = time.monotonic()
-    try:
-        status = await asyncio.wait_for(asyncio.to_thread(_get),
-                                        timeout=HEALTHZ_PROBE_TIMEOUT_S + 0.5)
-        ms = int((time.monotonic() - t0) * 1000)
-        return {"status": "ok", "detail": f"{what} HTTP {status} {url}（{ms}ms）",
-                "latencyMs": ms}
-    except Exception as exc:  # noqa: BLE001 —— 探活失败如实报
-        return {"status": "degraded",
-                "detail": f"{what} 不可达 {url}（{type(exc).__name__}: {exc}）"}
+# 【无登录模式 ADR-0029·已摘】probe_http_get（HTTP GET 轻探，原统一登录 IdP 发现
+# 端点判据）随登录容器退役移除；历史实现见 git 史。
 

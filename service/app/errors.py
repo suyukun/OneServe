@@ -148,8 +148,8 @@ EXPIRES_SHRINK_FORBIDDEN = "expires_shrink_forbidden"   # 续期缩短（AC-3）
 
 # 运营管理（含目录校验/写区）
 UNAUTHORIZED = "unauthorized"
-AUTH_REQUIRED = "auth_required"   # OIDC 登录闸（Casdoor 集成，ADR-0010 硬前提兑现）
-ROLE_FORBIDDEN = "role_forbidden"   # W4 角色闸：已登录但角色不足（三角色，ADR-0016）
+AUTH_REQUIRED = "auth_required"   # 登录闸（休眠码：无登录模式 ADR-0029 下零触发，登记保留）
+ROLE_FORBIDDEN = "role_forbidden"   # 角色闸（休眠码：无登录模式 ADR-0029 下零触发，登记保留）
 RATE_LIMITED = "rate_limited"
 GATEWAY_UNREACHABLE = "gateway_unreachable"
 INVALID_QUOTA = "invalid_quota"
@@ -322,11 +322,11 @@ CODES: tuple[ErrorCode, ...] = (
               "如需作废请用「禁用」；需要长期有效可选「永久」", param="expires_at"),
     ErrorCode(UNAUTHORIZED, 401, "管理令牌缺失或不正确（X-Admin-Token）",
               "携带正确的管理令牌 X-Admin-Token", param="X-Admin-Token"),
-    ErrorCode(AUTH_REQUIRED, 401, "管理写操作需登录（Bearer OIDC 令牌缺失或无效）",
-              "经统一登录页登录后重试（页面会自动跳转；Casdoor 集成见 auth_oidc）",
+    ErrorCode(AUTH_REQUIRED, 401, "管理写操作需登录态（Bearer 令牌缺失或无效）",
+              "本开源版为无登录模式（ADR-0029），此码为休眠登记不应出现；若出现请检查部署配置",
               param="Authorization"),
-    ErrorCode(ROLE_FORBIDDEN, 403, "已登录但角色不足（admin/operator/viewer 三角色，Casdoor 用户 tag 定）",
-              "改用具备所需角色的账号登录（角色由平台管理员在账号管理分配，ADR-0016）；或联系管理员调整",
+    ErrorCode(ROLE_FORBIDDEN, 403, "登录角色不足（admin/operator/viewer 三角色）",
+              "本开源版为无登录模式（ADR-0029），此码为休眠登记不应出现；若出现请检查部署配置",
               param="Authorization"),
     ErrorCode(RATE_LIMITED, 429, "签发操作过于频繁（同租户/同 IP 固定窗限频）",
               "稍后重试（响应体 retry_after_s 为窗口秒数）"),

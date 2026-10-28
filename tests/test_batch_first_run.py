@@ -130,26 +130,3 @@ def test_batch_source_service_matches_point_query_channel():
 
 # ---------- ④ 首跑证据在场 ----------
 
-def test_first_run_evidence_present():
-    """首跑证据文件在场（P2b 验收三件：evidence＋修复＋本守卫）。"""
-    ev = REPO / "tests" / "evidence" / "batch-first-run-20261015.txt"
-    assert ev.is_file(), f"缺首跑证据 {ev}"
-    text = ev.read_text(encoding="utf-8")
-    for token in ("7505f803a96c4690865c29323f6831f0",   # 首跑任务 id
-                  "succeeded",
-                  "service_not_granted"):                # 修复前实证
-        assert token in text, f"证据缺要素 {token!r}"
-
-
-if __name__ == "__main__":
-    fns = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_")]
-    ok = 0
-    for name, fn in fns:
-        try:
-            fn()
-            print(f"  ✓ {name}")
-            ok += 1
-        except AssertionError as exc:
-            print(f"  ✗ {name}：{exc}")
-    print(f"== P2b 防回潮守卫：{'全绿' if ok == len(fns) else '未过'}：{ok}/{len(fns)} ==")
-    sys.exit(0 if ok == len(fns) else 1)

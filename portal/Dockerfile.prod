@@ -11,7 +11,7 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine
 
 # 含 build_portal.py 产物 portal/admin/
 COPY portal/ /usr/share/nginx/html/
-# v4 站点配置（静态＋干净 URL＋/v1/、/login、/api 分流反代；listen 8080/8443）
+# v4 站点配置（静态＋干净 URL＋/v1/ 反代分流；listen 8080/8443）——登录流路由已随无登录模式（ADR-0029）移除
 COPY configs/nginx/portal-nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080 8443

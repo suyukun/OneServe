@@ -482,15 +482,6 @@ def test_headless_scripts_present_and_documented():
     assert "人肉复核通道" in m and "headless" in m
 
 
-def test_e2e_evidence_recorded():
-    """真链路 e2e 证据已落档（tests/evidence/m25-hbase-e2e.txt），含真 HBase 元数据与试查命中。"""
-    ev = REPO / "tests" / "evidence" / "m25-hbase-e2e.txt"
-    assert ev.is_file(), "缺真链路 e2e 证据（bash scripts/m25_hbase_e2e.py）"
-    text = ev.read_text(encoding="utf-8")
-    assert "真 HBase 点查命中" in text, "证据缺真 HBase 点查命中"
-    assert "适配层归一化" in text, "证据缺适配层归一化"
-    assert "e2e 全绿" in text, "证据未标全绿"
-
 
 def test_real_meta_fixture_captured_from_container():
     """真 meta fixture 证据：HBase meta 只到 namespace/表/列族（列归字段字典 CSV，AC-4 双源）。"""

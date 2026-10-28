@@ -111,9 +111,8 @@
 </div>
 
 <script>/* P0-6 门禁自测种子：会话令牌预置（探针发布/存草稿/下线流程可写；锁定态断言在用例内另行置空） */try { sessionStorage.setItem('oneserve-admin-token', 'selftest-seed'); } catch (e) {}</script>
-<!-- W2 进墙标注（设计稿 A4④）：本页属登录墙内页面——活栈 AUTH_OIDC_MODE=on 跑测
-     须先注入 token（localStorage oneserve-oidc-token）或以 off 态跑；off 态浏览行为不变。 -->
-<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载（非 defer，取数前置硬规矩） -->
+<!-- 无登录模式：site-gate.js 为兼容空壳，仍先于页面脚本装载（非 defer，取数前置硬规矩）。 -->
+<script src="../site-gate.js"></script>
 <script src="admin-gate.js"></script><!-- P0-6 管理令牌闸共享模块（upstreams.js 组件依赖它） -->
 <script src="upstreams.js"></script><!-- 先业务脚本后 Alpine（本仓 alpine 构建微任务即启动，见 upstreams.html 同注） -->
 <script src="../assets/alpine.min.js"></script>

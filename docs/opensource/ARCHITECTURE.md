@@ -7,7 +7,7 @@
 | 范围 | 运行时组件、核心概念、请求路径、部署形态、技术选型与已知边界 |
 | 最后更新 | 2026-10-28 |
 
-> 本文描述登录本地化完成后的目标态；组件与端口以 `docker-compose.yml` 为准，行为以 `service/` 的实现与测试为准。
+> 本文描述无登录模式（ADR-0029）落地后的目标态；组件与端口以 `docker-compose.yml` 为准，行为以 `service/` 的实现与测试为准。
 
 ## 1. 一句话定位
 
@@ -54,7 +54,7 @@ flowchart LR
 - **apisix**：唯一对外数据面入口（`:9080`）。按路由做 API Key 鉴权、注入 trace id、
   转发到服务层；路由配置存放在 etcd，不写死在网关容器里。
 - **service**：FastAPI 薄服务层。承载 A 型查询、B 型代理、批量任务 API、管理 API、
-  登录与审计写入；不直接对外发布端口，只经网关或门户反向代理到达。
+  审计写入；不直接对外发布端口，只经网关或门户反向代理到达。
 - **etcd**：APISIX 的配置存储，不是业务数据库。保存路由、上游、消费者等服务网关对象。
 - **KV 热存储**：Redis 兼容的键值库（`noeviction` + AOF `everysec`）。保存按版本组织的
   标签数据、版本元信息、批量任务队列与统计计数。
@@ -87,10 +87,12 @@ Admin API 的 `:9180`、服务层的 `:8000` 均只在容器网络内可达。
 `data_as_of`。版本号采用 `YYYYMMDD`；读取永远先解析别名，再读对应版本的数据键，
 因此换版本是原子切换，不会读到半新半旧的数据。
 
-**三角色 RBAC（基于角色的访问控制）。** 账号角色为 `admin`、`operator`、`viewer`，权限依次递减，缺省
-`viewer`。登录后签发的 JWT 在 `tag` 声明中携带角色；服务层用 `ROUTE_MIN_ROLE`
-矩阵逐路由裁决，越权返回 `403 role_forbidden`。三角色只决定“能不能进这个面”，
-字段级可见性仍由授权矩阵单独决定。
+**无登录模式（ADR-0029）。** 开源版不设人机登录与账号体系：打开门户即是首页，管理台
+公开可访（开箱即用演示优先，分叉决策见 `ADR-0029-开源版无登录模式.md`）。机器调用方
+仍受完整鉴权约束——数据面 `/v1/query/*`、`/v1/tags/query`、`/v1/batch/*`、`/proxy/*`
+走网关 AppKey（key-auth）＋服务层授权矩阵双重校验；`/v1/admin/*` 凭证管理端点由
+AppKey 凭证体系与部署侧网络边界保护。历史登录墙（OIDC/native 双模、三角色 RBAC）
+已随分叉拆除，模块尸体留待 v0.1.1 清理。
 
 **审计管线（audit pipeline）。** 每次受治理调用写一条八元组：时间、调用方、端点、
 参数摘要、状态码、时延、响应摘要、trace id。参数与响应只存 SHA-256 摘要，不落明文；
@@ -170,7 +172,7 @@ Content-Type: application/json
 | batch-worker | — | ✓ | ✓ | 异步批量任务 |
 | 示例上游 | — | — | ✓ | B 型链路演示，可替换/删除 |
 
-- **分档**：核心 5 是最小可查询部署（能登录、发布、完成 A 型点查，不含批量）；
+- **分档**：核心 5 是最小可查询部署（能发布、完成 A 型点查，不含批量）；
   标准 6 增加 batch-worker；参考 7 再增加示例上游用于验证 B 型转发。
 - **可选叠加**：Kafka（流式审计）与 HBase（冷存/宽表装载）各用独立 compose 文件，
   均不在默认启动路径；启用 Kafka 后全栈为八个常驻容器（另有一次性 topic 初始化任务）。
@@ -186,8 +188,7 @@ Content-Type: application/json
 | API 服务 | Python 3.13 + FastAPI + Uvicorn | Go、Java。异步 I/O 与类型化请求模型适合薄服务层；若未来出现 CPU 密集路径，再把该路径下沉到 Go，而不是整体重写。 |
 | KV 热存储 | Redis 7（`noeviction` + AOF `everysec`） | Valkey 8 是协议兼容的 drop-in 替代，许可更干净；KeyDB、Dragonfly 也可评估。当前代码只用 GET/SET/HGET/管道等窄子集，替换成本低。 |
 | 门户 | nginx-unprivileged 1.27 + 静态多页应用（MPA） | SPA、Node SSR。静态站零运行时构建、内存占用低；管理台不需要前端框架即可工作。 |
-| 认证 | 内置本地账号：`users.yaml` + bcrypt + HS256 JWT | 外部 OIDC 身份提供方（IdP）、Keycloak。此前依赖第三方 IdP，为部署极简化已移除；本地模式只需一个签名密钥，账号表随仓库备份。OIDC 校验路径仍保留，`AUTH_PROVIDER` 缺省 `native`，设为 `oidc` 可切回。 |
-| 会话 | access 2 小时 / refresh 7 天，轮换式刷新 | 服务端 session。JWT 让服务层无状态，便于横向扩容；登出与禁用通过短 TTL 与刷新拒绝收敛。 |
+| 认证 | 无登录模式（ADR-0029）：无人机登录/账号概念 | 历史形态（本地账号 users.yaml＋bcrypt＋HS256 JWT、外源 OIDC IdP）已随开源分叉拆除，代码尸体保留至 v0.1.1；机器鉴权走网关 AppKey（key-auth）＋服务层授权矩阵。若未来恢复人机登录，回 git 史与 ADR-0029 取回实现。 |
 | 审计 | JSONL + WAL（默认）；Kafka（可选） | 直接写数据库、Loki。本地优先，不要求部署消息中间件；Kafka 模式用于多消费者与对账期。 |
 | 批量执行 | 同镜像 sidecar + Redis FIFO | Celery、RQ。不引入额外 broker；任务状态、队列与结果都在已有 KV 中。 |
 | 冷存/批量源 | HBase（可选） | Parquet、ClickHouse、对象存储。只在已有表源需要装载时启用，不属于核心依赖。 |
@@ -210,27 +211,27 @@ Content-Type: application/json
   发布与下线由管理面触发，网关路由幂等下发。
 - **扩容**：service 的请求处理无状态，可在网关后增加副本；KV 热存储当前是单主，扩容前先评估
   分片或读写分离；batch-worker 串行消费，增加副本前先确认队列隔离。
-- **备份**：KV 的 AOF 卷、审计卷、`users.yaml`、`services.yaml`、`auth_matrix.yaml`、
+- **备份**：KV 的 AOF 卷、审计卷、`services.yaml`、`auth_matrix.yaml`、
   `upstreams.yaml` 是恢复所需的最小集合。
-- **安全**：口令只存 bcrypt 哈希；本地登录的 JWT 用对称密钥签名，换密钥即全量失效；连续 5 次
-  密码错误锁定 15 分钟；管理路由按角色矩阵拦截；审计不落明文参数。
+- **安全**：无登录模式下管理台公开可访——部署侧必须以网络边界（内网/安全组/前置
+  反代）保护门户与管理端口；数据面与凭证面仍走 AppKey 鉴权（key-auth＋授权矩阵＋
+  限流）；审计不落明文参数。
 
 ## 8. 代码结构与验证
 
 ```text
-service/app/              API、注册表、执行器、认证、审计、批量、管理面
+service/app/              API、注册表、执行器、审计、批量、管理面（历史登录模块尸体保留至 v0.1.1）
 service/services.yaml     A 型服务注册表
 service/auth_matrix.yaml  租户 / 凭证 / 字段白名单
 service/upstreams.yaml    B 型上游注册表
-service/users.yaml        本地账号表（bcrypt 哈希）
 configs/apisix/           网关启动配置与路由渲染
 configs/nginx/            门户站点配置
 portal/                   静态门户与管理台
-tests/                    pytest 套件（114 个 test_*.py）
+tests/                    pytest 套件（111 个 test_*.py）
 docker-compose.yml        参考栈
 ```
 
-- 测试套件按 `tests/test_*.py` 动态枚举，当前 **114** 个测试模块；新增套件自动入列。
+- 测试套件按 `tests/test_*.py` 动态枚举，当前 **111** 个测试模块；新增套件自动入列。
 - 直接依赖 **12** 条（`service/requirements.txt`），锁定闭包 **65** 包
   （`service/requirements.lock`）；运行与分发以锁文件为准。
 - 最小冒烟：无 Key 请求网关返回 401，带 Key 返回 200；一条 A 型查询返回 JSON；
@@ -242,8 +243,9 @@ docker-compose.yml        参考栈
   发布由管理面显式触发，不含定时调度、自动发现或自动回滚。
 - **不是通用 SQL 网关，也不是数据集成工具**：A 型只做单键点查，不做任意查询、
   Join、聚合或即席分析；B 型只做注册与转发，不替上游定义语义。
-- **认证能力有边界**：默认不提供 MFA、自助注册、找回密码与企业 SSO；需要 SSO 时
-  切到 OIDC 模式并自备 IdP（单点登录）。
+- **无登录模式的边界**：开源版不提供人机登录、账号、角色与审计外的操作者归属；
+  对外暴露管理台意味着信任边界前移到网络层——公网部署必须自加访问控制
+  （见 `SECURITY.md` 与 ADR-0029 的部署前提）。
 - **审计不是合规归档**：八元组用于排障与计量，只存摘要；WORM、长期归档与法务留存
   需外接对象存储或日志平台。
 - **传输与静态加密**：TLS 可由前置反向代理终止，平台不管理证书；数据卷落盘加密

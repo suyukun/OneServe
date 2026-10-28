@@ -317,32 +317,11 @@ def test_three_role_tags_align(tmp_path):
     print("  ok test_three_role_tags_align（admin/operator/viewer 三角色 tag 正确）")
 
 
-# ---------- 6. 站点墙 e2e（真 main.app；设计稿步1 判据的进程内版） ----------
-
-def test_native_wall_appkeys_e2e(tmp_path):
-    """on+native：无 token GET /v1/admin/appkeys 401 auth_required；native 登录真
-    token admin 200；viewer 403 role_forbidden（矩阵照常裁决）。"""
-    if not (_HAS_FASTAPI and _HAS_JWT and _HAS_BCRYPT):
-        pytest.skip("依赖缺席：fastapi/httpx＋pyjwt＋bcrypt（站点墙 e2e）")
-    users = _seeded_users_yaml(tmp_path / "users.yaml", {"viewer1": "viewer"})
-    with _native_env(users):
-        from app import main as svc
-        client = TestClient(svc.app, raise_server_exceptions=False)
-        # ① 墙 on：无 token 401 auth_required 同形信封
-        r = client.get("/v1/admin/appkeys")
-        assert r.status_code == 401 and r.json()["error"] == E.AUTH_REQUIRED, r.text[:150]
-        # ② native 登录真 token 过墙＋矩阵 → 200（设计稿判据：login→token→appkeys）
-        pair = _login(client, "admin", PW).json()
-        r2 = client.get("/v1/admin/appkeys",
-                        headers={"Authorization": "Bearer " + pair["accessToken"]})
-        assert r2.status_code == 200, f"admin token 须 200：{r2.status_code} {r2.text[:150]}"
-        assert "keys" in r2.json(), "凭证列表契约字段"
-        # ③ viewer 过墙但矩阵 403（GET appkeys＝operator 地板）
-        vpair = _login(client, "viewer1", PW + "viewer1").json()
-        r3 = client.get("/v1/admin/appkeys",
-                        headers={"Authorization": "Bearer " + vpair["accessToken"]})
-        assert r3.status_code == 403 and r3.json()["error"] == E.ROLE_FORBIDDEN, r3.text[:150]
-    print("  ok test_native_wall_appkeys_e2e（无 token 401／admin 200／viewer 403）")
+# ---------- 6. 【无登录模式 ADR-0029·已删】站点墙 e2e（真 main.app） ----------
+# 站点墙中间件与登录端点（/v1/admin/auth/login）已随无登录模式摘除接线，原
+# test_native_wall_appkeys_e2e（无 token 401／native 登录 200／viewer 403）随机制
+# 退役移除；auth_native 模块纯函数级用例（验密/签发/验签/角色）仍在本套件覆盖。
+# 历史实现见 git 史。
 
 
 # ---------- 7. 双模分派回归（oidc 通道不动＋native 优先级） ----------
@@ -402,13 +381,14 @@ def test_secret_missing_fail_closed(tmp_path):
 # ---------- 8. 配置面守卫 ----------
 
 def test_env_example_documents_native_keys():
-    """三键在册（CHANGE_ME 占位）＋AUTH_PROVIDER 说明（防误删回潮）。"""
+    """无登录模式（ADR-0029）改锚：登录链三键已从 .env.example 移除（防回潮）。
+    历史口径（三键在册＋双模说明）见 git 史。"""
     text = (REPO / ".env.example").read_text(encoding="utf-8")
-    for needle in ("AUTH_PROVIDER", "ONESERVE_AUTH_SECRET=CHANGE_ME_AUTH_SECRET",
+    for needle in ("AUTH_PROVIDER=native", "ONESERVE_AUTH_SECRET=CHANGE_ME_AUTH_SECRET",
                    "ONESERVE_SEED_ADMIN_USER", "ONESERVE_SEED_ADMIN_PASSWORD=CHANGE_ME_SEED_ADMIN_PASSWORD"):
-        assert needle in text, f".env.example 缺键：{needle}"
-    assert "native" in text and "oidc" in text, "双模说明须在册"
-    print("  ok test_env_example_documents_native_keys")
+        assert needle not in text, f".env.example 不得残留登录链键（ADR-0029 已删）：{needle}"
+    assert "无登录模式" in text, ".env.example 须留无登录模式碑注"
+    print("  ok test_env_example_documents_native_keys（登录链键零残留）")
 
 
 def test_users_yaml_template_shipped():

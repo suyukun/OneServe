@@ -105,17 +105,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # -rs：把 SKIP 的 reason 原样打进日志，便于区分「环境跳过」与「真绿」。
+          # -rs：SKIP reason 打日志（环境跳过 vs 真绿）。deselect=真环境依赖类（需 docker postgres/HBase 实跑产物），
+          # 其余一律跑一律算数。evidence 类本地产物断言测试已随无登录化批次删除（开源仓无实跑产物，恒假红）。
           python -m pytest tests/ -q -rs \
             --deselect tests/test_admin_api_db_e2e.py \
             --deselect tests/test_meta_migrate.py \
             --deselect tests/test_meta_writer_db.py \
             --deselect "tests/test_tenants_api.py::test_db_e2e_freeze_unfreeze_roundtrip" \
             --deselect "tests/test_tenants_api.py::test_db_e2e_frozen_survives_grant_registration" \
-            --deselect "tests/test_tenants_api.py::test_db_e2e_frozen_issue_blocked_by_db_gate" \
-            --deselect tests/test_batch_first_run.py::test_first_run_evidence_present 
-            --deselect tests/test_publish_hbase.py::test_e2e_evidence_recorded \
-            --deselect tests/test_publish_load.py::test_e2e_script_and_evidence_recorded
+            --deselect "tests/test_tenants_api.py::test_db_e2e_frozen_issue_blocked_by_db_gate"
 
   # ===========================================================================
   # job 2 · smoke（可选，非阻断）：redis＋service 最小栈 → seed → 第一个查询 200
@@ -152,14 +150,13 @@ jobs:
             sleep 0.25
           done
           docker exec oneserve-ci-redis redis-cli ping | grep -q PONG
-          # service 环境变量对齐自测脚本：关 OIDC/审计拉取、网关指向不可达占位
+          # service 环境变量对齐自测脚本：网关指向不可达占位（无登录模式 ADR-0029 起
+          # 登录相关开关已随代码缺省移除）
           # （APISIX_ADMIN_KEY 是显式占位值 ci-placeholder，仅用于进程启动，非真实凭证）。
           docker run -d --name oneserve-ci-service --network oneserve-ci-net \
             -p 18000:8000 \
             -v "$PWD/service:/app:ro" \
             -e REDIS_URL=redis://oneserve-ci-redis:6379/0 \
-            -e AUTH_OIDC_MODE=off \
-            -e AUDIT_LOGIN_CONSUME=off \
             -e AUDIT_DIR=/tmp/audit \
             -e APISIX_ADMIN=http://127.0.0.1:1 \
             -e APISIX_ADMIN_KEY=ci-placeholder \

@@ -124,8 +124,8 @@
   <span id="probe-canwrite" x-text="canWrite() ? 'w' : 'r'"></span>
 </div>
 
-<!-- W2 进墙标注：本页属登录墙内页面——off 态跑测或预注入 token（localStorage oneserve-oidc-token） -->
-<script src="../site-gate.js"></script><!-- W2 整站守卫：先于页面脚本装载 -->
+<!-- 无登录模式：site-gate.js 为兼容空壳，仍先于页面脚本装载。 -->
+<script src="../site-gate.js"></script>
 <script src="admin-gate.js"></script><!-- 登录闸共享模块（tenants.js 组件依赖它） -->
 <script src="tenants.js"></script><!-- 先业务脚本后 Alpine（本仓 alpine 构建微任务即启动） -->
 <script src="../assets/alpine.min.js"></script>

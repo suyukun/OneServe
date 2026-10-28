@@ -45,10 +45,11 @@ VENDOR_DIR = PORTAL / "assets" / "vendor"
 # 元数据就位后若重建字典类页面再增回。
 # 三批（2026-10-08 修五）：admin_versions/admin_published 随 versions/published 两页
 # 接入壳新增（占位键须与 sidebar.html 的 @@A_*@@/@@C_*@@ 一一对应）。
+# admin_accounts 随无登录模式（ADR-0029）拆除：账号管理页下线，导航项同步移除。
 NAV_KEYS = ("index", "catalog", "trial", "my", "apply", "ops", "docs", "errors",
             "audit", "grants", "admin_load", "admin_publish", "admin_published",
             "admin_appkeys", "admin_tenants", "admin_grants", "admin_pricing",
-            "admin_accounts", "admin_versions", "admin_perf", "admin_upstreams",
+            "admin_versions", "admin_perf", "admin_upstreams",
             "admin_monitor", "reports_overview", "reports_subjects",
             "reports_services", "reports_trend", "reports_bills")
 
@@ -207,7 +208,7 @@ PAGES: dict[str, dict] = {
 # 在 NAV_KEYS 内）——本元组只收 admin_* 前缀键，纯声明无消费）。
 ADMIN_NAV_KEYS = ("admin_load", "admin_publish", "admin_published",
                   "admin_appkeys", "admin_tenants", "admin_grants", "admin_pricing",
-                  "admin_accounts", "admin_versions", "admin_perf", "admin_upstreams",
+                  "admin_versions", "admin_perf", "admin_upstreams",
                   "admin_monitor")
 
 ADMIN_PAGES: dict[str, dict] = {
@@ -271,14 +272,8 @@ ADMIN_PAGES: dict[str, dict] = {
         "crumb": [("管理", None), ("月账单", None)],
         "topbar_sub": "月账单 · 账期状态/三硬前置留痕/账单行明细＋CSV 导出",
     },
-    # W5 账号管理台（2026-10-15 登录墙设计稿 B2）：平台只做壳——/v1/admin/accounts/*
-    # 代理 Casdoor 管理 API；导航项仅 admin 可见（site-gate 按 JWT tag 解锁，默认隐藏）。
-    "accounts": {
-        "nav": "admin_accounts", "out": "accounts.html", "script": "accounts.js",
-        "title": "账号管理 · OneServe",
-        "crumb": [("管理", None), ("账号管理", None)],
-        "topbar_sub": "账号管理（仅管理员可见）· Casdoor 单一事实，平台只做壳",
-    },
+    # 【已删·碑注】W5 账号管理台随无登录模式（ADR-0029）拆除：无人机账号概念，
+    # accounts 页/导航项/后端挂载一并移除（历史形态见 git 史）。
     # 三批（2026-10-08 修五·维护者 反馈「孤立」）：versions/published 两页接入门户壳。
     # 沿 B2 回执遗留③口径：注册 ADMIN_PAGES＋NAV_KEYS（上面已加）＋test_admin_shell
     # 页清单各一行；页内 js 逻辑不动，仅外壳统一（sidebar/topbar 完整风格）。

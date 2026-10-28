@@ -3,23 +3,23 @@
 #   起：docker compose -f docker-compose.yml -f compose.prod.yml -p oneserve-prod up -d
 #   停：docker compose -f docker-compose.yml -f compose.prod.yml -p oneserve-prod down -v
 # 与 dev（docker-compose.yml，一行不改）的差异共四类：
-#   ① 源码进镜像：service/casdoor-init/batch-worker 换 Dockerfile.prod（根 context，
+#   ① 源码进镜像：service/batch-worker 换 Dockerfile.prod（根 context，
 #      tag oneserve/service:prod——不覆写 dev 在用的 oneserve/service:m0）；portal 换
 #      oneserve/portal:prod（portal/Dockerfile.prod，静态产物＋nginx conf 进镜像）。
 #      service/portal 的源码 bind 挂载摘除；sync 工具链（219MB 运维通道）不进镜像，
 #      载体＝宿主挂载 ./sync（1b 批收口·词条④；物料包 update.sh 现状＝git 工作副本随包走）。
-#      apisix/casdoor 第三方基镜像配置已收编仓内 configs/（1b 批·词条①；prod 网关配置
+#      apisix 第三方基镜像配置已收编仓内 configs/（1b 批·词条①；prod 网关配置
 #      由 scripts/config_twin.py 从 config.yaml 渲染生成·词条⑤）；portal 非 root 化见
 #      portal/Dockerfile.prod（nginx-unprivileged uid 101·词条②）。
 #   ② 完全隔离（先例 compose.m26-iso.yml 同套路）：容器名 oneserve-prod-*、专属网络
 #      oneserve-prod-net（172.30.0.0/16，网关配置用 configs/apisix/config.prod.yaml）、
 #      专属卷 oneserve-prod-*、宿主口 20080（网关）/20000（门户），dev 与 m26 一律不碰。
-#   ③ 网络别名 oneserve-etcd/-redis/-apisix/-service/-casdoor/-casdoor-db：dev compose
+#   ③ 网络别名 oneserve-etcd/-redis/-apisix/-service：dev compose
 #      与 configs/ 里硬编码的容器名 DNS 在本栈网络内解析到 prod 容器——init_routes 上游
-#      节点名、网关统计钩子、nginx resolver、casdoor app.conf DB host 一字不改。
+#      节点名、网关统计钩子、nginx resolver 一字不改（原统一登录两别名已随 ADR-0029 移除）。
 # 环境变量沿用根 .env（与 dev 同源）。部署地址参数化（2026-10-20 ECS 快验批）：
 #   PROD_BIND_IP          宿主端口绑定地址，缺省 127.0.0.1（回环安全）；ECS 外部访问设 0.0.0.0。
-#   PROD_PUBLIC_ORIGIN    浏览器可达部署地址（iss/origin/回调同源派生，默认 http://localhost:8000）。
+#   PROD_PUBLIC_ORIGIN    浏览器可达部署地址（默认 http://localhost:8000；无登录模式下仅作站点对外地址参考）。
 # 两者用途详根 .env.example；不设＝与本机冒烟形态同口径。
 #   ④ 资源限额（2026-10-23 ECS 部署批）：全部服务 mem_limit/cpus——2026-10-23 保守初值，
 #      观察一周再收紧。键名选型：mem_limit/cpus＝服务级非 swarm 键（compose file v2 家族
@@ -104,35 +104,8 @@ services:
         aliases:
           - oneserve-redis             # service 的 REDIS_URL + 网关统计钩子连接名
 
-  # ---------- 统一登录：Casdoor（独立 postgres） ----------
-  casdoor-db:
-    container_name: oneserve-prod-casdoor-db
-    image: postgres:17-alpine
-    mem_limit: "768m"
-    cpus: 0.5
-    networks:
-      oneserve-net:
-        aliases:
-          - oneserve-casdoor-db        # casdoor app.conf dataSourceName host
-  casdoor:
-    container_name: oneserve-prod-casdoor
-    image: casbin/casdoor:latest
-    mem_limit: "768m"
-    cpus: 0.5
-    networks:
-      oneserve-net:
-        aliases:
-          - oneserve-casdoor           # service 的 OIDC_INTERNAL_BASE + 门户同源分流
-
-  # ---------- W6 seed 引导：bootstrap admin（脚本已随 prod 镜像，去 bind） ----------
-  casdoor-init:
-    image: oneserve-service:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
-    container_name: oneserve-prod-casdoor-init
-    volumes: !override []              # 脚本已 COPY 进镜像 /opt/casdoor-init
-    command: ["python", "/opt/casdoor-init/bootstrap_admin.py"]
+  # ---------- 【无登录模式 ADR-0029·已删】统一登录三服务 prod 覆盖块随登录拆除移除 ----------
+  # （casdoor-db / casdoor / casdoor-init＋网络别名 oneserve-casdoor*；历史形态见 git 史）。
 
   # ---------- 薄服务层：FastAPI（源码进镜像，零 bind） ----------
   service:
@@ -204,10 +177,6 @@ volumes:
     name: oneserve-prod-etcd-data
   oneserve-redis-data:
     name: oneserve-prod-redis-data
-  oneserve-casdoor-data:
-    name: oneserve-prod-casdoor-data
-  oneserve-casdoor-db-data:
-    name: oneserve-prod-casdoor-db-data
   oneserve-audit-data:
     name: oneserve-prod-audit-data
   oneserve-retention-data:

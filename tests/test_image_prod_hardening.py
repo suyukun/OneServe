@@ -4,12 +4,12 @@
 1a 批 d8e08e0「服务镜像生产化」登记遗留五项中可静态机检的四项在此固化：
   ① 第三方基镜像配置收编完整性——两个主 compose 的全部 bind 挂载源均为仓内相对
      路径且在仓内存在（不留仓外手工步骤，重建即可复现）＋第三方镜像自定义配置
-     文件清单齐备（apisix/casdoor/nginx）；
+     文件清单齐备（apisix/nginx；原统一登录配置已随无登录模式 ADR-0029 移除）；
   ② portal 非 root——portal/Dockerfile.prod 用 nginx-unprivileged 基镜像（uid 101）
      ＋高位监听口 8080/8443（免特权免 setcap），dev/prod/m26 三处端口映射同步；
-  ③ OIDC 域名注入完整性——issuer/redirect 全链由 PROD_PUBLIC_ORIGIN 派生、
-     compose 与代码/测试缺省同值（dev 缺省 http://localhost:8000 可用，19000 旧
-     口径清零）；
+  ③ OIDC 旧口径清零——保留模块（auth_oidc.py）代码缺省与测试签发同源
+     （8000 口径、19000 旧口径不回潮；无登录模式 ADR-0029 起 compose 不再注入
+     登录域名键）；
   ④ sync 工具链载体——prod 栈 service 挂载宿主 ./sync（物料包 update.sh 现状
      ＝git 工作副本随包走，不进镜像）。
 （词条⑤ config twin 同步单独机检：tests/test_config_twin.py）
@@ -55,17 +55,16 @@ def test_cert_gen_script_present_for_certs_dev():
 
 
 def test_thirdparty_custom_configs_present():
-    """第三方镜像（apisix/casdoor/portal nginx）自定义配置文件清单齐备。"""
+    """第三方镜像（apisix/portal nginx）自定义配置文件清单齐备。"""
     required = [
         "configs/apisix/config.yaml",
         "configs/apisix/config.prod.yaml",
-        "configs/casdoor/app.conf.template",
-        "configs/casdoor/render_app_conf.sh",
-        "configs/casdoor/bootstrap_admin.py",
         "configs/nginx/portal-nginx.conf",
     ]
     missing = [p for p in required if not (REPO / p).exists()]
     assert not missing, f"第三方配置收编缺件：{missing}"
+    # 无登录模式（ADR-0029）：统一登录配置目录已随容器退役删除，不得回潮
+    assert not (REPO / "configs" / "casdoor").exists(), "configs/casdoor 应随无登录模式移除"
 
 
 # ── ② portal 非 root ────────────────────────────────────────────────────
@@ -97,19 +96,7 @@ def test_portal_port_maps_synced_all_stacks():
     assert "18000:8080" in m26, "m26 隔离栈 portal 映射须随 8080"
 
 
-# ── ③ OIDC 域名注入 ─────────────────────────────────────────────────────
-
-
-def test_oidc_issuer_redirect_derived_from_public_origin():
-    dev = _text(DEV_COMPOSE)
-    prod = _text(PROD_COMPOSE)
-    # dev 基座定义派生链（compose.prod.yml 为 override 形态，service environment 继承
-    # dev 基座——prod 文本断言「未覆盖 OIDC 键」即继承同一条派生链）。
-    assert "OIDC_ISSUER=${PROD_PUBLIC_ORIGIN" in dev, "dev 基座 OIDC_ISSUER 须由 PROD_PUBLIC_ORIGIN 派生"
-    assert "OIDC_REDIRECT_URI=${PROD_PUBLIC_ORIGIN" in dev, "dev 基座 OIDC_REDIRECT_URI 须由 PROD_PUBLIC_ORIGIN 派生"
-    assert "OIDC_ISSUER:" not in prod and "OIDC_REDIRECT_URI:" not in prod, "prod override 不得另设 OIDC 域名键（须继承基座派生链）"
-    # casdoor（origin/staticBaseUrl 渲染源）与 casdoor-init（redirectUris 派生源）注入
-    assert dev.count("- PROD_PUBLIC_ORIGIN=") >= 2, "casdoor 与 casdoor-init 须注入 PROD_PUBLIC_ORIGIN"
+# ── ③ OIDC 旧口径清零（保留模块的缺省一致性） ─────────────────────────
 
 
 def test_oidc_code_default_aligned_no_19000():
