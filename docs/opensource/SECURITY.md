@@ -78,9 +78,8 @@ was exposed, rotate it first, then report.
 
 ## Project boundary
 
-This project is a general-purpose data service platform. It contains no
-healthcare-insurance business capability and is not intended for medical use.
-Do not treat it as a compliance control for any regulated industry.
+This project is a general-purpose data service platform. It is not a
+compliance control for any regulated industry.
 
 ## License
 
