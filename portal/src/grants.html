@@ -1,4 +1,4 @@
-<!-- ══ 授权登记全景页（P1-8 · SPEC §2-C2 合规审计面）：只读 · 租户×appkey×服务×字段＋OA 溯源＋字段反查 ══ -->
+<!-- ══ 授权登记全景页（P1-8 · SPEC §2-C2 合规审计面）：只读 · 租户×appkey×服务×字段（ux-fix-batch 2026-10-29：原「OA 单号列表」「按字段查归属」两个审计向区块下线，全景表/KPI/凭证主体保留） ══ -->
 <div class="os-container reveal" x-data="grantsViewPage" x-cloak>
 
   <div class="page-header d-print-none os-page-header">
@@ -51,13 +51,13 @@
       <div class="card-body">
         <div class="gr-kpi-val" x-text="oaTickets.length"></div>
         <div class="gr-kpi-name">OA 单号
-          <span class="my-tip" tabindex="0" role="note" title="登记里出现过的不同 OA 单号数量（含占位单号，单列一类）；点下方列表可溯源到具体授权范围。">？</span></div>
-        <div class="src-note">单号 → 授权范围溯源在位</div>
+          <span class="my-tip" tabindex="0" role="note" title="登记里出现过的不同 OA 单号数量（含占位单号，单列一类）。">？</span></div>
+        <div class="src-note">含占位单号，单列一类</div>
       </div>
     </section>
   </div>
 
-  <!-- 筛选：租户 / 服务 / 字段 × OA 状态；字段可点反查 -->
+  <!-- 筛选：租户 / 服务 / 字段 × OA 状态 -->
   <section class="card span-24" id="grants-toolbar" aria-label="授权全景筛选">
     <div class="card-head">
       <h2 class="card-title">筛选</h2>
@@ -107,7 +107,7 @@
     </div>
   </section>
 
-  <!-- 全景表：租户 × 凭证 × 服务 × 字段（字段可点反查） -->
+  <!-- 全景表：租户 × 凭证 × 服务 × 字段 -->
   <section class="card span-24" id="grants-table" aria-label="授权登记全景表">
     <div class="card-head">
       <h2 class="card-title">授权登记全景</h2>
@@ -134,7 +134,7 @@
                      配额按凭证登记，同一凭证的多行同值；取不到＝「—」如实，不填 0 -->
                 <th title="配额按凭证（AppKey）登记——同一凭证的多行同值；真源 /v1/admin/appkeys/usage（与「我的配额」同口径）；未登记显示「未登记」，凭证不在用量表显示「—」">配额上限</th>
                 <th title="当日（东八区）审计真实调用条数：成功、失败与被 429 拒绝的都计入">今日已用</th>
-                <th>授权字段（点字段反查「给了谁」）</th>
+                <th>授权字段</th>
                 <th>OA 单号</th>
                 <th>单号状态</th>
               </tr>
@@ -151,8 +151,7 @@
                   <td class="num" :class="quotaExceeded(row) ? 'gr-quota-warn' : ''" x-text="quotaUsedLabel(row)"></td>
                   <td class="gr-fields">
                     <template x-for="f in row.fields" :key="f">
-                      <button class="os-chip gr-field-chip mono" type="button"
-                              :title="'反查：' + f + ' 给了谁'" @click="lookupField(f)" x-text="f"></button>
+                      <span class="os-chip gr-field-chip mono" x-text="f"></span>
                     </template>
                     <span class="field-hint" x-show="!row.fields.length">未登记字段（B 型整体透传或空）</span>
                   </td>
@@ -171,113 +170,5 @@
     </template>
   </section>
 
-  <div class="grid-24">
-    <!-- 字段反查：这个字段给了谁（与字段字典页同源口径） -->
-    <section class="card span-12" id="grants-field-lookup" aria-label="字段反查">
-      <div class="card-head">
-        <h2 class="card-title">「这个字段给了谁」反查</h2>
-        <span class="badge text-bg-secondary gr-readonly-badge">只读</span>
-      </div>
-      <div class="card-body">
-        <div class="gr-lookup-bar">
-          <input class="form-control form-control-sm mono" id="gr-field-lookup-input" type="text" list="gr-field-list"
-                 autocomplete="off" spellcheck="false" x-model="fieldQuery" @keydown.enter="lookupField()"
-                 placeholder="输入字段名（如 ac_active_sts_01）或点表中字段">
-          <button class="btn btn-sm btn-secondary" id="gr-field-lookup-btn" type="button"
-                  @click="lookupField()" :disabled="lookupState === 'loading'"
-                  x-text="lookupState === 'loading' ? '反查中…' : '反查'"></button>
-        </div>
-        <div class="gr-lookup-current" x-show="fieldQuery" x-cloak>
-          正在反查字段：<span class="mono" x-text="lookupFieldName || fieldQuery"></span>
-          <button class="btn btn-sm btn-link gr-clear" type="button" @click="clearLookup()">清空</button>
-        </div>
-        <template x-if="lookupState === 'error'">
-          <div class="error-box"><span x-text="lookupErr || '字段反查暂不可用'"></span><button class="retry-btn" @click="lookupField()">重试</button></div>
-        </template>
-        <template x-if="lookupState === 'ok'">
-          <div>
-            <template x-if="lookup && lookup.found">
-              <div>
-                <div class="gr-lookup-summary">
-                  <span class="num" x-text="lookup.summary.tenants"></span> 个租户 ·
-                  <span class="num" x-text="lookup.summary.services"></span> 个服务 ·
-                  <span class="num" x-text="lookup.summary.grants"></span> 条授权
-                  <template x-if="lookup.summary.oaMissing || lookup.summary.oaPlaceholder">
-                    <span class="field-hint">（其中缺单号 <span x-text="lookup.summary.oaMissing"></span> 条 · 占位 <span x-text="lookup.summary.oaPlaceholder"></span> 条）</span>
-                  </template>
-                </div>
-                <ul class="gr-lookup-list">
-                  <template x-for="(e, i) in lookup.entries" :key="i">
-                    <li>
-                      <span class="mono gr-tenant" x-text="e.tenant"></span>
-                      <span class="mono gr-svc" x-text="e.service"></span>
-                      <span class="badge gr-oa-badge" :class="oaClass(e.oaState)" x-text="oaLabel(e.oaState)"></span>
-                      <span class="mono gr-oa" x-text="e.oaTicket || '—'"></span>
-                    </li>
-                  </template>
-                </ul>
-              </div>
-            </template>
-            <div class="empty-state" x-show="lookup && !lookup.found"
-                 x-text="'字段「' + (lookupFieldName || fieldQuery) + '」当前不在任何租户的授权白名单内——经平台任何接口零出现'"></div>
-          </div>
-        </template>
-        <div class="src-note" x-text="caliber.fieldLink || '字段反查与「字段字典」页同源：auth_matrix grants[].fields 即字段投影红线'"></div>
-      </div>
-    </section>
-
-    <!-- OA 单号溯源：单号 → 授权范围 -->
-    <section class="card span-12" id="grants-oa" aria-label="OA 单号溯源">
-      <div class="card-head">
-        <h2 class="card-title">OA 单号溯源</h2>
-        <span class="card-sub">单号 → 授权了哪些租户 / 服务 / 字段</span>
-      </div>
-      <div class="card-body">
-        <div class="gr-lookup-bar">
-          <input class="form-control form-control-sm mono" id="gr-oa-input" type="text"
-                 autocomplete="off" spellcheck="false" x-model="oaQuery" @keydown.enter="traceOa()"
-                 placeholder="输入 OA 单号，如 OA-PENDING-TASK008">
-          <button class="btn btn-sm btn-secondary" id="gr-oa-btn" type="button"
-                  @click="traceOa()" :disabled="oaTraceState === 'loading'"
-                  x-text="oaTraceState === 'loading' ? '溯源中…' : '溯源'"></button>
-        </div>
-        <template x-if="oaTraceState === 'ok'">
-          <div>
-            <template x-if="oaTrace && oaTrace.found">
-              <ul class="gr-lookup-list">
-                <template x-for="(e, i) in oaTrace.entries" :key="i">
-                  <li>
-                    <span class="mono gr-tenant" x-text="e.tenant"></span>
-                    <span class="mono gr-svc" x-text="e.service"></span>
-                    <span class="mono gr-endpoint" x-text="e.endpoint || '—'"></span>
-                    <span class="num" x-text="e.fieldsCount"></span> 字段
-                  </li>
-                </template>
-              </ul>
-            </template>
-            <div class="empty-state" x-show="oaTrace && !oaTrace.found"
-                 x-text="'本登记里查无单号「' + (oaTrace.ticket || oaQuery) + '」——请核对是否录入或是否为占位单号'"></div>
-          </div>
-        </template>
-        <div class="gr-oa-index">
-          <div class="gr-oa-index-title">登记中出现的单号（点击溯源）：</div>
-          <template x-if="oaTickets.length">
-            <ul class="gr-lookup-list">
-              <template x-for="t in oaTickets" :key="t.ticket">
-                <li>
-                  <button class="btn btn-sm btn-link gr-oa-use mono" type="button"
-                          :title="'溯源 ' + t.ticket" @click="useTicket(t.ticket)" x-text="t.ticket"></button>
-                  <span class="badge gr-oa-badge" :class="oaClass(t.state)" x-text="oaLabel(t.state)"></span>
-                  <span class="field-hint" x-text="t.tenants.length + ' 租户 · ' + t.services.length + ' 服务 · ' + t.fields.length + ' 字段'"></span>
-                </li>
-              </template>
-            </ul>
-          </template>
-          <div class="empty-state" x-show="state === 'ok' && !oaTickets.length">登记中没有任何 OA 单号（全部缺失）</div>
-        </div>
-        <div class="src-note">缺单号的登记条目不出现在单号索引里——缺失就是缺失，不塞空串占位。</div>
-      </div>
-    </section>
-  </div>
 
 </div>

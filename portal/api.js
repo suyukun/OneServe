@@ -33,19 +33,7 @@
         cache: 'no-store'
       }).then(function (res) {
         clearTimeout(timer);
-        if (!res.ok) {
-          /* 登录墙（W2/W3 · 2026-10-15 设计稿 A2/A4①）：401 auth_required 打上
-           * authRequired 标记抛出——loadSection 据此跳过 mock 降级（site-gate.js
-           * 的 fetch 包装器同时在跳登录页；墙 off 时后端不回 401，路径零变化）。 */
-          if (res.status === 401) {
-            return res.json().catch(function () { return {}; }).then(function (j) {
-              var err = new Error('HTTP 401');
-              err.authRequired = !!(j && j.error === 'auth_required');
-              reject(err);
-            });
-          }
-          throw new Error('HTTP ' + res.status);
-        }
+        if (!res.ok) { throw new Error('HTTP ' + res.status); }
         return res.json();
       }).then(function (json) { resolve(json); })
         .catch(function (err) { clearTimeout(timer); reject(err); });
@@ -53,16 +41,13 @@
   }
 
   /* 统一取数：name ∈ ENDPOINTS；返回 { data, source: 'live'|'demo' }；
-   * 双失败抛错（调用方进 error 态渲染「数据暂不可用」＋重试）。
-   * 登录墙口径：auth 401 不落 mock（防假「演示数据」页——设计稿 A2 点名），
-   * 直抛由页面走 error 态，跳转由 site-gate 接管。 */
+   * 双失败抛错（调用方进 error 态渲染「数据暂不可用」＋重试）。 */
   function loadSection(name) {
     var endpoint = ENDPOINTS[name];
     if (!endpoint) return Promise.reject(new Error('unknown section: ' + name));
     return fetchJson(API_BASE + endpoint).then(function (json) {
       return { data: json, source: 'live' };
     }).catch(function (err) {
-      if (err && err.authRequired) throw err;   // 未登录：绝不降级 mock 出假数据
       return fetchJson('mock/' + name + '.json').then(function (json) {
         return { data: json, source: 'demo' };
       }).catch(function (err2) {

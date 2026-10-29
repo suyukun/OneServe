@@ -10,7 +10,7 @@
   2. 加载序门禁（产物级复断言）：全部壳页——门户正页＋catalog 详情壳＋admin 壳
      ——site-gate.js 先于 data-format/api/pages 装载；selftest 页同序；
   3. api.js mock 降级行为不回退：非 auth 失败照旧降级 mock（off 态行为）；auth 401
-     不落 mock 的防御分支仍在（无登录模式下零触发，保留死分支口径）；
+     不落 mock 的防御分支已随 ux-fix-batch 清理（无登录模式下永不触发）；
   4. 一方代码 XSS 注入面基线（#36 全扫防回潮）。
 
 运行：python3 tests/test_site_gate.py（或 python3 -m pytest tests/test_site_gate.py）。
@@ -162,7 +162,7 @@ def test_selftest_pages_gate_wired():
 
 _API_HARNESS = r"""
 const fs = require('fs');
-const which = process.argv[1];   // auth401 | server500（node -e：argv[1] 起为用户参数）
+const which = process.argv[1];   // server500（node -e：argv[1] 起为用户参数）
 let calls = [];
 globalThis.window = globalThis;
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
@@ -171,10 +171,6 @@ globalThis.fetch = async (url) => {
   calls.push(String(url));
   const isMock = String(url).indexOf('mock/') >= 0;
   if (isMock) return { ok: true, status: 200, json: async () => ({ demo: true }) };
-  if (which === 'auth401') {
-    return { ok: false, status: 401,
-             json: async () => ({ error: 'auth_required', message: '未登录' }) };
-  }
   return { ok: false, status: 500, json: async () => ({ error: 'internal_error' }) };
 };
 (async () => {
@@ -195,7 +191,7 @@ globalThis.fetch = async (url) => {
 
 def test_api_js_mock_fallback_unchanged():
     """非 auth 失败照旧降级 mock（source=demo）——无登录模式下 api.js 取数行为不回退；
-    auth 401 防御分支（不落 mock）保留死分支口径（后端无登录不再回该码）。"""
+    auth 401 死分支（W2/W3 登录墙遗留，后端无登录不再回该码）已随 ux-fix-batch 清理。"""
     server = _run_node(_API_HARNESS, "server500", GATE, API_JS)
     assert server["resolved"] is True and server["source"] == "demo", \
         "非 auth 失败须照旧降级 mock（既有行为不回退）"

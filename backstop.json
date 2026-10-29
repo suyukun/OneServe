@@ -20,10 +20,6 @@
       "url": "http://localhost:8000/index.html"
     },
     {
-      "label": "portal-apply",
-      "url": "http://localhost:8000/apply.html"
-    },
-    {
       "label": "portal-audit",
       "url": "http://localhost:8000/audit.html"
     },

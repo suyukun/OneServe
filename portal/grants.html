@@ -14,14 +14,14 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 <!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
      Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
      → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
-<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=6169338440e8">
-<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=6169338440e8">
-<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=6169338440e8">
-<link rel="stylesheet" href="assets/tokens.css?v=6169338440e8">
-<link rel="stylesheet" href="assets/portal.css?v=6169338440e8">
-<link rel="stylesheet" href="assets/trial.css?v=6169338440e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=675e6565225c">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=675e6565225c">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=675e6565225c">
+<link rel="stylesheet" href="assets/tokens.css?v=675e6565225c">
+<link rel="stylesheet" href="assets/portal.css?v=675e6565225c">
+<link rel="stylesheet" href="assets/trial.css?v=675e6565225c"><!-- P-2 试用台（仅引用既有令牌） -->
 <!-- P1-8 授权登记全景（仅引用既有令牌） -->
-<link rel="stylesheet" href="assets/grants.css?v=6169338440e8">
+<link rel="stylesheet" href="assets/grants.css?v=675e6565225c">
 <!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
 <!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
 <!-- sm-crypto@0.5.7 dist/sm3.js 自托管（sm3 单模块 UMD）· SHA256 27155525fcb072cfed85449595e40c1588256649083828ccfa12fe88885af2b7 -->
@@ -35,18 +35,18 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
      及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数，旧缓存 URL 自然失效。
      本注释刻意保留未版本化 src 字样（构建期不受版本参数改写），作为加载序门禁的
      产物级检索锚点，勿删。 -->
-<script defer src="site-gate.js?v=6169338440e8"></script>
-<script defer src="data-format.js?v=6169338440e8"></script>
-<script defer src="api.js?v=6169338440e8"></script>
-<script defer src="assets/app.js?v=6169338440e8"></script>
-<script defer src="assets/trial.js?v=6169338440e8"></script>
+<script defer src="site-gate.js?v=675e6565225c"></script>
+<script defer src="data-format.js?v=675e6565225c"></script>
+<script defer src="api.js?v=675e6565225c"></script>
+<script defer src="assets/app.js?v=675e6565225c"></script>
+<script defer src="assets/trial.js?v=675e6565225c"></script>
 <!-- P1-8 授权登记全景页组件（Alpine；defer 保序在 alpine.min.js 前注册） -->
-<script defer src="assets/grants.js?v=6169338440e8"></script>
-<script defer src="assets/pages.js?v=6169338440e8"></script>
-<script defer src="assets/detail.js?v=6169338440e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
-<script defer src="assets/vendor/bootstrap.bundle.min.js?v=6169338440e8"></script>
-<script defer src="assets/vendor/tabler.min.js?v=6169338440e8"></script>
-<script defer src="assets/alpine.min.js?v=6169338440e8"></script>
+<script defer src="assets/grants.js?v=675e6565225c"></script>
+<script defer src="assets/pages.js?v=675e6565225c"></script>
+<script defer src="assets/detail.js?v=675e6565225c"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js?v=675e6565225c"></script>
+<script defer src="assets/vendor/tabler.min.js?v=675e6565225c"></script>
+<script defer src="assets/alpine.min.js?v=675e6565225c"></script>
 </head>
 <body class="os-layout">
 <!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
@@ -55,7 +55,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
     <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
     <span class="os-brand-text">
       <span class="os-brand-name">OneServe</span>
-      <span class="os-brand-sub">统一数据服务平台</span>
+      <span class="os-brand-sub">数据API网关</span>
     </span>
   </a>
   <nav class="os-nav">
@@ -70,7 +70,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
         <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
              此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
         <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
-        <li><a class="os-nav-link" href="apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+        <!-- apply（申请接入）导航项随 ux-fix-batch（2026-10-29 维护者验收）下线：入口改指 docs#docs-channels -->
       </ul>
     </div>
     <div class="os-nav-group">
@@ -124,7 +124,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
       <div class="os-nav-label">合规</div>
       <ul class="os-nav-list">
         <li><a class="os-nav-link" href="audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
-        <li><a class="os-nav-link is-active" aria-current="page" href="grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+        <li><a class="os-nav-link is-active" aria-current="page" href="grants.html" title="授权与凭证全景：租户×AppKey×服务×字段（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
       </ul>
     </div>
   </nav>
@@ -143,7 +143,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 </header>
 
 <main class="os-content" id="app-content">
-<!-- ══ 授权登记全景页（P1-8 · SPEC §2-C2 合规审计面）：只读 · 租户×appkey×服务×字段＋OA 溯源＋字段反查 ══ -->
+<!-- ══ 授权登记全景页（P1-8 · SPEC §2-C2 合规审计面）：只读 · 租户×appkey×服务×字段（ux-fix-batch 2026-10-29：原「OA 单号列表」「按字段查归属」两个审计向区块下线，全景表/KPI/凭证主体保留） ══ -->
 <div class="os-container reveal" x-data="grantsViewPage" x-cloak>
 
   <div class="page-header d-print-none os-page-header">
@@ -196,13 +196,13 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
       <div class="card-body">
         <div class="gr-kpi-val" x-text="oaTickets.length"></div>
         <div class="gr-kpi-name">OA 单号
-          <span class="my-tip" tabindex="0" role="note" title="登记里出现过的不同 OA 单号数量（含占位单号，单列一类）；点下方列表可溯源到具体授权范围。">？</span></div>
-        <div class="src-note">单号 → 授权范围溯源在位</div>
+          <span class="my-tip" tabindex="0" role="note" title="登记里出现过的不同 OA 单号数量（含占位单号，单列一类）。">？</span></div>
+        <div class="src-note">含占位单号，单列一类</div>
       </div>
     </section>
   </div>
 
-  <!-- 筛选：租户 / 服务 / 字段 × OA 状态；字段可点反查 -->
+  <!-- 筛选：租户 / 服务 / 字段 × OA 状态 -->
   <section class="card span-24" id="grants-toolbar" aria-label="授权全景筛选">
     <div class="card-head">
       <h2 class="card-title">筛选</h2>
@@ -252,7 +252,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
     </div>
   </section>
 
-  <!-- 全景表：租户 × 凭证 × 服务 × 字段（字段可点反查） -->
+  <!-- 全景表：租户 × 凭证 × 服务 × 字段 -->
   <section class="card span-24" id="grants-table" aria-label="授权登记全景表">
     <div class="card-head">
       <h2 class="card-title">授权登记全景</h2>
@@ -279,7 +279,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
                      配额按凭证登记，同一凭证的多行同值；取不到＝「—」如实，不填 0 -->
                 <th title="配额按凭证（AppKey）登记——同一凭证的多行同值；真源 /v1/admin/appkeys/usage（与「我的配额」同口径）；未登记显示「未登记」，凭证不在用量表显示「—」">配额上限</th>
                 <th title="当日（东八区）审计真实调用条数：成功、失败与被 429 拒绝的都计入">今日已用</th>
-                <th>授权字段（点字段反查「给了谁」）</th>
+                <th>授权字段</th>
                 <th>OA 单号</th>
                 <th>单号状态</th>
               </tr>
@@ -296,8 +296,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
                   <td class="num" :class="quotaExceeded(row) ? 'gr-quota-warn' : ''" x-text="quotaUsedLabel(row)"></td>
                   <td class="gr-fields">
                     <template x-for="f in row.fields" :key="f">
-                      <button class="os-chip gr-field-chip mono" type="button"
-                              :title="'反查：' + f + ' 给了谁'" @click="lookupField(f)" x-text="f"></button>
+                      <span class="os-chip gr-field-chip mono" x-text="f"></span>
                     </template>
                     <span class="field-hint" x-show="!row.fields.length">未登记字段（B 型整体透传或空）</span>
                   </td>
@@ -316,121 +315,13 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
     </template>
   </section>
 
-  <div class="grid-24">
-    <!-- 字段反查：这个字段给了谁（与字段字典页同源口径） -->
-    <section class="card span-12" id="grants-field-lookup" aria-label="字段反查">
-      <div class="card-head">
-        <h2 class="card-title">「这个字段给了谁」反查</h2>
-        <span class="badge text-bg-secondary gr-readonly-badge">只读</span>
-      </div>
-      <div class="card-body">
-        <div class="gr-lookup-bar">
-          <input class="form-control form-control-sm mono" id="gr-field-lookup-input" type="text" list="gr-field-list"
-                 autocomplete="off" spellcheck="false" x-model="fieldQuery" @keydown.enter="lookupField()"
-                 placeholder="输入字段名（如 ac_active_sts_01）或点表中字段">
-          <button class="btn btn-sm btn-secondary" id="gr-field-lookup-btn" type="button"
-                  @click="lookupField()" :disabled="lookupState === 'loading'"
-                  x-text="lookupState === 'loading' ? '反查中…' : '反查'"></button>
-        </div>
-        <div class="gr-lookup-current" x-show="fieldQuery" x-cloak>
-          正在反查字段：<span class="mono" x-text="lookupFieldName || fieldQuery"></span>
-          <button class="btn btn-sm btn-link gr-clear" type="button" @click="clearLookup()">清空</button>
-        </div>
-        <template x-if="lookupState === 'error'">
-          <div class="error-box"><span x-text="lookupErr || '字段反查暂不可用'"></span><button class="retry-btn" @click="lookupField()">重试</button></div>
-        </template>
-        <template x-if="lookupState === 'ok'">
-          <div>
-            <template x-if="lookup && lookup.found">
-              <div>
-                <div class="gr-lookup-summary">
-                  <span class="num" x-text="lookup.summary.tenants"></span> 个租户 ·
-                  <span class="num" x-text="lookup.summary.services"></span> 个服务 ·
-                  <span class="num" x-text="lookup.summary.grants"></span> 条授权
-                  <template x-if="lookup.summary.oaMissing || lookup.summary.oaPlaceholder">
-                    <span class="field-hint">（其中缺单号 <span x-text="lookup.summary.oaMissing"></span> 条 · 占位 <span x-text="lookup.summary.oaPlaceholder"></span> 条）</span>
-                  </template>
-                </div>
-                <ul class="gr-lookup-list">
-                  <template x-for="(e, i) in lookup.entries" :key="i">
-                    <li>
-                      <span class="mono gr-tenant" x-text="e.tenant"></span>
-                      <span class="mono gr-svc" x-text="e.service"></span>
-                      <span class="badge gr-oa-badge" :class="oaClass(e.oaState)" x-text="oaLabel(e.oaState)"></span>
-                      <span class="mono gr-oa" x-text="e.oaTicket || '—'"></span>
-                    </li>
-                  </template>
-                </ul>
-              </div>
-            </template>
-            <div class="empty-state" x-show="lookup && !lookup.found"
-                 x-text="'字段「' + (lookupFieldName || fieldQuery) + '」当前不在任何租户的授权白名单内——经平台任何接口零出现'"></div>
-          </div>
-        </template>
-        <div class="src-note" x-text="caliber.fieldLink || '字段反查与「字段字典」页同源：auth_matrix grants[].fields 即字段投影红线'"></div>
-      </div>
-    </section>
-
-    <!-- OA 单号溯源：单号 → 授权范围 -->
-    <section class="card span-12" id="grants-oa" aria-label="OA 单号溯源">
-      <div class="card-head">
-        <h2 class="card-title">OA 单号溯源</h2>
-        <span class="card-sub">单号 → 授权了哪些租户 / 服务 / 字段</span>
-      </div>
-      <div class="card-body">
-        <div class="gr-lookup-bar">
-          <input class="form-control form-control-sm mono" id="gr-oa-input" type="text"
-                 autocomplete="off" spellcheck="false" x-model="oaQuery" @keydown.enter="traceOa()"
-                 placeholder="输入 OA 单号，如 OA-PENDING-TASK008">
-          <button class="btn btn-sm btn-secondary" id="gr-oa-btn" type="button"
-                  @click="traceOa()" :disabled="oaTraceState === 'loading'"
-                  x-text="oaTraceState === 'loading' ? '溯源中…' : '溯源'"></button>
-        </div>
-        <template x-if="oaTraceState === 'ok'">
-          <div>
-            <template x-if="oaTrace && oaTrace.found">
-              <ul class="gr-lookup-list">
-                <template x-for="(e, i) in oaTrace.entries" :key="i">
-                  <li>
-                    <span class="mono gr-tenant" x-text="e.tenant"></span>
-                    <span class="mono gr-svc" x-text="e.service"></span>
-                    <span class="mono gr-endpoint" x-text="e.endpoint || '—'"></span>
-                    <span class="num" x-text="e.fieldsCount"></span> 字段
-                  </li>
-                </template>
-              </ul>
-            </template>
-            <div class="empty-state" x-show="oaTrace && !oaTrace.found"
-                 x-text="'本登记里查无单号「' + (oaTrace.ticket || oaQuery) + '」——请核对是否录入或是否为占位单号'"></div>
-          </div>
-        </template>
-        <div class="gr-oa-index">
-          <div class="gr-oa-index-title">登记中出现的单号（点击溯源）：</div>
-          <template x-if="oaTickets.length">
-            <ul class="gr-lookup-list">
-              <template x-for="t in oaTickets" :key="t.ticket">
-                <li>
-                  <button class="btn btn-sm btn-link gr-oa-use mono" type="button"
-                          :title="'溯源 ' + t.ticket" @click="useTicket(t.ticket)" x-text="t.ticket"></button>
-                  <span class="badge gr-oa-badge" :class="oaClass(t.state)" x-text="oaLabel(t.state)"></span>
-                  <span class="field-hint" x-text="t.tenants.length + ' 租户 · ' + t.services.length + ' 服务 · ' + t.fields.length + ' 字段'"></span>
-                </li>
-              </template>
-            </ul>
-          </template>
-          <div class="empty-state" x-show="state === 'ok' && !oaTickets.length">登记中没有任何 OA 单号（全部缺失）</div>
-        </div>
-        <div class="src-note">缺单号的登记条目不出现在单号索引里——缺失就是缺失，不塞空串占位。</div>
-      </div>
-    </section>
-  </div>
 
 </div>
 
 </main>
 <!-- ══ 页脚（partials · 全站共享） ══ -->
 <footer class="os-footer" id="page-footer">
-  <span>OneServe 统一数据服务平台</span>
+  <span>OneServe 数据API网关</span>
   <span class="os-footer-spacer"></span>
 </footer>
 

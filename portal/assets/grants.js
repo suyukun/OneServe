@@ -1,7 +1,7 @@
 /* ============================================================
  * OneServe 门户 · 授权登记全景页组件（P1-8 · assets/grants.js，新增文件）
  * 纪律（同 audit.js）：Alpine.data 注册；跨页传参只用 URL query
- * （grants.html?field=… / ?ticket=… / ?tenant=… 深链直达）；取数直达
+ * （grants.html?tenant=… / ?service=… / ?field=… / ?oa=… 筛选深链直达）；取数直达
  * /v1/portal/grants/*；失败进 error 态（重试），不做 mock 降级——
  * 授权登记是合规真源，演示数字只会误导。
  * 只读：本页不发出任何写请求。
@@ -48,26 +48,18 @@
       /* ── 筛选状态 ── */
       tenantFilter: '', serviceFilter: '', fieldFilter: '', oaFilter: 'all',
 
-      /* ── 字段反查状态 ── */
-      fieldQuery: '', lookupFieldName: '',
-      lookup: null, lookupState: 'idle', lookupErr: '',   // idle | loading | ok | error
-
-      /* ── OA 溯源状态 ── */
-      oaQuery: '', oaTrace: null, oaTraceState: 'idle',   // idle | loading | ok
-
       init: function () {
         var q = new URLSearchParams(location.search);
         var f = (q.get('field') || '').trim();
-        var t = (q.get('ticket') || '').trim();
         var ten = (q.get('tenant') || '').trim();
         var svc = (q.get('service') || '').trim();
         if (ten) this.tenantFilter = ten;
         if (svc) this.serviceFilter = svc;
         if (f) this.fieldFilter = f;
-        this.load(f, t);
+        this.load();
       },
 
-      load: function (fieldDeep, ticketDeep) {
+      load: function () {
         var self = this;
         this.state = 'loading'; this.errMsg = '';
         this.reloadQuotaUsage();          // 配额两列独立取数：全景失败不影响它，反之亦然
@@ -79,8 +71,6 @@
           self.caliber = json.caliber || {};
           self.generatedAt = json.generatedAt || '';
           self.state = 'ok';
-          if (fieldDeep) { self.lookupField(fieldDeep); }
-          if (ticketDeep) { self.oaQuery = ticketDeep; self.traceOa(); }
         }).catch(function (err) {
           self.state = 'error';
           self.errMsg = (err && err.message) || '授权登记暂不可用';
@@ -114,45 +104,6 @@
         return n === this.rows.length ? '共 ' + this.rows.length + ' 条登记'
                                       : '筛出 ' + n + ' / ' + this.rows.length + ' 条登记';
       },
-
-      /* ── 字段反查：「这个字段给了谁」（字段点击或输入框共用） ── */
-      lookupField: function (name) {
-        var self = this;
-        var f = (name || this.fieldQuery || '').trim();
-        if (!f) { this.lookupState = 'error'; this.lookupErr = '请先输入要反查的字段名'; return; }
-        this.fieldQuery = f; this.lookupFieldName = f;
-        this.lookupState = 'loading'; this.lookupErr = '';
-        fetchJson('/v1/portal/grants/field?field=' + encodeURIComponent(f))
-          .then(function (json) {
-            self.lookup = json; self.lookupState = 'ok';
-            self.syncUrl();
-          })
-          .catch(function (err) {
-            self.lookupState = 'error';
-            self.lookupErr = (err && err.message) || '字段反查暂不可用';
-          });
-      },
-      clearLookup: function () {
-        this.fieldQuery = ''; this.lookupFieldName = '';
-        this.lookup = null; this.lookupState = 'idle'; this.lookupErr = '';
-        this.syncUrl();
-      },
-
-      /* ── OA 单号溯源 ── */
-      traceOa: function (ticket) {
-        var self = this;
-        var t = (ticket || this.oaQuery || '').trim();
-        if (!t) { this.oaTraceState = 'error'; return; }
-        this.oaQuery = t;
-        this.oaTraceState = 'loading';
-        fetchJson('/v1/portal/grants/oa?ticket=' + encodeURIComponent(t))
-          .then(function (json) {
-            self.oaTrace = json; self.oaTraceState = 'ok';
-            self.syncUrl();
-          })
-          .catch(function () { self.oaTraceState = 'error'; });
-      },
-      useTicket: function (t) { this.traceOa(t); },
 
       /* ── #58 配额两列（2026-10-15）：kid join＋展示辅助（缺值「—」/未登记如实区分） ── */
       reloadQuotaUsage: function () {
@@ -208,15 +159,13 @@
         return note;
       },
 
-      /* ── 深链同步：筛选/反查条件写回 URL（可刷新/可分享），不产生历史 ── */
+      /* ── 深链同步：筛选条件写回 URL（可刷新/可分享），不产生历史 ── */
       syncUrl: function () {
         var qs = new URLSearchParams();
         if (this.tenantFilter) qs.set('tenant', this.tenantFilter);
         if (this.serviceFilter) qs.set('service', this.serviceFilter);
         if (this.fieldFilter) qs.set('field', this.fieldFilter);
         if (this.oaFilter !== 'all') qs.set('oa', this.oaFilter);
-        if (this.lookupState === 'ok' && this.lookupFieldName) qs.set('lookup', this.lookupFieldName);
-        if (this.oaTraceState === 'ok' && this.oaQuery) qs.set('ticket', this.oaQuery);
         var s = qs.toString();
         history.replaceState(null, '', location.pathname + (s ? '?' + s : ''));
       }

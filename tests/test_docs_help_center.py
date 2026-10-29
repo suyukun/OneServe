@@ -130,7 +130,7 @@ def test_shell_and_no_placeholder():
 
 
 def test_per_page_assets_not_leaked():
-    for other in ("index.html", "my.html", "trial.html", "apply.html"):
+    for other in ("index.html", "my.html", "trial.html"):
         html = (PORTAL / other).read_text(encoding="utf-8")
         assert "assets/docs.css" not in html, other + " 被注入帮助与支持页资产"
 
@@ -318,14 +318,28 @@ def test_no_contact_dead_link_anywhere():
         assert "contact.html" not in text, f"{src.name} 仍有 contact.html 引用"
 
 
-def test_apply_and_index_repointed_to_docs():
-    """维护者 点名：apply 的「联系平台运营组」与首页 guide-bar 必须改指 docs（带锚点）。"""
-    apply_html = (PORTAL / "apply.html").read_text(encoding="utf-8")
-    assert 'id="apply-contact-link"' in apply_html
-    assert 'id="apply-contact-link" href="docs.html#docs-channels"' in apply_html or         'href="docs.html#docs-channels" id="apply-contact-link"' in apply_html,         "apply 的联系入口未改指 docs#docs-channels"
+def test_apply_page_retired_entry_repoints_to_docs():
+    """ux-fix-batch 2026-10-29（维护者验收）：apply（申请接入）页整页下线——
+    源/产物/按页 css 全部退役；首页 guide-bar 正式接入入口改指 docs#docs-channels。"""
+    for p in (PORTAL / "src" / "apply.html", PORTAL / "apply.html",
+              PORTAL / "assets" / "apply.css"):
+        assert not p.exists(), f"apply 页未下线：{p}"
+    sys.path.insert(0, str(REPO / "scripts"))
+    import build_portal as bp
+    assert "apply" not in bp.NAV_KEYS, "NAV_KEYS 仍含 apply"
+    assert "apply" not in bp.PAGES, "PAGES 仍含 apply"
+    for rewrites in (bp.DETAIL_PATH_REWRITES, bp.REPORTS_PATH_REWRITES):
+        for old, _new in rewrites:
+            assert "apply.html" not in old, f"路径改写表仍改写 apply.html：{old}"
     index_html = (PORTAL / "index.html").read_text(encoding="utf-8")
-    assert 'id="guide-contact-link"' in index_html
+    assert 'id="guide-onboard-link"' in index_html, "首页缺正式接入入口（guide-onboard-link）"
     assert "docs.html#docs-channels" in index_html, "首页 guide-bar 未改指 docs"
+    assert 'href="apply.html"' not in index_html, "首页仍有 apply 死链"
+    # 全站产物（门户正页＋catalog 壳＋admin 壳）零 apply 死链
+    for page in list(PORTAL.glob("*.html")) + list((PORTAL / "catalog").glob("*.html")) \
+                + list((PORTAL / "admin").glob("*.html")) + list((PORTAL / "reports").glob("*.html")):
+        html = page.read_text(encoding="utf-8")
+        assert "apply.html" not in html, f"{page.name} 仍有 apply.html 死链"
 
 
 # ── 7. 变更日志：不发明版本号 ──

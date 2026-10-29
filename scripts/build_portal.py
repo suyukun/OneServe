@@ -46,7 +46,9 @@ VENDOR_DIR = PORTAL / "assets" / "vendor"
 # 三批（2026-10-08 修五）：admin_versions/admin_published 随 versions/published 两页
 # 接入壳新增（占位键须与 sidebar.html 的 @@A_*@@/@@C_*@@ 一一对应）。
 # admin_accounts 随无登录模式（ADR-0029）拆除：账号管理页下线，导航项同步移除。
-NAV_KEYS = ("index", "catalog", "trial", "my", "apply", "ops", "docs", "errors",
+# apply（P0-10 申请接入）随 ux-fix-batch（2026-10-29 维护者验收）下线：审批本就在
+# 工单系统完成，门户页属官味/内部审计向 UI——入口改指 docs#docs-channels（平台运营组）。
+NAV_KEYS = ("index", "catalog", "trial", "my", "ops", "docs", "errors",
             "audit", "grants", "admin_load", "admin_publish", "admin_published",
             "admin_appkeys", "admin_tenants", "admin_grants", "admin_pricing",
             "admin_versions", "admin_perf", "admin_upstreams",
@@ -70,11 +72,14 @@ DETAIL_PATH_REWRITES = (
     ('href="trial.html"', 'href="../trial.html"'),
     ('href="ops.html"', 'href="../ops.html"'),
     ('href="docs.html"', 'href="../docs.html"'),
+    ('href="docs.html#docs-channels"', 'href="../docs.html#docs-channels"'),
     ('href="admin/', 'href="../admin/'),
     # P0-10/11 新页随详情壳/子目录壳同步改写（含 x-show 内联串的 SPA 修复改写——先特例后通配）
     ('href="my.html?trace_id="', 'href="../my.html?trace_id="'),
-    ('href="apply.html"', 'href="../apply.html"'),
     # 卡5：fields.html 改写规则随字段字典页下线移除（侧栏入口已删，无来源链接）
+    # apply.html 改写规则随申请接入页下线移除（ux-fix-batch 2026-10-29）
+    # docs#docs-channels 带锚链接须独立规则：href="docs.html" 的引号闭合匹配不到
+    # docs.html#… 形态（ux-fix-batch：apply 出链改指 docs 锚后新增，同 my?trace_id= 先例）
     ('href="errors.html"', 'href="../errors.html"'),   # P1-2 A6 错误码中心（详情壳侧栏）
     ('href="my.html"', 'href="../my.html"'),
     # P1-1 合规面新页随子目录壳同步改写
@@ -88,7 +93,7 @@ DETAIL_PATH_REWRITES = (
 # ── 页面注册表：标题 / 面包屑（≤3 级：(标签, 链接或 None)）/ 必须保留的关键区块 id ──
 PAGES: dict[str, dict] = {
     "index": {
-        "title": "OneServe · 统一数据服务平台 · 首页",
+        "title": "OneServe · 数据API网关 · 首页",
         "crumb": [("平台总览", None)],
         "required_ids": [
             "global-search", "kpi-bar", "status-band",
@@ -159,13 +164,9 @@ PAGES: dict[str, dict] = {
         # 按页注入组件脚本（extra_js，机制同 extra_css）：只在本页加载 my.js
         "extra_js": '<!-- P0-7 我的接入页组件（Alpine；defer 保序在 alpine.min.js 前注册） -->\n<script defer src="assets/my.js"></script>',
     },
-    # P0-10 申请接入与授权进度（SPEC A10 · D10 引 ADR-0003）：OA 外链＋四态时间线＋已批字段清单
-    "apply": {
-        "title": "申请接入 · OneServe 门户",
-        "crumb": [("首页", "index.html"), ("申请接入", None)],
-        "required_ids": ["apply-oa-entry", "apply-progress", "apply-approved"],
-        "extra_css": '<!-- P0-10 申请接入（仅引用既有令牌） -->\n<link rel="stylesheet" href="assets/apply.css">',
-    },
+    # 【已删·碑注】P0-10 申请接入页随 ux-fix-batch（2026-10-29 维护者验收）下线：
+    # 审批流程在工单系统，门户不留「申请进度」演示页；正式接入入口＝docs#docs-channels
+    # （平台运营组）。apply.css 一并退役（历史形态见 git 史）。
     # P1-2 A6 错误码中心（SPEC §2-A6/§4.4）：网关＋服务层单张错误码表；API 错误体
     # docs_url（errors.html#<code>）的锚点落点——每码一行 <tr id="<code>">
     "errors": {
@@ -186,12 +187,14 @@ PAGES: dict[str, dict] = {
         "extra_css": '<!-- P1-1 审计查询（仅引用既有令牌） -->\n<link rel="stylesheet" href="assets/audit.css">',
         "extra_js": '<!-- P1-1 审计查询页组件（Alpine；defer 保序在 alpine.min.js 前注册） -->\n<script defer src="assets/audit.js"></script>',
     },
-    # P1-8 授权登记可视化（SPEC §2-C2/§5-P1-8）：租户×appkey×服务×字段全景＋OA 溯源＋字段反查
+    # P1-8 授权登记可视化（SPEC §2-C2/§5-P1-8）：租户×appkey×服务×字段全景
+    # （ux-fix-batch 2026-10-29：「OA 单号溯源」「字段反查」两区随验收下线——
+    #   官味/内部审计向区块砍掉；全景表/KPI/凭证主体保留；service 端点保留）
     "grants": {
         "title": "授权与凭证全景 · OneServe 门户",
         "crumb": [("首页", "index.html"), ("授权与凭证全景", None)],
         "required_ids": ["grants-about", "grants-summary", "grants-toolbar",
-                         "grants-table", "grants-field-lookup", "grants-oa"],
+                         "grants-table"],
         "extra_css": '<!-- P1-8 授权登记全景（仅引用既有令牌） -->\n<link rel="stylesheet" href="assets/grants.css">',
         "extra_js": '<!-- P1-8 授权登记全景页组件（Alpine；defer 保序在 alpine.min.js 前注册） -->\n<script defer src="assets/grants.js"></script>',
     },
@@ -377,11 +380,11 @@ REPORTS_PATH_REWRITES = (
     ('href="docs.html"', 'href="../docs.html"'),
     ('href="admin/', 'href="../admin/'),
     ('href="my.html?trace_id="', 'href="../my.html?trace_id="'),
-    ('href="apply.html"', 'href="../apply.html"'),
     ('href="errors.html"', 'href="../errors.html"'),
     ('href="my.html"', 'href="../my.html"'),
     ('href="audit.html"', 'href="../audit.html"'),
     ('href="grants.html"', 'href="../grants.html"'),
+    ('href="docs.html#docs-channels"', 'href="../docs.html#docs-channels"'),
     ('href="reports/', 'href="'),   # 专区互链＝同目录兄弟文件
 )
 

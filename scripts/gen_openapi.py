@@ -500,7 +500,7 @@ def build_contract(services: dict, endpoints: dict, routes: list[dict],
     return {
         "openapi": "3.1.0",
         "info": {
-            "title": "OneServe 统一数据服务平台 OpenAPI",
+            "title": "OneServe 数据API网关 OpenAPI",
             "version": CONTRACT_VERSION,
             "description": ("由 service/services.yaml 等真源在构建期生成（scripts/gen_openapi.py）；"
                             "改服务只改 services.yaml，文档自动跟随——防文档与实现漂移（SPEC §4.1）"),

@@ -14,12 +14,12 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 <!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
      Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
      → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
-<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=6169338440e8">
-<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=6169338440e8">
-<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=6169338440e8">
-<link rel="stylesheet" href="../assets/tokens.css?v=6169338440e8">
-<link rel="stylesheet" href="../assets/portal.css?v=6169338440e8">
-<link rel="stylesheet" href="../assets/trial.css?v=6169338440e8"><!-- P-2 试用台（仅引用既有令牌） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=675e6565225c">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=675e6565225c">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=675e6565225c">
+<link rel="stylesheet" href="../assets/tokens.css?v=675e6565225c">
+<link rel="stylesheet" href="../assets/portal.css?v=675e6565225c">
+<link rel="stylesheet" href="../assets/trial.css?v=675e6565225c"><!-- P-2 试用台（仅引用既有令牌） -->
 <style>
   /* ── 独立简化深色样式（与 appkeys.html 同约定；语义别名在本页 :root 重定义，不改 tokens.css） ── */
   :root {
@@ -205,16 +205,16 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
      及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数，旧缓存 URL 自然失效。
      本注释刻意保留未版本化 src 字样（构建期不受版本参数改写），作为加载序门禁的
      产物级检索锚点，勿删。 -->
-<script defer src="../site-gate.js?v=6169338440e8"></script>
-<script defer src="../data-format.js?v=6169338440e8"></script>
-<script defer src="../api.js?v=6169338440e8"></script>
-<script defer src="../assets/app.js?v=6169338440e8"></script>
-<script defer src="../assets/trial.js?v=6169338440e8"></script>
+<script defer src="../site-gate.js?v=675e6565225c"></script>
+<script defer src="../data-format.js?v=675e6565225c"></script>
+<script defer src="../api.js?v=675e6565225c"></script>
+<script defer src="../assets/app.js?v=675e6565225c"></script>
+<script defer src="../assets/trial.js?v=675e6565225c"></script>
 
-<script defer src="../assets/pages.js?v=6169338440e8"></script>
-<script defer src="../assets/detail.js?v=6169338440e8"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
-<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=6169338440e8"></script>
-<script defer src="../assets/vendor/tabler.min.js?v=6169338440e8"></script>
+<script defer src="../assets/pages.js?v=675e6565225c"></script>
+<script defer src="../assets/detail.js?v=675e6565225c"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=675e6565225c"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=675e6565225c"></script>
 
 </head>
 <body class="os-layout" x-data="upstreamAdmin()" x-init="boot()">
@@ -224,7 +224,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
     <span class="os-brand-block" aria-hidden="true"></span><!-- 品牌红 ①（深底变体由令牌切换） -->
     <span class="os-brand-text">
       <span class="os-brand-name">OneServe</span>
-      <span class="os-brand-sub">统一数据服务平台</span>
+      <span class="os-brand-sub">数据API网关</span>
     </span>
   </a>
   <nav class="os-nav">
@@ -239,7 +239,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
         <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
              此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
         <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
-        <li><a class="os-nav-link" href="../apply.html" title="申请接入：OA 审批入口＋授权进度＋已批字段清单（P0-10）"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span class="os-nav-text">申请接入</span></a></li>
+        <!-- apply（申请接入）导航项随 ux-fix-batch（2026-10-29 维护者验收）下线：入口改指 docs#docs-channels -->
       </ul>
     </div>
     <div class="os-nav-group">
@@ -293,7 +293,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
       <div class="os-nav-label">合规</div>
       <ul class="os-nav-list">
         <li><a class="os-nav-link" href="../audit.html" title="审计查询：按时间/调用方/端点/状态/追踪号检索审计台账（P1-1）"><i class="bi bi-shield-check" aria-hidden="true"></i><span class="os-nav-text">审计查询</span></a></li>
-        <li><a class="os-nav-link" href="../grants.html" title="授权与凭证全景：租户×AppKey×服务×字段＋OA 单号溯源＋字段反查（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
+        <li><a class="os-nav-link" href="../grants.html" title="授权与凭证全景：租户×AppKey×服务×字段（P1-8）"><i class="bi bi-diagram-2" aria-hidden="true"></i><span class="os-nav-text">授权全景</span></a></li>
       </ul>
     </div>
   </nav>
@@ -612,13 +612,13 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 </main>
 <!-- ══ 页脚（partials · 全站共享） ══ -->
 <footer class="os-footer" id="page-footer">
-  <span>OneServe 统一数据服务平台</span>
+  <span>OneServe 数据API网关</span>
   <span class="os-footer-spacer"></span>
 </footer>
 
 </div>
-<script defer src="admin-gate.js?v=6169338440e8"></script>
-<script defer src="upstreams.js?v=6169338440e8"></script>
-<script defer src="../assets/alpine.min.js?v=6169338440e8"></script>
+<script defer src="admin-gate.js?v=675e6565225c"></script>
+<script defer src="upstreams.js?v=675e6565225c"></script>
+<script defer src="../assets/alpine.min.js?v=675e6565225c"></script>
 </body>
 </html>

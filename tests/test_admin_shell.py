@@ -87,7 +87,7 @@ SHELL_MARKERS = (
 # portal/partials 独有指纹（只有拼接公共件才会出现，手抄副本不会带）
 PARTIAL_FINGERPRINTS = (
     'id="os-sidebar-auth"',                      # sidebar.html foot 认证区（P5 移除计数文案后改此指纹）
-    "OneServe 统一数据服务平台",                  # footer.html（口径句已全站删除，指纹改品牌句）
+    "OneServe 数据API网关",                       # footer.html（ux-fix-batch 命名统一，指纹随品牌句）
     # topbar.html 环境条指纹已删：os-envbar 源头删除（2026-09-29），topbar 无独有文案指纹
 )
 

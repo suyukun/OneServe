@@ -217,10 +217,10 @@
               x-text="hit.willHit ? '命中 ' + hit.hitRows + ' 行 / 调用 ' + hit.hitCalls + ' 次 / 成功 ' + hit.hitSuccess + ' 次' : '未命中（该窗内此 endpoint 无用量行）'"></span></dd>
             <dt>窗内 endpoint</dt><dd x-text="'共 ' + hit.distinctEndpoints + ' 个 · 总调用 ' + hit.windowCalls + ' 次'"></dd>
             <dt>未覆盖样本</dt><dd>
-              <template x-for="(u, i) in hit.unhitTop" :key="i">
+              <template x-for="(u, i) in (hit.unhitTop || [])" :key="i">
                 <span class="tag mono" x-text="u.endpoint + ' × ' + u.calls"></span>
               </template>
-              <span class="note" x-show="hit.unhitTop.length === 0">无其他未覆盖 endpoint</span>
+              <span class="note" x-show="(hit.unhitTop || []).length === 0">无其他未覆盖 endpoint</span>
             </dd>
           </dl>
           <div class="note">命中判据＝usage_daily.endpoint 对归一 service_ref 精确匹配（引擎同源）</div>
@@ -376,7 +376,7 @@
     <div x-show="!cover.empty">
       <dl class="kv">
         <dt>账期</dt><dd class="mono" x-text="cover.period + '（' + cover.windowFrom + ' ~ ' + cover.windowToExclusive + '）'"></dd>
-        <dt>覆盖</dt><dd x-text="cover.coveredEndpoints + ' / ' + cover.totalEndpoints + ' 个 endpoint · 按调用量覆盖率 ' + (cover.coverageRatio === null ? '—' : (cover.coverageRatio * 100).toFixed(2) + '%')"></dd>
+        <dt>覆盖</dt><dd x-text="cover.coveredEndpoints + ' / ' + cover.totalEndpoints + ' 个 endpoint · 按调用量覆盖率 ' + (cover.coverageRatio == null ? '—' : (cover.coverageRatio * 100).toFixed(2) + '%')"></dd>
       </dl>
       <strong>未覆盖（出账按空价目口径 priced=false 0 元不计应收）</strong>
       <div style="margin: 8px 0">
@@ -407,7 +407,7 @@ function pricingAdmin() {
     status: 'loading', statusMessage: '', items: [], total: 0, page: 1, pageSize: 50,
     filter: { service: '', state: '' },
     selector: [], selKind: 'service', bTypeOpen: false,   /* B 型创建开关＝selector 端点 bTypeOpen（缺省 false＝保守关闸） */
-    hit: { ok: false },
+    hit: { ok: false, unhitTop: [] },   /* unhitTop 兜底空数组：防降级态 undefined.length 抛错（ux-fix-batch） */
     form: { serviceRef: '', model: 'per_call', effectiveFrom: '', effectiveTo: '', currency: 'CNY', remark: '' },
     perCall: { price: '' }, pack: { quota: 10000, overage: '' },
     tiers: [{ upper: '', price: '' }, { upper: '', price: '' }],
@@ -459,7 +459,7 @@ function pricingAdmin() {
           self.items = []; self.total = 0; return;
         }
         self.status = 'ok'; self.items = body.items || []; self.total = body.total || 0;
-        self.page = body.page; self.pageSize = body.pageSize;
+        self.page = body.page || self.page; self.pageSize = body.pageSize || self.pageSize;
       } catch (e) {
         self.status = 'degraded'; self.statusMessage = '计费数据暂不可用：计费库未启用或未响应（compose.metadata.yml，项目名 oneserve-meta）。价目为空期间出账走空价目试运行口径，不受影响。';
       }
@@ -488,7 +488,14 @@ function pricingAdmin() {
         var r = await fetch('/v1/admin/pricing/hit-preview?service_ref=' + encodeURIComponent(self.form.serviceRef),
                             { headers: self.headers() });
         var body = await r.json();
-        if (!r.ok) { self.wizard.error = body.message || ('HTTP ' + r.status); self.hit = { ok: false }; return; }
+        if (!r.ok) { self.wizard.error = body.message || ('HTTP ' + r.status); self.hit = { ok: false, unhitTop: [] }; return; }
+        /* 空值防御：响应缺数组/字符串字段时兜底默认，防视图层 undefined.length/undefined 拼串（ux-fix-batch） */
+        if (!Array.isArray(body.unhitTop)) body.unhitTop = [];
+        if (body.period === undefined) body.period = '';
+        if (body.windowFrom === undefined) body.windowFrom = '';
+        if (body.windowToExclusive === undefined) body.windowToExclusive = '';
+        if (body.distinctEndpoints === undefined) body.distinctEndpoints = 0;
+        if (body.windowCalls === undefined) body.windowCalls = 0;
         body.ok = true; self.hit = body;
       } catch (e) { self.wizard.error = '命中预演失败：' + e; }
     },
@@ -514,6 +521,10 @@ function pricingAdmin() {
                                                           body: JSON.stringify(Object.assign(self.buildPayload(), { preview: true })) });
         var body = await r.json();
         if (!r.ok) { self.wizard.error = body.message || ('HTTP ' + r.status); return; }
+        /* 空值防御：档位/冲突数组兜底，防 preview.conflicts.length 在缺字段响应上抛错（ux-fix-batch） */
+        if (!Array.isArray(body.tiers)) body.tiers = [];
+        if (!Array.isArray(body.conflicts)) body.conflicts = [];
+        if (body.conflictMessage === undefined) body.conflictMessage = '';
         self.preview = body; self.wizard.step = 3;
       } catch (e) { self.wizard.error = '预览失败：' + e; }
     },

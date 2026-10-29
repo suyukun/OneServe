@@ -42,8 +42,10 @@ NGINX_CONF = REPO / "configs" / "nginx" / "portal-nginx.conf"
 PORTAL = REPO / "portal"
 
 # 演示栈实测 404 的裸路径（修前 404 / 修后 200）；P1-7 合并后 contact 下线（301 → /docs），
-# 故不再列入 200 清单，改由独立用例断言其 301 行为；卡5 字段字典页下线，fields 同步移出。
-CLEAN_URLS = ["trial", "docs", "my", "apply", "audit", "ops", "catalog"]
+# 故不再列入 200 清单，改由独立用例断言其 301 行为；卡5 字段字典页下线，fields 同步移出；
+# ux-fix-batch 2026-10-29：apply（申请接入）页下线，随 fields 移出（无 301——内部入口，
+# nginx try_files 自然 404 兜底）。
+CLEAN_URLS = ["trial", "docs", "my", "audit", "ops", "catalog"]
 
 # P1-7 合并：下线的 contact 独立页 → 301 到帮助与支持页 /docs
 RETIRED_REDIRECTS = {"/contact": "/docs", "/contact.html": "/docs"}
@@ -220,7 +222,7 @@ def test_live_clean_urls_all_200():
             assert target.encode() in body, "%s 的 301 Location 未指向 %s" % (retired, target)
 
         # 既有行为不回归：静态资源直出 200、未知路径仍 404、admin 干净 URL 200
-        for asset in ["/assets/app.js", "/assets/apply.css", "/index.html", "/admin/publish"]:
+        for asset in ["/assets/app.js", "/index.html", "/admin/publish"]:
             code, _ = _http_status_code(base + asset)
             assert code == 200, "%s 期望 200 实得 %s" % (asset, code)
         code, _ = _http_status_code(base + "/no-such-page-xyz")

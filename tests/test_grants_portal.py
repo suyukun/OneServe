@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 """P1-8 授权登记全景门户套件（tests/test_grants_portal.py）——构建注册＋DOM＋组件契约。
 
-守卫口径（任务卡：新 C 面授权全景页，侧栏「合规」组；按租户/服务/字段筛；字段可点反查；
-复用既有令牌；窄屏容器内滚动；SPEC §2-C2/§5-P1-8）：
+守卫口径（任务卡：新 C 面授权全景页，侧栏「合规」组；按租户/服务/字段筛；
+复用既有令牌；窄屏容器内滚动；SPEC §2-C2/§5-P1-8；ux-fix-batch 2026-10-29：
+「OA 单号溯源」「字段反查」两区随验收下线，全景表/KPI/凭证主体保留）：
   1. 构建注册：grants 入 NAV_KEYS/PAGES（区块 id/按页 css+js/无越页注入）；构建幂等；
      产物同步（重跑 build_portal 后 portal/grants.html 逐字节一致）；
   2. DOM：筛选控件齐全（租户/服务/字段＋OA 状态 chips）；十一列表头（#58 配额上限/
       今日已用两列，2026-10-15 门面批）；OA 状态徽标三类（已登记/占位/缺失）；
-      只读角标；字段可点反查；空态文案；
+      只读角标；空态文案；
   3. 侧栏：「合规」组含 grants 链接（C 面 IA），active 态构建期注入；
   4. 组件契约（grants.js）：取数直达 /v1/portal/grants/*、Alpine 注册、深链参数、
      无 mock 降级、无写请求（只读面）；
@@ -75,7 +76,7 @@ def test_pages_registered_in_build():
     assert "grants" in bp.NAV_KEYS and "grants" in bp.PAGES
     assert bp.PAGES["grants"]["required_ids"] == [
         "grants-about", "grants-summary", "grants-toolbar",
-        "grants-table", "grants-field-lookup", "grants-oa"]
+        "grants-table"]
     assert "assets/grants.css" in bp.PAGES["grants"]["extra_css"]
     assert "assets/grants.js" in bp.PAGES["grants"]["extra_js"]
 
@@ -93,7 +94,7 @@ def test_page_rendered_with_shell_and_active_nav():
 def test_required_blocks_present():
     html = GRANTS_PAGE.read_text(encoding="utf-8")
     for block_id in ("grants-about", "grants-summary", "grants-toolbar",
-                     "grants-table", "grants-field-lookup", "grants-oa"):
+                     "grants-table"):
         assert ('id="' + block_id + '"') in html, "缺关键区块 id：" + block_id
 
 
@@ -113,16 +114,14 @@ def test_build_idempotent_and_artifact_synced():
     assert GRANTS_PAGE.read_bytes() == before, "构建非幂等/产物未同步"
 
 
-# ── 2. DOM：筛选＋表头＋状态徽标＋只读＋反查 ──
+# ── 2. DOM：筛选＋表头＋状态徽标＋只读 ──
 
 def test_dom_filter_controls():
     html = GRANTS_PAGE.read_text(encoding="utf-8")
     dom = _dom(html)
     for iid in ("gr-tenant", "gr-service", "gr-field", "gr-field-list",
-                "gr-submit", "gr-reset", "gr-oa-chips",
-                "gr-field-lookup-input", "gr-field-lookup-btn",
-                "gr-oa-input", "gr-oa-btn"):
-        assert ('id="' + iid + '"') in html, "筛选/反查控件缺：" + iid
+                "gr-submit", "gr-reset", "gr-oa-chips"):
+        assert ('id="' + iid + '"') in html, "筛选控件缺：" + iid
     for label in ("租户", "服务", "字段", "已登记单号", "占位待回填", "缺单号", "全部状态"):
         assert _has_text(dom, label), "筛选/状态文案缺：" + label
     assert "支持部分匹配" in html, "部分匹配口径未明示（字段 placeholder）"
@@ -132,7 +131,7 @@ def test_dom_table_columns_and_oa_badges():
     dom = _dom(GRANTS_PAGE.read_text(encoding="utf-8"))
     for col in ("租户", "凭证指纹（脱敏）", "服务", "对外端点", "字段数",
                 "配额上限", "今日已用",
-                "授权字段（点字段反查「给了谁」）", "OA 单号", "单号状态"):
+                "授权字段", "OA 单号", "单号状态"):
         assert _has_text(dom, col), "表头缺列：" + col
     html = GRANTS_PAGE.read_text(encoding="utf-8")
     assert "serviceVersion" not in html, "卡4 AC-3d：serviceVersion 列须删净（不留恒空列）"
@@ -144,15 +143,14 @@ def test_dom_table_columns_and_oa_badges():
         assert ("." + cls) in css, "样式缺 OA 状态类：" + cls
 
 
-def test_dom_field_clickable_lookup():
+def test_dom_fields_plain_no_lookup():
+    """ux-fix-batch：字段反查区下线——表中字段纯展示（不再绑反查点击）。"""
     html = GRANTS_PAGE.read_text(encoding="utf-8")
-    assert 'x-for="f in row.fields"' in html, "字段未逐项可点"
-    assert "lookupField(f)" in html, "表中字段未绑定反查"
-    assert "lookupField()" in html, "反查按钮未绑定"
-    assert "OA 单号溯源" in _dom(html).texts, "缺 OA 溯源区"
-    dom = _dom(html)
-    assert any("缺单号的登记条目不出现在单号索引里" in t for t in dom.texts), \
-        "缺单号不出索引的如实说明缺失"
+    assert 'x-for="f in row.fields"' in html, "字段列仍须逐项展示"
+    assert "lookupField" not in html, "字段反查绑定残留（区已下线）"
+    assert "OA 单号溯源" not in _dom(html).texts, "OA 溯源区残留（区已下线）"
+    assert 'id="grants-field-lookup"' not in html, "字段反查区残留（区已下线）"
+    assert 'id="grants-oa"' not in html, "OA 溯源区残留（区已下线）"
 
 
 def test_dom_readonly_and_empty_states():
@@ -160,7 +158,6 @@ def test_dom_readonly_and_empty_states():
     dom = _dom(html)
     assert "只读" in dom.texts, "只读角标缺失"
     assert "当前筛选条件下没有匹配的授权登记条目" in dom.texts, "全景表空态文案缺失"
-    assert "经平台任何接口零出现" in html, "字段反查空态如实说明缺失"
     assert "不代填" in html, "缺单号如实标注口径缺失"
 
 
@@ -202,11 +199,11 @@ def test_sidebar_compliance_group_has_grants():
 
 def test_grants_js_contract():
     js = GRANTS_JS.read_text(encoding="utf-8")
-    for ep in ("/v1/portal/grants/panorama", "/v1/portal/grants/field",
-               "/v1/portal/grants/oa"):
-        assert ep in js, "取数未直达授权端点：" + ep
+    assert "/v1/portal/grants/panorama" in js, "取数未直达授权端点"
+    assert "/v1/portal/grants/field" not in js and "/v1/portal/grants/oa" not in js, \
+        "反查/溯源端点残留（两区已下线）"
     assert "grantsViewPage" in js and "alpine:init" in js, "Alpine 组件未按纪律注册"
-    for param in ("tenant", "service", "field", "ticket"):
+    for param in ("tenant", "service", "field"):
         assert param in js, "深链参数缺：" + param
     assert "history.replaceState" in js, "深链同步缺失"
     assert "mockData" not in js and "MOCK_" not in js and "errMsg" in js, "不得 mock 降级"

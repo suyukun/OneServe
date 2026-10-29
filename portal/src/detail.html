@@ -119,10 +119,11 @@
       </section>
 
       <!-- N1 页面动线补全（W-X4）：无凭证语境引导——出参表下方「如何获得调用凭证」→
-           申请接入／帮助快起步（纯静态指引，零业务逻辑；链接随构建改写 ../ 前缀） -->
+           平台运营组／帮助快起步（纯静态指引，零业务逻辑；链接随构建改写 ../ 前缀；
+           ux-fix-batch 2026-10-29：申请接入页下线，入口改指 docs#docs-channels） -->
       <section class="card detail-card" id="detail-cred-guide" aria-label="如何获得调用凭证">
         <div class="card-head"><h2 class="card-title">如何获得调用凭证？</h2></div>
-        <div class="field-hint">调用本服务需在请求头 apikey 携带 AppKey（见上方「基本信息 · 认证方式」）。还没有凭证？<a href="apply.html">去申请接入</a>（正式凭证找平台管理员审批）；如何领沙箱凭证、怎么发调用，见<a href="docs.html">帮助与支持 · 5 分钟上手</a>。</div>
+        <div class="field-hint">调用本服务需在请求头 apikey 携带 AppKey（见上方「基本信息 · 认证方式」）。还没有凭证？<a href="docs.html#docs-channels">联系平台运营组开通</a>（正式凭证找平台管理员审批）；如何领沙箱凭证、怎么发调用，见<a href="docs.html">帮助与支持 · 5 分钟上手</a>。</div>
       </section>
 
       <!-- ④ 错误码＋解决方案（网关 401 与服务层码同表，来源分列）；
@@ -142,7 +143,7 @@
                   <td x-text="e.solution"></td>
                   <td x-text="e.source === 'gateway' ? '网关' : '服务层'"></td>
                   <td class="detail-err-acts">
-                    <template x-if="errActionApply(e)"><a class="err-act" href="apply.html">去申请授权</a></template>
+                    <template x-if="errActionApply(e)"><a class="err-act" href="docs.html#docs-channels">联系运营组开通</a></template>
                     <template x-if="errActionQuota(e)"><a class="err-act" href="my.html">查看配额</a></template>
                     <span class="field-hint" x-show="!errActionApply(e) && !errActionQuota(e)">按「解决方案」处理</span>
                   </td>

@@ -215,32 +215,32 @@
   <section aria-label="账期详情" x-show="view === 'detail'" x-cloak>
     <div class="card" id="period-head-card" x-show="detail">
       <div class="card-head">
-        <h2 class="card-title">账期 <span class="mono" x-text="detail ? detail.period.period : ''"></span></h2>
+        <h2 class="card-title">账期 <span class="mono" x-text="detail?.period?.period || ''"></span></h2>
         <button class="btn back-link" type="button" id="back-to-list" @click="view = 'list'; loadList()">← 返回月账列表</button>
       </div>
       <div class="period-card" x-show="detail">
-        <div class="kv"><div class="k">状态</div><div class="v"><span class="badge" :class="detail && statusClass(detail.period.status)"
-          x-text="detail ? statusLabel(detail.period.status) : ''"></span></div></div>
+        <div class="kv"><div class="k">状态</div><div class="v"><span class="badge" :class="detail?.period ? statusClass(detail.period.status) : ''"
+          x-text="detail?.period ? statusLabel(detail.period.status) : ''"></span></div></div>
         <div class="kv"><div class="k">三硬前置（①②③）</div><div class="v" x-show="detail">
-          <span :class="detail?.period.gates.t3Closed ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.t3Closed ? '✓' : '✗'"></span>
-          <span :class="detail?.period.gates.reconcileClean ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.reconcileClean ? '✓' : '✗'"></span>
-          <span :class="detail?.period.gates.lagZero ? 'gate-ok' : 'gate-bad'" x-text="detail?.period.gates.lagZero ? '✓' : '✗'"></span>
-          <span class="muted" style="font-size:var(--fs-tiny,11px)" :title="detail.period.gates.checkedAt || ''"
-                x-text="'（核查 ' + (detail ? fmtTime(detail.period.gates.checkedAt) : '') + '）'"></span>
+          <span :class="detail?.period?.gates?.t3Closed ? 'gate-ok' : 'gate-bad'" x-text="detail?.period?.gates?.t3Closed ? '✓' : '✗'"></span>
+          <span :class="detail?.period?.gates?.reconcileClean ? 'gate-ok' : 'gate-bad'" x-text="detail?.period?.gates?.reconcileClean ? '✓' : '✗'"></span>
+          <span :class="detail?.period?.gates?.lagZero ? 'gate-ok' : 'gate-bad'" x-text="detail?.period?.gates?.lagZero ? '✓' : '✗'"></span>
+          <span class="muted" style="font-size:var(--fs-tiny,11px)" :title="detail?.period?.gates?.checkedAt || ''"
+                x-text="'（核查 ' + fmtTime(detail?.period?.gates?.checkedAt) + '）'"></span>
         </div></div>
-        <div class="kv"><div class="k">OA 单号</div><div class="v mono" x-text="detail ? (detail.period.oaTicket || '—') : ''"></div></div>
-        <div class="kv"><div class="k">金额合计（应收）</div><div class="v num" x-text="detail ? detail.period.amountDue + ' 元' : ''"></div></div>
+        <div class="kv"><div class="k">OA 单号</div><div class="v mono" x-text="detail?.period?.oaTicket || '—'"></div></div>
+        <div class="kv"><div class="k">金额合计（应收）</div><div class="v num" x-text="detail?.period ? detail.period.amountDue + ' 元' : ''"></div></div>
         <div class="kv"><div class="k">欠费</div><div class="v">
-          <span class="badge badge-danger" x-show="detail && detail.period.overdue"
+          <span class="badge badge-danger" x-show="detail?.period?.overdue"
                 title="欠费只算不限：平台不做停服/降配/限流（ADR-0024 决定第 8 条）；标记动作走 CLI">欠费</span>
-          <span class="muted" x-show="detail && !detail.period.overdue">—</span></div></div>
+          <span class="muted" x-show="detail?.period && !detail.period.overdue">—</span></div></div>
         <div class="kv"><div class="k">操作</div><div class="v">
-          <button class="btn btn-sm" type="button" x-show="detail && detail.period.status === 'reconciled'"
-                  @click="openDialog(detail.period.period, 'confirm')">确认</button>
-          <button class="btn btn-sm" type="button" x-show="detail && detail.period.status === 'confirmed'"
-                  @click="openDialog(detail.period.period, 'register')">补录单号</button>
-          <button class="btn btn-sm" type="button" @click="exportCsv(detail.period.period)" x-show="detail">账期级 CSV</button>
-          <button class="btn btn-sm" type="button" @click="exportLines(detail.period.period)" x-show="detail">明细级 CSV</button>
+          <button class="btn btn-sm" type="button" x-show="detail?.period?.status === 'reconciled'"
+                  @click="detail && openDialog(detail.period.period, 'confirm')">确认</button>
+          <button class="btn btn-sm" type="button" x-show="detail?.period?.status === 'confirmed'"
+                  @click="detail && openDialog(detail.period.period, 'register')">补录单号</button>
+          <button class="btn btn-sm" type="button" @click="detail && exportCsv(detail.period.period)" x-show="detail">账期级 CSV</button>
+          <button class="btn btn-sm" type="button" @click="detail && exportLines(detail.period.period)" x-show="detail">明细级 CSV</button>
         </div></div>
       </div>
       <p class="footnote" x-text="detail ? detail.caliber : ''"></p>
@@ -249,7 +249,7 @@
     <!-- 主表：bill_line 四键×双快照两列组（分页） -->
     <div class="card" style="padding:0">
       <div class="card-head" style="padding:var(--space-2,16px) var(--space-2,16px) 0">
-        <h2 class="card-title">账单明细 <span class="muted num" x-text="detail ? '(' + detail.total + ' 行)' : ''"></span></h2>
+        <h2 class="card-title">账单明细 <span class="muted num" x-text="detail ? '(' + (detail.total || 0) + ' 行)' : ''"></span></h2>
       </div>
       <table id="bill-lines" aria-label="账单行明细">
         <thead><tr>
@@ -258,7 +258,7 @@
           <th class="sep-l">计价</th><th>成交单价</th><th>金额</th><th>价目 ID</th>
         </tr></thead>
         <tbody>
-          <template x-for="ln in detail ? detail.items : []" :key="ln.tenantId + '|' + ln.caller + '|' + ln.endpoint">
+          <template x-for="ln in (detail?.items || [])" :key="ln.tenantId + '|' + ln.caller + '|' + ln.endpoint">
             <tr>
               <td><span class="mono" x-text="ln.tenantId"></span>
                   <div class="muted" style="font-size:var(--fs-tiny,11px)" x-text="ln.tenantDisplayName || '—'" x-show="ln.tenantDisplayName"></div></td>
@@ -278,23 +278,23 @@
               <td class="mono" x-text="ln.priceSnapshot.priceItemId || '—'"></td>
             </tr>
           </template>
-          <tr x-show="detail && detail.items.length === 0"><td colspan="12" class="empty">该账期无账单行。</td></tr>
-          <tr x-show="detail && detail.items.length > 0" style="background:var(--admin-inset)">
+          <tr x-show="detail && detail.items && detail.items.length === 0"><td colspan="12" class="empty">该账期无账单行。</td></tr>
+          <tr x-show="detail && detail.items && detail.items.length > 0" style="background:var(--admin-inset)">
             <td colspan="4" class="muted">汇总</td>
-            <td class="num" x-text="detail ? detail.summary.successSum : ''"></td>
+            <td class="num" x-text="detail && detail.summary ? detail.summary.successSum : ''"></td>
             <td colspan="3"></td>
-            <td class="muted">未计价 <span class="num" x-text="detail ? detail.summary.unpricedCount : ''"></span> 行</td>
+            <td class="muted">未计价 <span class="num" x-text="detail && detail.summary ? detail.summary.unpricedCount : ''"></span> 行</td>
             <td class="muted">Σ金额</td>
-            <td class="num" x-text="detail ? detail.summary.amountSum : ''"></td>
+            <td class="num" x-text="detail && detail.summary ? detail.summary.amountSum : ''"></td>
             <td></td>
           </tr>
         </tbody>
       </table>
       <div class="pager" style="padding:0 var(--space-2,16px) var(--space-2,16px)" x-show="detail && detail.total > detail.items.length || (detail && detail.page > 1)">
-        <button class="btn btn-sm" type="button" :disabled="detailPage <= 1" @click="detailPage--; loadDetail(detail.period.period)">上一页</button>
-        <span class="num" x-text="detail ? ('第 ' + detail.page + ' 页 / 共 ' + Math.max(1, Math.ceil(detail.total / detail.pageSize)) + ' 页') : ''"></span>
+        <button class="btn btn-sm" type="button" :disabled="detailPage <= 1" @click="detailPage--; detail && loadDetail(detail.period.period)">上一页</button>
+        <span class="num" x-text="detail ? ('第 ' + (detail.page || 1) + ' 页 / 共 ' + Math.max(1, Math.ceil((detail.total || 0) / (detail.pageSize || 20))) + ' 页') : ''"></span>
         <button class="btn btn-sm" type="button" :disabled="detail && detail.page >= Math.ceil(detail.total / detail.pageSize)"
-                @click="detailPage++; loadDetail(detail.period.period)">下一页</button>
+                @click="detailPage++; detail && loadDetail(detail.period.period)">下一页</button>
       </div>
       <p class="footnote" style="padding:0 var(--space-2,16px) var(--space-2,16px)">
         页面调用方为掩码；明细级 CSV 带完整凭证编号（拍板④，导出入 bill_export 留痕）。</p>
@@ -392,7 +392,13 @@ function billingAdmin() {
     async loadDetail(period) {
       this.busy = true; this.stateMessage = '';
       try {
-        this.detail = await this._get('/v1/admin/billing/periods/' + period + '?page=' + this.detailPage + '&page_size=20');
+        const d = await this._get('/v1/admin/billing/periods/' + period + '?page=' + this.detailPage + '&page_size=20');
+        /* 空值防御：降级/空库时响应可能为 null 或缺账期主体——此处挡下进错误横幅，
+         * 不让 null 进 this.detail 把详情视图表达式炸掉（ux-fix-batch）。 */
+        if (!d || !d.period) throw new Error('账期数据为空或格式异常（账单库可能未启用），稍后重试。');
+        if (!Array.isArray(d.items)) d.items = [];
+        if (d.summary == null) d.summary = {};
+        this.detail = d;
         if (!this.detail.items.length && this.detail.total && this.detailPage > 1) {
           this.detailPage = 1; await this.loadDetail(period);
         }
