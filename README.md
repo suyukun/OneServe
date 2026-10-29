@@ -17,6 +17,9 @@ docker compose up -d
 open http://localhost:8000
 ```
 
+> **国内网络提示**：Docker Hub 直连拉取可能超时——请先配置镜像加速（如 `docker.m.daocloud.io`），或手动拉取 compose 引用的镜像后再起栈。
+> **Mainland China network note**: Docker Hub pulls may time out — configure a registry mirror (e.g. `docker.m.daocloud.io`) first, or pull the images referenced by compose manually before `up`.
+
 That is the whole setup. The first run builds the service image (~1-2 minutes; later starts take seconds). When the page opens, **everything below works with zero manual steps and no login** (no-login mode, [ADR-0029](docs/opensource/ADR-0029-开源版无登录模式.md)):
 
 - **Portal** at http://localhost:8000 — home KPIs, service catalog, API details, trial console (接口调试), docs, announcements.
@@ -52,6 +55,9 @@ Built-in demo credentials (all committed demo values):
 | Demo data | ✅ auto-seeded | ✅ auto-seeded (same sentinels) |
 | Machine data plane :9080 (gateway AppKey plane: `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*`) | ❌ not in this profile — portal-origin queries fall back to the service layer automatically, and `/healthz` reports `gateway`/`etcd` as `degraded` honestly | ✅ APISIX key-auth + rate limit + gateway-side audit |
 | Async batch delivery worker | ❌ not in this profile | ✅ |
+
+> **查询通道说明**：演示 AppKey 在默认 demo 档经门户同源反代直通服务层，开箱即查；`full` 档数据面查询（`:9080`）经 APISIX 网关 key-auth——需先经网关 Admin API 为该凭证注册 consumer（经管理台签发/启用凭证会自动同步；演示 consumer 的开箱自动注册在路线图中）。
+> **Query-path note**: the demo AppKey works out of the box in the default demo profile (portal same-origin proxy); in the `full` profile, data-plane queries go through APISIX key-auth, so a consumer must be registered for the credential via the gateway Admin API first (issuing/enabling a credential in the admin console syncs it automatically; out-of-the-box auto-registration of the demo consumer is on the roadmap).
 
 Tear down with `docker compose down` (demo) or `docker compose --profile full down` (everything); add `-v` to also drop data volumes.
 

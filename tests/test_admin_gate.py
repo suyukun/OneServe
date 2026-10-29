@@ -212,14 +212,15 @@ def test_page_js_no_token_gate_and_no_token_header():
 
 
 def test_backend_admin_gate_skeleton_kept():
-    """后端闸挂点骨架保留（休眠态，ADR-0029：off 恒放行、无路径触发登录行为）：
-    _admin_gate 挂点与 router 级依赖仍在（防漏挂设计不回退）；写方法委派
-    auth_oidc.require_login（保留模块，模式恒 off）；errors.UNAUTHORIZED 契约保留。"""
+    """后端闸挂点骨架保留（恒放行态；v0.1.1 清尸体后口径，ADR-0029 §7 兑现）：
+    _admin_gate 挂点与 router 级依赖仍在（防漏挂设计不回退）；写方法 require_login/
+    角色裁决挂点已随 auth_oidc.py 清理摘除（活引用归零，碑注文字除外）；
+    errors.UNAUTHORIZED 契约保留。"""
     py = _read(REPO / "service" / "app" / "admin_api.py")
     assert "def _admin_gate" in py, "admin_api 须保留闸挂点骨架"
     assert "dependencies=[Depends(_admin_gate)]" in py, "router 挂点须保留（防漏挂设计）"
-    assert "auth_oidc.WRITE_METHODS" in py and "auth_oidc.require_login" in py, \
-        "写操作族挂点须保留（休眠骨架；模式缺省 off＝恒放行）"
+    assert "from app import auth_oidc" not in py and "await auth_oidc." not in py, \
+        "auth_oidc 活引用残留（v0.1.1 已随登录清理删除，ADR-0029 §7；碑注文字除外）"
     mon = _read(REPO / "service" / "app" / "monitor_api.py")
     assert "from app.admin_api import _admin_gate" in mon and "Depends(_admin_gate)" in mon, \
         "monitor 三端点须与 admin API 同一挂点"

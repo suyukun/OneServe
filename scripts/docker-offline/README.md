@@ -35,9 +35,9 @@
 | 症状 | 处置 |
 |---|---|
 | sha256 校验失败 | 包传输损坏：重新拷贝整个包目录再跑 |
-| 此包不适用（x86_64） | 机器不是 arm64：uname -m 核对；x86_64 找 Rose 另打包 |
+| 此包不适用（x86_64） | 机器不是 arm64：uname -m 核对；x86_64 需另行打包 |
 | Failed to start docker.service | journalctl -u docker.service --no-pager -n 50 看日志；多数是内核模块缺：sudo modprobe overlay && sudo modprobe br_netfilter，再 sudo systemctl restart docker |
-| cgroup / mountpoint for cgroup 报错 | stat -fc %T /sys/fs/cgroup/ 看 cgroup 版本（cgroup2fs=v2 正常）；老内核报错带输出去问 Rose |
+| cgroup / mountpoint for cgroup 报错 | stat -fc %T /sys/fs/cgroup/ 看 cgroup 版本（cgroup2fs=v2 正常）；老内核报错带输出另行排查 |
 | permission denied … /var/run/docker.sock（重登后仍有） | id -nG 核对是否在 docker 组；没有就 sudo usermod -aG docker "$USER" 再重登 |
 | 起栈报 address already in use（9080/8000） | 与本包无关，见引导单 §7：sudo lsof -i :9080 找占用 |
 | 机器上有运维装的旧 docker | 本脚本已停用旧单元；旧二进制仍在 /usr/bin，但 PATH 中 /usr/local/bin 优先，which docker 应显示 /usr/local/bin/docker |
@@ -52,4 +52,4 @@
   （直连成功，未用镜像源；ARM aarch64 已用 file 命令核验）
 - 版本口径：组件申请清单 §二写的「Docker 24.x」是给运维的**底线**要求；29.8.1 为官方当前
   最新稳定版，向下兼容 24.x 用法，既有镜像与 compose 文件无需改动。
-- 注意：本包 2026-09-22 由 Rose 在本机组包，仅做了语法/架构/校验和核验；ECS 首装实测由 维护者 执行（无本机实测条件，本机 Mac 禁装）。
+- 注意：本包 2026-09-22 由 AI 助手在本机组包，仅做了语法/架构/校验和核验；ECS 首装实测由 维护者 执行（无本机实测条件，本机 Mac 禁装）。

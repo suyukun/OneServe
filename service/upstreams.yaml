@@ -27,12 +27,12 @@ proxies:
   scope:
     env: 本机M0
     instance: 网关实例A
-  last_modified_by: rose@local-loop
+  last_modified_by: ai@local-loop
   last_modified_at: '2026-10-15T01:52:00+00:00'
   published_at: '2026-10-15T01:52:00+00:00'
   trace:
     action: published
-    by: rose@local-loop
+    by: ai@local-loop
     at: '2026-10-15T01:52:00+00:00'
     commit: null
 - id: proxy-ext-asset-tag-1020

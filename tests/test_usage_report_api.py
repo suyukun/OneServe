@@ -9,7 +9,7 @@
   - svc 维度：services/serviceDim 真实值（补丁实证）；掩码纪律（完整 appkey 不出端点）；
   - 筛选/排序/搜索：租户、登记状态、q 前缀（登记名/原串/掩码串，出口仍掩码）、排序白名单；
   - 趋势：caller/service 双维＋Top10＋其余聚合（svc×日矩阵）；
-  - 角色矩阵随 tests/test_auth_oidc.py 清单守卫（本文件不重复主断言）。
+  - （角色矩阵守卫随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，ADR-0029 §7）。
 
 Kafka/Redis 未起时全部测试仍绿（mock 覆盖所有外部依赖，同 test_audit_consumer 口径）。
 """
@@ -24,7 +24,6 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "service"))
 
 from app import appkeys as appk          # noqa: E402
-from app import auth_oidc as AO          # noqa: E402
 from app import metering as mt           # noqa: E402
 from app import usage_report as ur       # noqa: E402
 
@@ -357,15 +356,6 @@ def test_trend_dims_top10_and_others():
     assert sum(s["calls"] for s in j["series"]) + j["others"]["calls"] == 66
     assert c.get("/v1/admin/usage/trend", params={"days": 1, "dim": "foo"}).status_code == 400
     assert c.get("/v1/admin/usage/trend", params={"days": 8}).status_code == 400
-
-
-# ── 角色矩阵（快速自检；清单守卫主断言在 test_auth_oidc.py） ──
-
-def test_usage_routes_registered_viewer_floor():
-    """四端点族全部入 ROUTE_MIN_ROLE 且 viewer 地板（W4 域7；漏标由 test_auth_oidc 守卫拦截）。"""
-    for route in ("overview", "subjects", "services", "trend"):
-        key = f"GET /v1/admin/usage/{route}"
-        assert AO.ROUTE_MIN_ROLE.get(key) == AO.ROLE_VIEWER, f"{key} 缺矩阵行或非 viewer 地板"
 
 
 if __name__ == "__main__":

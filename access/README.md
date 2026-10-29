@@ -60,8 +60,8 @@ python3 access/sm3_ref.py "+86 138-0013-8000"
 
 ## 五、其他语言
 
-- **curl**：哈希在调用方本地算好随请求携带，curl 只负责带参请求，无需特殊处理；样例命令找 Rose 要。
-- **Java**：一行说明——用 BouncyCastle 的 `SM3Digest`（或 hutool `SmUtil.sm3`）对规范化后的 UTF-8 字节取摘要转小写 hex；完整样例找 Rose 要。
+- **curl**：哈希在调用方本地算好随请求携带，curl 只负责带参请求，无需特殊处理。
+- **Java**：一行说明——用 BouncyCastle 的 `SM3Digest`（或 hutool `SmUtil.sm3`）对规范化后的 UTF-8 字节取摘要转小写 hex。
 
 ## 六、常见翻车对照
 

@@ -58,10 +58,9 @@ from app.admin_api import router as admin_router   # /v1/admin/*：凭证发放/
 # · admin_accounts_router（/v1/admin/accounts/*，Casdoor 管理 API 代理）不再挂载；
 # · Casdoor 登录审计消费（audit_casdoor_puller）线程不再启动；
 # · auth_oidc.py / auth_native.py / admin_accounts.py / audit_casdoor_puller.py /
-#   users.yaml 文件保留不删（v0.1.1 再清尸体），admin 写闸里的 require_login /
-#   adjudicate_route_role 挂点保留（off 态恒放行，登录行为零触发）；历史接线见 git 史。
+#   users.yaml 已随 v0.1.1 清理删除（ADR-0029 §7 兑现，2026-10-29）；admin 写闸里的
+#   require_login / adjudicate_route_role 挂点同步摘除（恒放行不变）；历史接线见 git 史。
 from app.audit import AuditWriter, make_entry
-from app import auth_oidc   # 休眠骨架（ADR-0029）：仅错误信封 handler 与 admin 写闸挂点引用（off 态恒放行）；登录闭环端点已不挂载
 from app.my_api import router as my_router     # P0-7：我的接入自助端点（/v1/portal/my/*）
 from app.audit_api import router as audit_router   # P1-1：审计查询端点（/v1/portal/audit/*）
 from app.monitor_api import router as monitor_router  # P1-6：异常与批量监控端点（/v1/admin/monitor/*）
@@ -189,7 +188,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _app.state.audit = audit                  # M15-1：批量端点经 app.state 取审计写入器
     # 【无登录模式 ADR-0029·已摘】native 首启种子（ONESERVE_SEED_ADMIN_* 建 admin 账号）
     # 与 Casdoor 登录审计消费线程随登录拆除一并退役（历史接线见 git 史；users.yaml
-    # 保留空表在仓，无任何路径再写入）。
+    # 已随 v0.1.1 清理删除，无任何路径再写入）。
     _app.state.started_monotonic = time.monotonic()   # P1-6：大盘「服务」组件 uptime 真值起点
     yield
     for _watcher in (registry_watcher, upstreams_watcher):
@@ -270,14 +269,61 @@ app.add_exception_handler(RequestValidationError, _validation_exc_handler)
 # HTTPException 信封格式）。2026-10-09 恢复期接入；2026-10-14 闸恒放行后不再触发，
 # handler 注册保留供恢复闸期原样复用（ADR-0010）。
 app.add_exception_handler(admin_api.AdminGateDenied, _admin_gate_denied_handler)
+# ── 登录闸休眠 handler 骨架（ADR-0029；休眠是既定架构决策，非尸体） ──────────
+# 无登录模式下零触发：异常类与信封构造原在 auth_oidc.py（v0.1.1 已清），现就地
+# 休眠登记于此；错误码 auth_required/role_forbidden 文案中心仍同源 errors.py。
+# 历史形态（JWKS 验签/角色矩阵/登录闭环端点）见 git 史。
+class AuthRequiredError(Exception):
+    """管理写操作未登录/令牌无效（休眠：无登录模式 ADR-0029 下零触发）。"""
+
+    def __init__(self, reason: str = "missing_token"):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class RoleForbiddenError(Exception):
+    """已登录但角色不足（休眠：无登录模式 ADR-0029 下零触发）。"""
+
+    def __init__(self, min_role: str, actual: str):
+        self.min_role = min_role
+        self.actual = actual
+        super().__init__(f"min_role={min_role} actual={actual}")
+
+
+_AUTH_REQUIRED_REASONS = {
+    "missing_token": "未登录（缺少 Bearer 令牌）",
+    "bad_token": "登录令牌无效或已过期",
+    "jwks_unavailable": "登录服务不可达（JWKS/令牌端点拉取失败），稍后重试",
+    "dependency_missing": "服务端登录校验依赖缺失",
+    "secret_missing": "服务端登录密钥未配置",
+    "bad_state": "登录回跳校验失败（state 不符或已过期），请重新发起",
+}
+
+
+def _auth_required_response(exc: AuthRequiredError):
+    """401 auth_required 信封（错误码中心同源；休眠骨架，供恢复闸期原样复用）。"""
+    return JSONResponse(
+        errors.envelope(errors.AUTH_REQUIRED,
+                        _AUTH_REQUIRED_REASONS.get(exc.reason, _AUTH_REQUIRED_REASONS["bad_token"])),
+        status_code=401)
+
+
+def _role_forbidden_response(exc: RoleForbiddenError):
+    """403 role_forbidden 信封（错误码中心同源；休眠骨架，供恢复闸期原样复用）。"""
+    return JSONResponse(
+        errors.envelope(errors.ROLE_FORBIDDEN,
+                        f"当前账号角色（{exc.actual}）无权执行该操作，需要 {exc.min_role} 及以上"),
+        status_code=403)
+
+
 # OIDC 登录闸拒绝（管理写操作无/坏 Bearer）→ 401 auth_required 信封（2026-10-14
-# Casdoor 集成；ADR-0010 硬前提兑现——前端检测本码跳统一登录页）。
-app.add_exception_handler(auth_oidc.AuthRequiredError,
-                          lambda req, exc: auth_oidc.auth_required_response(exc))
+# Casdoor 集成；ADR-0010 硬前提兑现——前端检测本码跳统一登录页）。休眠登记。
+app.add_exception_handler(AuthRequiredError,
+                          lambda req, exc: _auth_required_response(exc))
 # W4 角色闸拒绝（已登录但角色不足）→ 403 role_forbidden 信封（错误码中心新码，
-# ADR-0016；require_role/adjudicate_route_role raise，前端据此提示权限不足）。
-app.add_exception_handler(auth_oidc.RoleForbiddenError,
-                          lambda req, exc: auth_oidc.role_forbidden_response(exc))
+# ADR-0016；require_role/adjudicate_route_role raise，前端据此提示权限不足）。休眠登记。
+app.add_exception_handler(RoleForbiddenError,
+                          lambda req, exc: _role_forbidden_response(exc))
 # 元数据库故障统一出口（卡-1b7 步8 写冻结拒绝码；注册须在 Exception 兜底之前——
 # 专用 handler 优先）。写端点经 meta_writer db 模式碰库失败抛 MetaDbError：
 #   探针不可达＝写冻结态 → 503 WRITE_FROZEN（DR runbook §2 影响面：发布/凭证/
@@ -369,8 +415,8 @@ def _caller_grant(caller: str, service_id: str) -> dict:
 
 # 【无登录模式 ADR-0029·已摘】W1 站点墙中间件（ADR-0015 整站登录墙的后端数据闸，
 # AUTH_OIDC_MODE=on 时墙域 401 auth_required）随登录拆除整体退役：全放行、零拦截，
-# 打开门户/管理台即用。分域清单与验签逻辑仍留在 auth_oidc.py（保留文件）；
-# admin 写闸里的 require_login/adjudicate_route_role 挂点保留（off 态恒放行）。
+# 打开门户/管理台即用。分域清单与验签逻辑随 auth_oidc.py 于 v0.1.1 清理删除；
+# admin 写闸里的 require_login/adjudicate_route_role 挂点同步摘除（恒放行不变）。
 # 历史实现见 git 史（site_wall_middleware，注册序口径：原先于 trace_middleware 定义）。
 
 

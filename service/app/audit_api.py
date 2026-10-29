@@ -16,16 +16,16 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from app import auth_oidc   # W4 角色闸：审计查看＝域6 operator 地板（矩阵 B1）
 from app import errors
 from app import my_access as mya
 
-# W4：/v1/portal/audit/logs 虽属门户墙域（站点墙登录前置），但查看权按矩阵域6
-# ＝operator+（viewer 不看审计）。off 态依赖恒放行，单测/裸跑零分叉。
-router = APIRouter(dependencies=[Depends(auth_oidc.require_role(auth_oidc.ROLE_OPERATOR))])
+# 【v0.1.1 清理】W4 角色闸休眠挂点（矩阵域6「审计查看」operator 地板，原
+# Depends(auth_oidc.require_role(...))）已随 auth_oidc.py 删除摘除——off 态恒
+# 放行，行为零变化（ADR-0029 §7 兑现）。
+router = APIRouter()
 
 
 def _now_iso() -> str:

@@ -431,11 +431,13 @@ def test_resync_endpoint_idempotent_contract(tmp_path, monkeypatch):
     assert (j2["ensured"], j2["removed"]) == n1, "幂等复跑计数复现"
 
 
-# ── 4. AST 契约守卫（P1-⑪；对齐 tests/test_auth_oidc 清单守卫先例） ──
+# ── 4. AST 契约守卫（P1-⑪） ──
 
 def test_tenants_routes_ast_and_role_guard():
-    """五端点注册齐全＋ROUTE_MIN_ROLE 五行在位：GET viewer／POST 全 admin（§1.4）。
-    新增端点漏标＝红（W4 防回潮）。"""
+    """五端点注册齐全（§1.4）；新增端点漏挂＝红。
+
+    （原 ROUTE_MIN_ROLE 五行断言随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，
+    ADR-0029 §7。）"""
     import ast as _ast
     src = (REPO / "service" / "app" / "tenants_api.py").read_text(encoding="utf-8")
     tree = _ast.parse(src)
@@ -455,11 +457,6 @@ def test_tenants_routes_ast_and_role_guard():
         ("POST", "/v1/admin/tenants/{tenant_id}/freeze"),
         ("POST", "/v1/admin/tenants/{tenant_id}/unfreeze"),
     ]), routes
-    from app import auth_oidc as AO
-    assert AO.ROUTE_MIN_ROLE["GET /v1/admin/tenants"] == AO.ROLE_VIEWER
-    for method, path in routes:
-        if method == "POST":
-            assert AO.ROUTE_MIN_ROLE[method + " " + path] == AO.ROLE_ADMIN, path
     assert "APIRouter(dependencies=[Depends(_admin_gate)])" in src, "router 须路由级挂闸"
 
 

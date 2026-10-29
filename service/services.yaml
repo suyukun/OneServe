@@ -651,11 +651,11 @@ services:    # 2026-09-29 维护者: all services offline for mainline focus; co
         delta: '+9'
       - status: published
         at: '2026-09-30T14:50:29+00:00'
-        by: rose-e2e
+        by: ai-e2e
         delta: '+9'
       - status: published
         at: '2026-09-30T14:50:35+00:00'
-        by: rose-e2e
+        by: ai-e2e
         delta: ±0
       - status: published
         at: '2026-10-08T06:14:41+00:00'
@@ -954,11 +954,11 @@ console_services:
         delta: '+9'
       - status: published
         at: '2026-09-30T14:50:29+00:00'
-        by: rose-e2e
+        by: ai-e2e
         delta: '+9'
       - status: published
         at: '2026-09-30T14:50:35+00:00'
-        by: rose-e2e
+        by: ai-e2e
         delta: ±0
       - status: published
         at: '2026-10-08T06:14:41+00:00'

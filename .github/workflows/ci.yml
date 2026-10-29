@@ -11,7 +11,7 @@
 # 两个 job：
 #   1. test  —— 全量 pytest，判据只看「非环境类失败」（环境类套件在 --deselect 清单里
 #               逐条写明理由）。fail-loud 由 tests/conftest.py 的收集期 import 守门兜底：
-#               缺 bcrypt/jwt/redis/yaml ＝ collection error，不是静默 skip。
+#               缺 redis/yaml ＝ collection error，不是静默 skip（bcrypt/jwt 守卫随 v0.1.1 登录清理退役）。
 #   2. smoke —— 可选：redis＋service 最小栈 → seed_demo.sh → 第一个查询断言 200。
 #               该 job 在 GitHub runner 上的可达性/耗时尚未实测，故 continue-on-error。
 #

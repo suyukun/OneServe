@@ -15,8 +15,8 @@
      · OA 单号缺失 → 400 oa_ticket_required（纯登记提醒，零 OA 对接）；
      · 沙箱租户只读 → 409；
      · 两段式停用流：缺 confirm 拒（400）、带 confirm 落 revoked、可再启用；
-  3. 角色矩阵（TestClient＋自造 RSA/JWT，AUTH_OIDC_MODE=on）：无令牌写 401、
-     viewer 读 200／写 403 role_forbidden、admin 全通；off 态全放行；
+  3. 无登录放行（TestClient 裸请求直达业务校验；原 on 态角色矩阵用例随 v0.1.1
+     登录清理退役，ADR-0029 §7）；
   4. OA 口径防回潮：零 OA 对接代码（grep 同款断言：无 oa api / requests/httpx）。
 
 运行：python3 -m pytest tests/test_grants_admin.py -q（宿主机依赖 fastapi/httpx 的
@@ -38,11 +38,6 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "service"))
 
-# ADR-0027 步1（登录双模）：本套件＝oidc 回归——钉住 AUTH_PROVIDER=oidc。缺省
-# native 会让 verify_access_token 分派本地 HS256，本套件自造的 RS256/JWKS 桩
-# token 将全部被拒；oidc 链路原语义在本钉住下逐条守卫（native 面归 test_auth_native）。
-os.environ["AUTH_PROVIDER"] = "oidc"
-
 from app import errors as E            # noqa: E402
 from app import grants_admin as gam    # noqa: E402
 
@@ -52,14 +47,6 @@ try:
     _HAS_FASTAPI = True
 except Exception:   # noqa: BLE001
     _HAS_FASTAPI = False
-
-try:
-    import jwt
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    _HAS_JWT = True
-except Exception:   # noqa: BLE001
-    _HAS_JWT = False
-
 
 # ---------- 合成夹具（口径同 tests/test_appkeys.synth_services：不读真库） ----------
 
@@ -345,33 +332,6 @@ def test_new_grant_without_ticket_on_ticketless_formal_row_rejected_at_action_le
     assert ei.value.status == 400 and ei.value.code == E.OA_TICKET_REQUIRED
 
 
-# ---------- 3. 角色矩阵（TestClient；fastapi/httpx/pyjwt 缺席如实 skip） ----------
-
-def _make_jwks_env():
-    """自造 RSA＋JWKS（test_auth_oidc 同款最小实现）：返回 token 签发函数。"""
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    from cryptography.hazmat.primitives import serialization
-    from app import auth_oidc as AO
-    pub = key.public_key().public_numbers()
-
-    def b64u(n: int) -> str:
-        raw = n.to_bytes((n.bit_length() + 7) // 8, "big")
-        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
-
-    jwk = {"kty": "RSA", "kid": "test-kid-1", "alg": "RS256", "n": b64u(pub.n), "e": b64u(pub.e)}
-    orig_fetch = AO._fetch_jwks
-    AO._jwks_cache.update({"keys": [jwk], "at": time.time()})
-    AO._fetch_jwks = lambda url: {"keys": [jwk]}
-
-    def issue(**overrides) -> str:
-        claims = {"iss": "http://localhost:8000", "sub": "oneserve/tester",   # iss 与 auth_oidc._cfg 缺省同源（1b 批·词条③对齐）
-                  "aud": "oneserve-admin-client", "exp": int(time.time()) + 600,
-                  "iat": int(time.time())}
-        claims.update(overrides)
-        return jwt.encode(claims, key, algorithm="RS256", headers={"kid": "test-kid-1"})
-    return issue, lambda: setattr(AO, "_fetch_jwks", orig_fetch)
-
-
 def _grants_app(tmp_path):
     """最小授权写面 app：admin_api.router 原闸（_admin_gate 依赖）＋缺省 state。
 
@@ -380,11 +340,6 @@ def _grants_app(tmp_path):
     import yaml as _yaml
     from app import admin_api
     app = FastAPI()
-    from app import auth_oidc as AO
-    app.add_exception_handler(AO.AuthRequiredError,
-                              lambda req, exc: AO.auth_required_response(exc))
-    app.add_exception_handler(AO.RoleForbiddenError,
-                              lambda req, exc: AO.role_forbidden_response(exc))
     app.state.redis = None
     app.state.services = synth_services()
     app.state.auth_matrix = synth_matrix_doc()["matrix"]
@@ -397,49 +352,22 @@ def _grants_app(tmp_path):
     return app
 
 
-@pytest.mark.skipif(not (_HAS_FASTAPI and _HAS_JWT), reason="依赖缺席：fastapi/httpx＋pyjwt")
-def test_role_matrix_viewer_read_admin_write(tmp_path):
-    """无令牌写 401／viewer 读 200 写 403 role_forbidden／admin 全通；off 态全放行。"""
-    import os
-    from app import auth_oidc as AO
-    issue, restore = _make_jwks_env()
+@pytest.mark.skipif(not _HAS_FASTAPI, reason="依赖缺席：fastapi/httpx")
+def test_write_passthrough_no_login(tmp_path):
+    """无登录模式恒放行：裸请求直达业务校验（ADR-0029；v0.1.1 起）。
+
+    原 on 态角色矩阵用例（无令牌 401／viewer 403 role_forbidden／admin 200，
+    RS256/JWKS 桩）随 v0.1.1 登录清理退役（ADR-0029 §7）；保留放行反断言防回潮。
+    """
     client = TestClient(_grants_app(tmp_path))
-    os.environ["AUTH_OIDC_MODE"] = "on"
-    try:
-        r = client.post("/v1/admin/grants", json={"action": "upsert"})
-        assert r.status_code == 401 and r.json()["error"] == E.AUTH_REQUIRED, r.text[:160]
-        r = client.get("/v1/admin/grants/tenants")
-        assert r.status_code == 401, "GET 也过登录地板（读公开已废除）"
-        vtok = {"Authorization": "Bearer " + issue(tag="viewer")}
-        r = client.get("/v1/admin/grants/tenants", headers=vtok)
-        assert r.status_code == 200 and r.json()["tenants"], r.text[:200]
-        r = client.get("/v1/admin/grants/tenants/t-fin", headers=vtok)
-        assert r.status_code == 200 and r.json()["tenant"] == "t-fin"
-        assert any(g["kind"] == "proxy" for g in r.json()["grants"]), "混排矩阵应含整路由行"
-        r = client.post("/v1/admin/grants", headers=vtok,
-                        json={"action": "upsert", "tenant": "t-fin", "service": "svc-tags",
-                              "fields": ["age_band"], "oa_ticket": "DEMO-2026-000001"})
-        assert r.status_code == 403 and r.json()["error"] == E.ROLE_FORBIDDEN, r.text[:200]
-        atok = {"Authorization": "Bearer " + issue(tag="admin")}
-        r = client.post("/v1/admin/grants", headers=atok,
-                        json={"action": "upsert", "tenant": "t-fin", "service": "svc-card",
-                              "fields": ["card_sts"], "oa_ticket": "DEMO-2026-000002"})
-        assert r.status_code == 200 and r.json()["auditId"] is not None, r.text[:300]
-        r = client.get("/v1/admin/grants/tenants", headers=atok)
-        assert r.status_code == 200
-    finally:
-        os.environ["AUTH_OIDC_MODE"] = "off"
-        restore()
     r = client.post("/v1/admin/grants", json={"action": "upsert"})
-    assert r.status_code == 400, "off 态放行到业务校验（action 缺失 400 invalid_action）"
+    assert r.status_code == 400, "无登录态应放行到业务校验（非 401/403 登录闸拦截）"
 
 
 @pytest.mark.skipif(not _HAS_FASTAPI, reason="依赖缺席：fastapi/httpx")
 def test_write_endpoint_denied_and_two_phase_via_http(tmp_path):
     """端点层负例信封：子集违规 422／沙箱 409／两段停用缺 confirm 400＋denied 审计不炸。"""
-    import os
     client = TestClient(_grants_app(tmp_path))
-    os.environ["AUTH_OIDC_MODE"] = "off"
     r = client.post("/v1/admin/grants", json={
         "action": "upsert", "tenant": "t-fin", "service": "svc-tags",
         "fields": ["city_code"], "oa_ticket": "DEMO-2026-000001"})

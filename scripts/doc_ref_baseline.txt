@@ -72,11 +72,8 @@ docs/plans/状态快照_20260923收工.md	path	docs/reports/...架构设计说�
 docs/plans/盘点-后台服务全景_20261014.md	path	portal/mock/trialDemoQuery.json
 docs/plans/装载与发布流程拆分设计_v1.md	path	portal/openapi/fields.json
 docs/plans/调研吸收决策清单_20261015.md	path	docs/reviews/portal-eval/用户视角审视_20261014.md
-docs/plans/账号体系原生优先重估_20261019.md	path	configs/casdoor/app.conf
 docs/plans/走查任务清单_20260928.md	path	docs/errors
 docs/plans/部署引导单-维护者专属_v0.md	path	scripts/rehearse.sh
-docs/research/Casdoor能力盘点_20261016.md	path	configs/casdoor/app.conf
-docs/research/Casdoor能力盘点_20261016.md	path	configs/casdoor/app.conf
 docs/research/DESIGN_md骨架调研_20261015.md	path	tests/unit/components/design-tokens-contrast.test.ts
 docs/research/字段字典覆盖率-M2-3.9_v1.md	path	portal/openapi/fields.json
 docs/research/字段字典覆盖率-M2-3.9_v1.md	path	scripts/upgrade_field_dict_csv.py

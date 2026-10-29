@@ -209,7 +209,6 @@ python3 -m piplicenses --python /tmp/os-dev-venv/bin/python --from meta --format
 | `apache/apisix:3.18.0-debian` | API 网关 | Apache-2.0 |
 | `etcd` 3.5.x | 网关配置存储 | Apache-2.0 |
 | `valkey/valkey:8-alpine` | KV 热存储（ADR-0028 已实施，2026-10-28） | Valkey：BSD-3-Clause（Linux 基金会托管）。原 `redis:7-alpine` 已自 compose 移除，其 ≥7.4 的 RSALv2 / SSPLv1（非 OSI 批准）风险随替换消除，背景见第 5 节 |
-| `casbin/casdoor` | 可选的统一登录组件（使用内置本地账号时不启用） | Apache-2.0 |
 | `apache/kafka:3.9.0` | 审计管线（可选） | Apache-2.0 |
 | HBase（可选冷存储实现） | 可选冷存储 | Apache-2.0 |
 | 本项目自建镜像（服务层、门户） | 本项目构建产物 | Apache-2.0 |

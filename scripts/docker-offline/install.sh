@@ -23,7 +23,7 @@ UNIT_DIR="/etc/systemd/system"
 
 # ---- 前置检查 ----
 [ "$(id -u)" -eq 0 ] || die "请用 sudo 运行：sudo bash install.sh"
-[ "$(uname -m)" = "aarch64" ] || die "本机架构 $(uname -m) ≠ aarch64，此包不适用（x86_64 找 Rose 另打）"
+[ "$(uname -m)" = "aarch64" ] || die "本机架构 $(uname -m) ≠ aarch64，此包不适用（x86_64 需另行打包）"
 command -v systemctl >/dev/null 2>&1 || die "未找到 systemctl（本脚本面向 systemd 发行版）"
 
 DOCKER_TGZ="$(ls "$SCRIPT_DIR"/docker-*.tgz 2>/dev/null | head -1 || true)"

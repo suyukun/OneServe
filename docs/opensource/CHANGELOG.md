@@ -37,8 +37,9 @@
   环境变量（AUTH_PROVIDER/ONESERVE_AUTH_SECRET/ONESERVE_SEED_ADMIN_*/OIDC 及
   统一登录凭证）全部移除。**AppKey 机器凭证鉴权不受影响**：数据面
   `/v1/query|/v1/tags/query|/v1/batch|/proxy` 与凭证面 `/v1/admin/*` 仍按既有
-  体系鉴权。登录相关模块文件（auth_oidc/auth_native/auth_view*/users.yaml 等）
-  保留不删、无任何路径触发，尸体清理归 v0.1.1。
+  体系鉴权。登录相关模块文件（auth_oidc/auth_native/admin_accounts/
+  audit_casdoor_puller/users.yaml 等）随本批清理删除（见下方 Removed）；
+  `auth_view.py`（授权全景纯函数）保留为产品功能。
 - **compose 凭证注入软化（一键开箱批）**：`APISIX_APPKEY`/`APISIX_ADMIN_KEY` 由
   「缺省即报错阻断起栈」改为「缺省注入 `.env.example` 同值演示占位」——零 `.env`
   也能起栈（demo/full 两档均可）；生产部署仍必须 `cp .env.example .env` 改真值。
@@ -50,6 +51,14 @@
 
 ### Removed
 
+- **登录尸体模块清理（v0.1.1，ADR-0029 §7 兑现）**：删除 `service/app/auth_oidc.py`/
+  `auth_native.py`/`admin_accounts.py`/`audit_casdoor_puller.py`、`service/users.yaml`
+  及对应测试套件（test_auth_oidc/test_auth_native/test_accounts_admin/
+  test_audit_login_consume）；admin 写闸 `require_login`/W4 角色裁决挂点与
+  metering/audit 角色闸休眠 Depends 同步摘除（恒放行语义不变）。保留：`auth_view.py`
+  （授权全景纯函数，产品功能）、`errors.py` auth_required/role_forbidden 休眠码与
+  main.py 休眠 handler 骨架（既定架构决策）、历史碑注注释。运行依赖随之瘦身：
+  pyjwt/cryptography/bcrypt 自 `service/requirements.txt` 移除。
 - **行业专有业务域剥离**：开源快照不包含任何行业专有业务域的业务实现、数据模型或
   演示数据。平台的通用机制（键空间隔离、KV 查询执行器、代理转发）保留。
   使用边界见 `NOTICE` 第 7 节。
@@ -65,7 +74,7 @@
 | 里程碑 | 状态 | 说明 |
 |---|---|---|
 | 一键开箱（demo 档默认＋演示数据自动灌） | 已实施 | 三步起栈全功能可用；full 档（6 服务）经 `--profile full`/`up.sh` |
-| 无登录模式（ADR-0029，去人机登录） | 已实施 | 登录链路整体拆除（页面/端点/编排/凭证键）；模块尸体清理归 v0.1.1 |
+| 无登录模式（ADR-0029，去人机登录） | 已实施 | 登录链路整体拆除（页面/端点/编排/凭证键）；模块尸体已于 v0.1.1 兑现清理 |
 | 开源准备 | 进行中 | 物料已起草；依赖许可逐包机器复核、敏感词自检、镜像许可替换（ADR-0028）待完成 |
 | 首次公开发布 | 未开始 | 判据：第三方可独立复现 quickstart |
 

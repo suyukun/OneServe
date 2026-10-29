@@ -7,9 +7,8 @@
      文件清单齐备（apisix/nginx；原统一登录配置已随无登录模式 ADR-0029 移除）；
   ② portal 非 root——portal/Dockerfile.prod 用 nginx-unprivileged 基镜像（uid 101）
      ＋高位监听口 8080/8443（免特权免 setcap），dev/prod/m26 三处端口映射同步；
-  ③ OIDC 旧口径清零——保留模块（auth_oidc.py）代码缺省与测试签发同源
-     （8000 口径、19000 旧口径不回潮；无登录模式 ADR-0029 起 compose 不再注入
-     登录域名键）；
+  ③ OIDC 旧口径清零——19000 旧口径不回潮（auth_oidc.py 及其测试已随 v0.1.1
+     登录清理删除，ADR-0029 §7；无登录模式起 compose 不再注入登录域名键）；
   ④ sync 工具链载体——prod 栈 service 挂载宿主 ./sync（物料包 update.sh 现状
      ＝git 工作副本随包走，不进镜像）。
 （词条⑤ config twin 同步单独机检：tests/test_config_twin.py）
@@ -23,8 +22,6 @@ PROD_COMPOSE = REPO / "compose.prod.yml"
 M26_COMPOSE = REPO / "compose.m26-iso.yml"
 PORTAL_DOCKERFILE = REPO / "portal" / "Dockerfile.prod"
 NGINX_CONF = REPO / "configs" / "nginx" / "portal-nginx.conf"
-AUTH_OIDC = REPO / "service" / "app" / "auth_oidc.py"
-AUTH_OIDC_TEST = REPO / "tests" / "test_auth_oidc.py"
 
 BIND_SOURCE_RE = re.compile(r"^\s*-\s+(\./[^:\s]+):", re.MULTILINE)
 
@@ -96,18 +93,14 @@ def test_portal_port_maps_synced_all_stacks():
     assert "18000:8080" in m26, "m26 隔离栈 portal 映射须随 8080"
 
 
-# ── ③ OIDC 旧口径清零（保留模块的缺省一致性） ─────────────────────────
+# ── ③ OIDC 旧口径清零（19000 不回潮；模块缺省一致性断言随 v0.1.1 清理退役） ──
 
 
-def test_oidc_code_default_aligned_no_19000():
-    code = _text(AUTH_OIDC)
-    assert 'os.environ.get("OIDC_ISSUER", "http://localhost:8000")' in code, "代码缺省须与 compose 缺省同值（dev 门户入口 8000）"
-    assert "localhost:19000" not in code, "19000 旧口径残留（ADR-0018 同源部署后已封死）"
-    test_code = _text(AUTH_OIDC_TEST)
-    assert '"iss": "http://localhost:8000"' in test_code, "测试签发 iss 须与代码缺省同源"
+def test_no_19000_legacy_caliber():
+    """OIDC 旧口径清零：19000 旧口径不回潮（auth_oidc.py 已随 v0.1.1 登录清理
+    删除；原「保留模块代码缺省＝测试签发同源」断言同批退役，ADR-0029 §7）。"""
     # 全 tests/ 目录（.py）扫 19000 旧口径的两类耦合形态（token 签发 iss 字面量＋
-    # OIDC_ISSUER 缺省读取）——正向「不含 19000」断言不受影响，凡自造 token 的
-    # 测试文件一律同源对齐。
+    # OIDC_ISSUER 缺省读取）——凡自造 token 的测试文件一律同源对齐（8000 口径）。
     stale = []
     me = Path(__file__).name
     for p in sorted((REPO / "tests").glob("*.py")):

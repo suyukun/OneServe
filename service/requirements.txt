@@ -6,10 +6,9 @@ pyyaml>=6,<7        # services.yaml / auth_matrix.yaml 配置解析（task-003�
 gmssl>=3.2,<4       # SM3 真国密（演示通道服务端代算；与 sync/gen_mock_source 同口径）
 happybase>=1.2,<2   # HBase Thrift1 客户端＋连接池（TASK-M2-1；Py3.13 实测可装，探针留证）
 sqlglot>=25,<27     # 表结构登记 DDL 解析（B1 2026-10-09：贴 DDL 提 COMMENT→写回 sync/schema_<表>.csv）
-pyjwt>=2.8,<3       # OIDC JWT 验签（Casdoor 集成 2026-10-14：JWKS 公钥 RS256）
-cryptography>=42    # pyjwt RS256 后端（同上）
-bcrypt>=4,<5        # native 模式密码哈希（ADR-0027 步1：users.yaml bcrypt 验密）
 kafka-python>=3.0,<4  # 审计管线 KafkaSink（#76/ADR-0017：AUDIT_PIPELINE=kafka|dual 时用；镜像 rebuild 后生效）
+# （pyjwt/cryptography/bcrypt 三行随登录模块 v0.1.1 清理移除，ADR-0029 §7——
+#   service/app 已零 import；恢复登录时回 git 史取回。）
 # locust 已移 requirements-dev.txt（R3 依赖卫生 2026-10-28）：压测工具不入运行时镜像——
 # service/app 零 import，仅 loadtest/ 梯子经 run_level.sh 调 `python3 -m locust`；A窗
 # 「压测页容器内触发」形态如需保留，容器内另装 dev 清单或回宿主 CLI 触发（端点自带 503 兜底）。

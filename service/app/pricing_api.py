@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """价目管理端点与服务层（管理功能群一期 B 节 · 设计 v1.1 §2 已拍板，按 §0 共用口径施工）。
 
-端点组（均 /v1/admin/pricing/*；router 级挂 admin_api._admin_gate——写方法过
-auth_oidc.require_login，与 admin_api/monitor_api/admin_accounts 同一挂点；
-ROUTE_MIN_ROLE 域9 计费管理：读面 viewer 地板（§7 拍板③）、写面 admin）：
+端点组（均 /v1/admin/pricing/*；router 级挂 admin_api._admin_gate——原写方法过
+auth_oidc.require_login，该挂点随 v0.1.1 登录清理摘除（ADR-0029 §7）；原
+ROUTE_MIN_ROLE 域9 计费管理：读面 viewer 地板、写面 admin，矩阵同批退役）：
   GET  /v1/admin/pricing/items                     价目列表（分页 metering_api 先例＋展示态推算）
   GET  /v1/admin/pricing/items/{item_id}           价目详情（档位全览＋快照脚注）
   GET  /v1/admin/pricing/selector                  计价对象选择器（服务∪已发布代理合并命名空间；
@@ -43,8 +43,8 @@ item_id＝pi_＋16 位随机小写 hex（secrets.token_hex(8)，对齐 appkey �
 被拒（校验拒绝）＝管线事件 result=denied＋窄表 result=denied 尽力而为落。
 
 分层纪律（同 grants_admin/metering_api）：校验/归一/SQL 构造全在本模块纯函数
-（宿主机无 FastAPI 可单测）；HTTP 编排只在端点区（_HAS_FASTAPI 守卫，沿
-admin_accounts 先例）。域界（0be2351 原口径，收口批按任务书解除两项）：billing_run
+（宿主机无 FastAPI 可单测）；HTTP 编排只在端点区（_HAS_FASTAPI 守卫）。域界
+（0be2351 原口径，收口批按任务书解除两项）：billing_run
 引擎匹配与 main.py 挂载已由收口批（2026-10-21）接线；portal/ 与 admin/tenants*
 仍归各批。
 """

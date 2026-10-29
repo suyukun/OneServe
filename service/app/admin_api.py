@@ -73,7 +73,6 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app import appkeys as appk
-from app import auth_oidc   # 登录闸（写操作族 Bearer JWT 校验；ADR-0010 硬前提兑现）
 from app import dev_token as devtok
 from app import schema_import as sim   # B1：表结构登记（贴 DDL→COMMENT→写回 schema csv 真源）
 from app import load_tasks as lt       # B2：异步装载任务（后台线程＋单进度数字）
@@ -120,11 +119,12 @@ async def _admin_gate(request: Request) -> None:
     校验作**双保险**（墙失效时不裸奔），并按 ROUTE_MIN_ROLE 权限矩阵做角色
     裁决（写路由 min_role 漏标由清单测试拦截；不足 403 role_forbidden）。
     AUTH_OIDC_MODE=off 时全放行（宿主机单测/裸跑口径，语义同恒放行期）。
+    第六段（2026-10-29·v0.1.1 清尸体，ADR-0029 §7 兑现）：第四/五段的写方法
+    require_login 与 W4 角色裁决挂点随 auth_oidc.py 删除一并摘除，本闸回归
+    纯恒放行（挂点骨架保留，防漏挂设计不回退）。
     前三段史（拆→恢复→再拆）见 ADR-0010；X-Admin-Token 恢复形态见 git bcf34f8。
     """
-    if request.method in auth_oidc.WRITE_METHODS:
-        await auth_oidc.require_login(request)
-    await auth_oidc.adjudicate_route_role(request)   # W4：矩阵本地裁决（off＝no-op）
+    # （v0.1.1：原写方法登录校验与角色裁决两行随 auth_oidc.py 清理摘除，恒放行不变）
     return None
 
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8;
 """租户管理端点（管理功能群一期 A 节 · admin/tenants.html 后端；设计稿 v1.1 §1 全节）。
 
-端点族（设计稿 §1.4 五条全入 auth_oidc.ROUTE_MIN_ROLE 域8 扩注——读 viewer／写 admin；
-漏标由 tests/test_auth_oidc.py 清单守卫用例拦截）：
+端点族（设计稿 §1.4 五条；原入 auth_oidc.ROUTE_MIN_ROLE 域8 扩注——读 viewer／写
+admin，该矩阵与 tests/test_auth_oidc.py 清单守卫已随 v0.1.1 登录清理退役，ADR-0029 §7）：
   GET  /v1/admin/tenants                        列表（分页沿 metering_api 先例：page/page_size
                                                 ＋parse_paging＋total/page/pageSize/items 信封）
   POST /v1/admin/tenants                        新建（拍板①：yaml 态新建可用＝写矩阵登记行）
@@ -60,8 +60,8 @@ from app.audit import make_entry
 from app.kv_executor import TagQueryError
 
 if _HAS_FASTAPI:
-    # 与 monitor_api/admin_accounts 同款：router 级统一挂闸（写方法过 require_login，
-    # 闸尾按 ROUTE_MIN_ROLE 角色裁决；GET 族墙域语义随站点闸）
+    # router 级统一挂闸（admin_api._admin_gate，恒放行；原写方法 require_login／
+    # ROUTE_MIN_ROLE 角色裁决随 v0.1.1 登录清理退役，ADR-0029 §7）
     from app.admin_api import _admin_gate, _reload
     router = APIRouter(dependencies=[Depends(_admin_gate)])
 else:
@@ -585,4 +585,4 @@ if _HAS_FASTAPI:
                              "auditId": audit_id})
 
 
-# 宿主机无 fastapi 时纯逻辑仍可导入直测（同 admin_accounts 口径）
+# 宿主机无 fastapi 时纯逻辑仍可导入直测

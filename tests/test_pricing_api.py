@@ -37,13 +37,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "service"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-# ADR-0027 步1（登录双模）：本套件＝oidc 回归——钉住 AUTH_PROVIDER=oidc。缺省
-# native 会让 verify_access_token 分派本地 HS256，本套件自造的 RS256/JWKS 桩
-# token 将全部被拒；oidc 链路原语义在本钉住下逐条守卫（native 面归 test_auth_native）。
-os.environ["AUTH_PROVIDER"] = "oidc"
-
 from app import pricing_api as pa          # noqa: E402
-from app import auth_oidc as AO            # noqa: E402
 
 try:
     from fastapi import FastAPI
@@ -204,21 +198,19 @@ def _enumerate_pricing_routes():
     return rows
 
 
-def test_ast_contract_guard_routes_and_roles():
-    """AST 契约守卫：七路由全在 ROUTE_MIN_ROLE（读 viewer／写 admin，§2.4 v1.1 拍板③）。"""
+def test_ast_contract_guard_routes():
+    """AST 契约守卫：七路由清单不漂移（设计 4 条＋命中预演/覆盖率/选择器 3 条只读）。
+
+    （原 ROUTE_MIN_ROLE 地板断言随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，
+    ADR-0029 §7。）"""
     rows = _enumerate_pricing_routes()
     assert len(rows) == 7, f"端点族应恰 7 条（设计 4 条＋命中预演/覆盖率/选择器 3 条只读）：{rows!r}"
-    floors = {"GET": AO.ROLE_VIEWER, "POST": AO.ROLE_ADMIN}
-    for method, path in rows:
-        key = f"{method} {path}"
-        assert key in AO.ROUTE_MIN_ROLE, f"{key} 缺 min_role 列（W4 防回潮）"
-        assert AO.ROUTE_MIN_ROLE[key] == floors[method], f"{key} 地板错：{AO.ROUTE_MIN_ROLE[key]!r}"
 
 
 def test_ast_contract_guard_gate_and_engine_anchor():
-    """守卫续：挂闸模块清单含 pricing_api.py；引擎匹配键锚点＋归一同源复用锚点（收口批）。"""
-    guard_src = (REPO / "tests" / "test_auth_oidc.py").read_text(encoding="utf-8")
-    assert '"pricing_api.py"' in guard_src, "pricing_api.py 须入 _GATED_WRITE_MODULES（写路由挂闸域）"
+    """守卫续：router 级挂 _admin_gate＋引擎匹配键锚点＋归一同源复用锚点（收口批）。
+
+    （原挂闸模块清单守卫随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，ADR-0029 §7。）"""
     src = (REPO / "service" / "app" / "pricing_api.py").read_text(encoding="utf-8")
     assert "router = APIRouter(dependencies=[Depends(_admin_gate)])" in src, "router 级挂 _admin_gate"
     engine_src = (REPO / "scripts" / "billing_run.py").read_text(encoding="utf-8")
@@ -253,7 +245,6 @@ def test_api_validation_422_and_paging_400_and_degraded(monkeypatch):
     """API 契约：422 人话信封（校验先于 db）／分页非法 400／hit-preview 缺参 400／降级态。"""
     if not _HAS_FASTAPI:
         pytest.skip("依赖缺席：fastapi（API 契约段）")
-    monkeypatch.setenv("AUTH_OIDC_MODE", "off")
     monkeypatch.setenv("PRICING_PSQL_BASE", "false")   # 必败通道（真子进程 rc=1 → PricingDbError）
     client = TestClient(_pricing_app())
     r = client.post("/v1/admin/pricing/items", json={"service_ref": "service:/x", "model": "per_call",
@@ -374,7 +365,6 @@ def pg():
 
 
 def _client() -> "TestClient":
-    os.environ["AUTH_OIDC_MODE"] = "off"
     return TestClient(_pricing_app())
 
 
@@ -622,61 +612,5 @@ def _dt_dec(s):
     return Decimal(s)
 
 
-def test_role_matrix_viewer_operator_admin(pg):
-    """§2.10-7：viewer GET 200／operator GET 200 POST 403／admin POST 200（域9 矩阵）。"""
-    try:
-        import jwt  # noqa: F401
-        from cryptography.hazmat.primitives.asymmetric import rsa
-    except Exception:  # noqa: BLE001
-        pytest.skip("依赖缺席：pyjwt/cryptography（角色矩阵段）")
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    from cryptography.hazmat.primitives import serialization
-    pub = key.public_key().public_numbers()
-
-    def b64u_int(n):
-        raw = n.to_bytes((n.bit_length() + 7) // 8, "big")
-        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
-
-    jwk = {"kty": "RSA", "kid": "test-kid-1", "alg": "RS256",
-           "n": b64u_int(pub.n), "e": b64u_int(pub.e)}
-    orig_fetch, orig_cache = AO._fetch_jwks, dict(AO._jwks_cache)
-    AO._jwks_cache.update({"keys": [jwk], "at": time.time()})
-    AO._fetch_jwks = lambda url: {"keys": [jwk]}
-
-    def issue(tag):
-        claims = {"iss": "http://localhost:8000", "sub": "oneserve/" + tag,
-                  "aud": "oneserve-admin-client", "exp": int(time.time()) + 600,
-                  "iat": int(time.time()), "tag": tag}
-        return jwt.encode(claims, key, algorithm="RS256", headers={"kid": "test-kid-1"})
-
-    saved_mode = os.environ.get("AUTH_OIDC_MODE")
-    os.environ["AUTH_OIDC_MODE"] = "on"
-    try:
-        client = TestClient(_pricing_app())
-        h = {"Authorization": "Bearer " + issue("viewer")}
-        assert client.get("/v1/admin/pricing/items", headers=h).status_code == 200, "viewer 读 200"
-        assert client.get("/v1/admin/pricing/selector", headers=h).status_code == 200, "viewer 选择器 200"
-        r = client.post("/v1/admin/pricing/items", headers=h,
-                        json={"service_ref": "service:/v1/query/rolecheck", "model": "per_call",
-                              "unit_price": "1", "effective_from": _shift_months(FIRST_THIS, 1).isoformat()})
-        assert r.status_code == 403 and r.json()["error"] == "role_forbidden", "viewer 写 403"
-        h2 = {"Authorization": "Bearer " + issue("operator")}
-        assert client.get("/v1/admin/pricing/items", headers=h2).status_code == 200, "operator 读 200"
-        r = client.post("/v1/admin/pricing/items", headers=h2,
-                        json={"service_ref": "service:/v1/query/rolecheck", "model": "per_call",
-                              "unit_price": "1", "effective_from": _shift_months(FIRST_THIS, 1).isoformat()})
-        assert r.status_code == 403 and r.json()["error"] == "role_forbidden", "operator 写 403"
-        h3 = {"Authorization": "Bearer " + issue("admin")}
-        r = client.post("/v1/admin/pricing/items", headers=h3,
-                        json={"service_ref": "service:/v1/query/rolecheck", "model": "per_call",
-                              "unit_price": "1", "effective_from": _shift_months(FIRST_THIS, 1).isoformat()})
-        assert r.status_code == 200, "admin 写 200：" + r.text
-        assert r.json()["item"]["createdAt"], "admin 建价目落库"
-    finally:
-        if saved_mode is None:
-            os.environ.pop("AUTH_OIDC_MODE", None)
-        else:
-            os.environ["AUTH_OIDC_MODE"] = saved_mode
-        AO._fetch_jwks = orig_fetch
-        AO._jwks_cache.clear()
-        AO._jwks_cache.update(orig_cache)
+# （原 test_role_matrix_viewer_operator_admin——§2.10-7 域9 on 态角色矩阵——随
+#   v0.1.1 登录清理退役，ADR-0029 §7；价目写入覆盖由上方 CRUD/验证负例各用例承担。）

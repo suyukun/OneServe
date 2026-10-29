@@ -24,17 +24,17 @@ metering/summary 的降级路径为迁移期保留，收编时点随管道卡）
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from app import auth_oidc   # W4 角色闸：计量查看＝域7 全角色（viewer 地板）
 from app import errors
 from app import metering as mt
 from app import usage_report as ur
 
-# W4：矩阵域7「计量查看」三角色全 ✓——viewer 地板＝显式声明「仅要求登录」
-# （站点墙已拦匿名；本依赖兜底墙外直连，off 态恒放行）。
-router = APIRouter(dependencies=[Depends(auth_oidc.require_role(auth_oidc.ROLE_VIEWER))])
+# 【v0.1.1 清理】W4 角色闸休眠挂点（矩阵域7「计量查看」viewer 地板，原
+# Depends(auth_oidc.require_role(...))）已随 auth_oidc.py 删除摘除——off 态恒
+# 放行，行为零变化（ADR-0029 §7 兑现）。
+router = APIRouter()
 
 
 def _now_iso() -> str:

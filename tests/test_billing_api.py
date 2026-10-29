@@ -42,11 +42,6 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(REPO / "service"))
 
-# ADR-0027 步1（登录双模）：本套件＝oidc 回归——钉住 AUTH_PROVIDER=oidc。缺省
-# native 会让 verify_access_token 分派本地 HS256，本套件自造的 RS256/JWKS 桩
-# token 将全部被拒；oidc 链路原语义在本钉住下逐条守卫（native 面归 test_auth_native）。
-os.environ["AUTH_PROVIDER"] = "oidc"
-
 import usage_rollup as ur            # noqa: E402 —— 分片/rollup 造账（CLI 同链路）
 import billing_run as br             # noqa: E402 —— ④ 并发负例（进程内窗口钩子）
 from app import billing_state as bs  # noqa: E402
@@ -59,20 +54,13 @@ try:
 except Exception:  # noqa: BLE001
     _HAS_FASTAPI = False
 
-try:
-    import jwt                              # noqa: E402
-    from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
-    _HAS_JWT = True
-except Exception:  # noqa: BLE001
-    _HAS_JWT = False
-
 CONTAINER = "oneserve-billing-api-test-" + str(os.getpid()) + "-" + uuid.uuid4().hex[:6]
 PG_IMAGE = "postgres:17-alpine"
 TZ_CN = _dt.timezone(_dt.timedelta(hours=8))
 STATE = {}
 
 PERIOD_MAIN = "2023-06"     # ② e2e 主账期（确认/补录/CSV）
-PERIOD_ROLE = "2023-07"     # ③ 角色矩阵账期（admin 确认＋欠费标记展示）
+PERIOD_ROLE = "2023-07"     # ③ 确认＋欠费标记展示账期（原角色矩阵账期）
 PERIOD_RACE = "2023-09"     # ④ 并发负例账期（进程内自造）
 
 CALLER = "sb_billingdemo01"
@@ -134,14 +122,9 @@ def _bill_period(ym: str, day: str) -> None:
 
 
 def _app():
-    """最小账单面 app：billing router 原闸（_admin_gate）＋缺省 state＋异常 handler 自举。"""
-    from app import auth_oidc as AO
+    """最小账单面 app：billing router 原闸（_admin_gate，恒放行）＋缺省 state。"""
     from app import billing_api
     app = FastAPI()
-    app.add_exception_handler(AO.AuthRequiredError,
-                              lambda req, exc: AO.auth_required_response(exc))
-    app.add_exception_handler(AO.RoleForbiddenError,
-                              lambda req, exc: AO.role_forbidden_response(exc))
     app.state.redis = None
     app.state.services = {}
     app.state.appkeys = {"meta": {}, "keys": [
@@ -203,7 +186,6 @@ def stack():
 def client():
     if not _HAS_FASTAPI:
         pytest.skip("依赖缺席：fastapi/httpx")
-    os.environ["AUTH_OIDC_MODE"] = "off"
     return TestClient(_app())
 
 
@@ -220,8 +202,10 @@ _EXPECTED_ROUTES = {
 
 
 def test_ast_contract_routes_gate_matrix_and_readonly():
-    """端点六条＝§3.5 清单＋挂闸字面量＋ROUTE_MIN_ROLE 六行＋无出账触发＋页面线框。"""
-    from app import auth_oidc as AO
+    """端点六条＝§3.5 清单＋挂闸字面量＋无出账触发＋页面线框。
+
+    （原 ROUTE_MIN_ROLE 六行断言随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，
+    ADR-0029 §7。）"""
     src = (REPO / "service" / "app" / "billing_api.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     routes = set()
@@ -235,15 +219,6 @@ def test_ast_contract_routes_gate_matrix_and_readonly():
                 routes.add((dec.func.attr.upper(), str(dec.args[0].value)))
     assert routes == _EXPECTED_ROUTES, "端点清单漂移（§3.5 六条）：实得 " + repr(sorted(routes))
     assert 'APIRouter(dependencies=[Depends(_admin_gate)])' in src, "router 须路由级挂 _admin_gate"
-    matrix = {("GET", "/v1/admin/billing/periods"): AO.ROLE_VIEWER,
-              ("GET", "/v1/admin/billing/periods/{period}"): AO.ROLE_VIEWER,
-              ("GET", "/v1/admin/billing/periods/{period}/export"): AO.ROLE_VIEWER,
-              ("GET", "/v1/admin/billing/periods/{period}/export-lines"): AO.ROLE_VIEWER,
-              ("POST", "/v1/admin/billing/periods/{period}/confirm"): AO.ROLE_ADMIN,
-              ("POST", "/v1/admin/billing/periods/{period}/register-oa"): AO.ROLE_ADMIN}
-    for (method, path), role in matrix.items():
-        assert AO.ROUTE_MIN_ROLE.get("%s %s" % (method, path)) == role, \
-            "ROUTE_MIN_ROLE 缺行/错档：%s %s" % (method, path)
     imports = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -346,67 +321,25 @@ def test_zero_yuan_e2e_confirm_register_csv(stack, client):
     assert ("bill_export", "ok") in pairs and ("bill_confirm", "denied") in pairs, pairs
 
 
-# ── ③ 角色矩阵（§3.10-6；on 态自造 RSA/JWT） ──
+# ── ③ 确认＋欠费标记展示（§3.10-6；原 on 态角色矩阵随 v0.1.1 登录清理退役，ADR-0029 §7） ──
 
-def _make_jwks_env():
-    """自造 RSA＋JWKS（test_grants_admin 同款最小实现）：返回 token 签发函数。"""
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    from cryptography.hazmat.primitives import serialization  # noqa: F401（形状对齐）
-    from app import auth_oidc as AO
-    pub = key.public_key().public_numbers()
+@pytest.mark.skipif(not _HAS_FASTAPI, reason="依赖缺席：fastapi/httpx")
+def test_confirm_and_overdue_mark_readonly_display(stack):
+    """裸请求（无登录态）确认账期 200；欠费标记展示只读（CLI --mark-overdue 后列表
+    overdue 徽标位翻转；端点枚举①已守卫无标记端点）。
 
-    def b64u(n: int) -> str:
-        raw = n.to_bytes((n.bit_length() + 7) // 8, "big")
-        import base64
-        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
-
-    jwk = {"kty": "RSA", "kid": "test-kid-1", "alg": "RS256", "n": b64u(pub.n), "e": b64u(pub.e)}
-    orig_fetch = AO._fetch_jwks
-    AO._jwks_cache.update({"keys": [jwk], "at": time.time()})
-    AO._fetch_jwks = lambda url: {"keys": [jwk]}
-
-    def issue(**overrides) -> str:
-        claims = {"iss": "http://localhost:8000", "sub": "oneserve/tester",
-                  "aud": "oneserve-admin-client", "exp": int(time.time()) + 600,
-                  "iat": int(time.time())}
-        claims.update(overrides)
-        return jwt.encode(claims, key, algorithm="RS256", headers={"kid": "test-kid-1"})
-    return issue, lambda: setattr(AO, "_fetch_jwks", orig_fetch)
-
-
-@pytest.mark.skipif(not (_HAS_FASTAPI and _HAS_JWT), reason="依赖缺席：fastapi/httpx＋pyjwt")
-def test_role_matrix_viewer_read_export_admin_confirm(stack):
-    """无令牌 401／viewer GET·导出 200、POST confirm 403 role_forbidden／admin POST 200；
-    欠费标记展示只读（CLI 标记后列表 overdue 翻转；端点枚举①已守卫无标记端点）。"""
-    issue, restore = _make_jwks_env()
+    原 on 态角色矩阵用例（无令牌 401／viewer 读导出 200、confirm 403 role_forbidden／
+    admin confirm 200，RS256/JWKS 桩）随 v0.1.1 登录清理退役（ADR-0029 §7）；
+    确认与欠费标记展示覆盖保留（无登录态＝原 admin/viewer 通路并一）。
+    """
     client = TestClient(_app())
-    os.environ["AUTH_OIDC_MODE"] = "on"
-    try:
-        r = client.get("/v1/admin/billing/periods")
-        assert r.status_code == 401, "GET 也过登录地板（读公开已废除）"
-        vtok = {"Authorization": "Bearer " + issue(tag="viewer")}
-        atok = {"Authorization": "Bearer " + issue(tag="admin")}
-        r = client.get("/v1/admin/billing/periods", headers=vtok)
-        assert r.status_code == 200, r.text[:200]
-        r = client.get("/v1/admin/billing/periods/%s" % PERIOD_ROLE, headers=vtok)
-        assert r.status_code == 200 and r.json()["period"]["status"] == "reconciled"
-        r = client.get("/v1/admin/billing/periods/%s/export" % PERIOD_ROLE, headers=vtok)
-        assert r.status_code == 200 and r.content[:3] == b"\xef\xbb\xbf"
-        r = client.get("/v1/admin/billing/periods/%s/export-lines" % PERIOD_ROLE, headers=vtok)
-        assert r.status_code == 200
-        r = client.post("/v1/admin/billing/periods/%s/confirm" % PERIOD_ROLE, headers=vtok,
-                        json={"oa_ticket": "OA-2023-07-001"})
-        assert r.status_code == 403 and r.json()["error"] == E.ROLE_FORBIDDEN, r.text[:200]
-        r = client.post("/v1/admin/billing/periods/%s/confirm" % PERIOD_ROLE, headers=atok,
-                        json={"oa_ticket": "OA-2023-07-001"})
-        assert r.status_code == 200, r.text[:300]
-        r = client.get("/v1/admin/billing/periods", headers=vtok)
-        row = next(x for x in r.json()["items"] if x["period"] == PERIOD_ROLE)
-        assert row["status"] == "confirmed" and row["overdue"] is False
-    finally:
-        os.environ["AUTH_OIDC_MODE"] = "off"
-        restore()
-    # 欠费标记展示只读：CLI --mark-overdue 后列表 overdue 徽标位翻转（viewer 视角）
+    r = client.post("/v1/admin/billing/periods/%s/confirm" % PERIOD_ROLE,
+                    json={"oa_ticket": "OA-2023-07-001"})
+    assert r.status_code == 200, r.text[:300]
+    r = client.get("/v1/admin/billing/periods")
+    row = next(x for x in r.json()["items"] if x["period"] == PERIOD_ROLE)
+    assert row["status"] == "confirmed" and row["overdue"] is False
+    # 欠费标记展示只读：CLI --mark-overdue 后列表 overdue 徽标位翻转
     env = dict(os.environ)
     env["USAGE_PSQL_BASE"] = PSQL_MIGRATE_BASE
     p = subprocess.run([sys.executable, str(REPO / "scripts" / "billing_run.py"), "--shard-dir",
