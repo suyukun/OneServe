@@ -150,7 +150,7 @@ Run:
 python3 -m pytest tests/ -q -rf
 ```
 
-Current measured baseline (113 test files, 1403 collected tests, Docker available with a local `postgres:17-alpine` image): **1377 passed, 8 skipped, 18 failed, 0 errors**. The Docker-backed DB e2e modules (`test_admin_api_db_e2e`, `test_meta_writer_db`, `test_tenants_api`, `test_meta_migrate`, ...) skip gracefully when Docker or the image is unavailable.
+Current measured baseline (CI, full suite with environment-dependent deselects): **1272 passed, 4 skipped, 0 failed**. Docker-backed DB e2e modules (`test_admin_api_db_e2e`, `test_meta_writer_db`, `test_meta_migrate`, ...) skip gracefully when Docker or the image is unavailable. The Docker-backed DB e2e modules (`test_admin_api_db_e2e`, `test_meta_writer_db`, `test_tenants_api`, `test_meta_migrate`, ...) skip gracefully when Docker or the image is unavailable.
 
 Known failures in a fresh clone, by cause (fixing them requires artifacts this open-source tree deliberately does not ship, or follow-up test repairs):
 
