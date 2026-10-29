@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -c "import bcrypt, jwt, redis, yaml; print('bcrypt', bcrypt.__version__); print('jwt', jwt.__version__); print('redis', redis.__version__); print('yaml', yaml.__version__)"
+          python -c "import redis, yaml; print('redis', redis.__version__); print('yaml', yaml.__version__)"
 
       # ── 全量 pytest：判据＝「非环境类失败」────────────────────────────────────
       # 红线：不改测试本体、不按文件砍测试。只把「真环境依赖」套件用 --deselect
