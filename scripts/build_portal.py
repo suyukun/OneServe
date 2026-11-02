@@ -45,10 +45,13 @@ VENDOR_DIR = PORTAL / "assets" / "vendor"
 # 元数据就位后若重建字典类页面再增回。
 # 三批（2026-10-08 修五）：admin_versions/admin_published 随 versions/published 两页
 # 接入壳新增（占位键须与 sidebar.html 的 @@A_*@@/@@C_*@@ 一一对应）。
-# admin_accounts 随无登录模式（ADR-0029）拆除：账号管理页下线，导航项同步移除。
+# admin_accounts 随无登录模式（无登录模式决策）拆除：账号管理页下线，导航项同步移除。
 # apply（P0-10 申请接入）随 ux-fix-batch（2026-10-29 维护者验收）下线：审批本就在
-# 工单系统完成，门户页属官味/内部审计向 UI——入口改指 docs#docs-channels（平台运营组）。
-NAV_KEYS = ("index", "catalog", "trial", "my", "ops", "docs", "errors",
+# 工单系统完成，门户页属官味/内部审计向 UI（当时入口改指 docs 锚）。
+# docs（A9 帮助与支持）随 ux-polish（2026-11-02 维护者判定内容显 low 整页删除）下线：
+# 术语表/限流口径迁 docs/opensource/ARCHITECTURE.md；新手路径＝README Quick start；
+# NAV_KEYS docs 键与 sidebar @@A_docs@@/@@C_docs@@ 占位同步退役。
+NAV_KEYS = ("index", "catalog", "trial", "my", "ops", "errors",
             "audit", "grants", "admin_load", "admin_publish", "admin_published",
             "admin_appkeys", "admin_tenants", "admin_grants", "admin_pricing",
             "admin_versions", "admin_perf", "admin_upstreams",
@@ -71,15 +74,13 @@ DETAIL_PATH_REWRITES = (
     ('href="catalog.html"', 'href="../catalog.html"'),
     ('href="trial.html"', 'href="../trial.html"'),
     ('href="ops.html"', 'href="../ops.html"'),
-    ('href="docs.html"', 'href="../docs.html"'),
-    ('href="docs.html#docs-channels"', 'href="../docs.html#docs-channels"'),
     ('href="admin/', 'href="../admin/'),
     # P0-10/11 新页随详情壳/子目录壳同步改写（含 x-show 内联串的 SPA 修复改写——先特例后通配）
     ('href="my.html?trace_id="', 'href="../my.html?trace_id="'),
     # 卡5：fields.html 改写规则随字段字典页下线移除（侧栏入口已删，无来源链接）
     # apply.html 改写规则随申请接入页下线移除（ux-fix-batch 2026-10-29）
-    # docs#docs-channels 带锚链接须独立规则：href="docs.html" 的引号闭合匹配不到
-    # docs.html#… 形态（ux-fix-batch：apply 出链改指 docs 锚后新增，同 my?trace_id= 先例）
+    # docs.html 两条改写规则（含 #docs-channels 带锚特例）随 docs 页下线移除
+    # （ux-polish 2026-11-02：源内无 docs 链接，规则成死条目故清）
     ('href="errors.html"', 'href="../errors.html"'),   # P1-2 A6 错误码中心（详情壳侧栏）
     ('href="my.html"', 'href="../my.html"'),
     # P1-1 合规面新页随子目录壳同步改写
@@ -109,7 +110,7 @@ PAGES: dict[str, dict] = {
         # 门面批 2026-10-08：试用台→接口调试（已发布服务在线调试台，三区单页）。
         # 关键区块＝①控制行（服务下拉＋AppKey）②接口信息卡（地址/入参/出参）
         # ③调用与结果（key 输入＋调用＋字段表/原始 JSON/错误信封）＋调用示例折叠区
-        # （curl 为主；trial-tab-http/trial-tab-sdk 锚 id 沿用旧页签名，docs 深链不断）。
+        # （curl 为主；trial-tab-http/trial-tab-sdk 锚 id 沿用旧页签名，历史外链兼容）。
         "title": "接口调试 · OneServe 门户",
         "crumb": [("首页", "index.html"), ("接口调试", None)],
         "required_ids": [
@@ -136,21 +137,10 @@ PAGES: dict[str, dict] = {
         ],
         "extra_css": '<link rel="stylesheet" href="assets/ops.css"><!-- P-3 运行视图驾驶舱（仅引用既有令牌） -->',
     },
-    # A9 帮助与支持（P1-7 结构化；P0-11 联系与支持已并入，故不再有 contact 页）：
-    # 5 分钟上手＋术语表＋限流与配额＋SLA＋联系/工单/值班＋变更日志＋SDK 状态
-    "docs": {
-        "title": "帮助与支持 · OneServe 门户",
-        "crumb": [("首页", "index.html"), ("帮助与支持", None)],
-        "required_ids": [
-            "docs-body", "docs-quickstart", "docs-glossary", "docs-ratelimit",
-            "docs-sla", "docs-channels", "docs-notfound-guide", "docs-duty",
-            "docs-changelog", "docs-sdk", "docs-support-entry",
-            # #59 快速接入四步卡（2026-10-15 门面批，首屏第一卡）
-            "docs-quickpath",
-        ],
-        "extra_css": '<!-- P1-7 帮助与支持（含原 P0-11 联系与支持，均仅引用既有令牌） -->\n<link rel="stylesheet" href="assets/docs.css">',
-        # 最小实现：合并后本页为静态内容（无取数），不挂按页 JS
-    },
+    # 【已删·碑注】A9 帮助与支持（docs）页随 ux-polish（2026-11-02 维护者判定整页删除）下线：
+    # 术语表＋限流与配额口径迁 docs/opensource/ARCHITECTURE.md（§9 已知边界＋§10 术语）；
+    # 快速接入/5 分钟上手不迁（README Quick start 已覆盖）；SLA/联系/值班/变更日志/SDK 随页退役。
+    # src/产物/docs.css 三件同批 git rm；NAV 键与侧栏占位同步退役（历史形态见 git 史）。
     # 卡5 2026-09-30：fields（P0-9 字段字典）页注册随 297 字典体系下线移除（assets/fields.css
     # 保留——errors 错误码中心复用其码表结构；fields.js/fields.html/sidecar 均已删）。
     # P0-7 我的接入（SPEC A7 最小版，D1=b 凭证兼身份）：凭证/配额/日志三块自助视图
@@ -165,8 +155,9 @@ PAGES: dict[str, dict] = {
         "extra_js": '<!-- P0-7 我的接入页组件（Alpine；defer 保序在 alpine.min.js 前注册） -->\n<script defer src="assets/my.js"></script>',
     },
     # 【已删·碑注】P0-10 申请接入页随 ux-fix-batch（2026-10-29 维护者验收）下线：
-    # 审批流程在工单系统，门户不留「申请进度」演示页；正式接入入口＝docs#docs-channels
-    # （平台运营组）。apply.css 一并退役（历史形态见 git 史）。
+    # 审批流程在工单系统，门户不留「申请进度」演示页（当时入口改指 docs 锚；docs 已随
+    # ux-polish 2026-11-02 下线，正式接入路径＝README Quick start＋服务目录详情页）。
+    # apply.css 一并退役（历史形态见 git 史）。
     # P1-2 A6 错误码中心（SPEC §2-A6/§4.4）：网关＋服务层单张错误码表；API 错误体
     # docs_url（errors.html#<code>）的锚点落点——每码一行 <tr id="<code>">
     "errors": {
@@ -275,7 +266,7 @@ ADMIN_PAGES: dict[str, dict] = {
         "crumb": [("管理", None), ("月账单", None)],
         "topbar_sub": "月账单 · 账期状态/三硬前置留痕/账单行明细＋CSV 导出",
     },
-    # 【已删·碑注】W5 账号管理台随无登录模式（ADR-0029）拆除：无人机账号概念，
+    # 【已删·碑注】W5 账号管理台随无登录模式（无登录模式决策）拆除：无人机账号概念，
     # accounts 页/导航项/后端挂载一并移除（历史形态见 git 史）。
     # 三批（2026-10-08 修五·维护者 反馈「孤立」）：versions/published 两页接入门户壳。
     # 沿 B2 回执遗留③口径：注册 ADMIN_PAGES＋NAV_KEYS（上面已加）＋test_admin_shell
@@ -377,14 +368,13 @@ REPORTS_PATH_REWRITES = (
     ('href="catalog.html"', 'href="../catalog.html"'),
     ('href="trial.html"', 'href="../trial.html"'),
     ('href="ops.html"', 'href="../ops.html"'),
-    ('href="docs.html"', 'href="../docs.html"'),
     ('href="admin/', 'href="../admin/'),
     ('href="my.html?trace_id="', 'href="../my.html?trace_id="'),
     ('href="errors.html"', 'href="../errors.html"'),
     ('href="my.html"', 'href="../my.html"'),
     ('href="audit.html"', 'href="../audit.html"'),
     ('href="grants.html"', 'href="../grants.html"'),
-    ('href="docs.html#docs-channels"', 'href="../docs.html#docs-channels"'),
+    # docs.html 两条改写规则随 docs 页下线移除（ux-polish 2026-11-02，同 DETAIL_PATH_REWRITES 口径）
     ('href="reports/', 'href="'),   # 专区互链＝同目录兄弟文件
 )
 

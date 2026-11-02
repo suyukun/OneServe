@@ -24,7 +24,8 @@
         resultRows 携 schema 中文释义、found:false 如实未命中；
      B3 产物 DOM（portal/trial.html）：三区骨架（控制行/接口信息/调用与结果）
         ＋错误信封区块在场；旧话术（自动降级/调试历史/SDK 包下载/明文手机号）
-        不得残留；trial-tab-http/sdk 锚 id 保留（docs.html 深链不断）；
+        不得残留；trial-tab-http/sdk 锚 id 保留（历史外链兼容锚；docs 深链已随
+        docs 页 ux-polish 2026-11-02 下线失效，锚本身不删）；
      B4 源码契约：trial.js 走真实网关调用（postJsonRaw passThrough），无任何
         mock/trialDemoQuery.json 引用、无本地演示数据回落。
 
@@ -453,7 +454,7 @@ def test_trial_page_console_dom():
     for stale in ("自动降级", "调试历史", "SDK 包", "手机号", "demo-badge", "演示数据"):
         assert stale not in html, f"旧话术/旧区块残留：{stale}"
     assert 'id="trial-tab-http"' in html and 'id="trial-tab-sdk"' in html, \
-        "docs.html 深链锚（#trial-tab-http/#trial-tab-sdk）须保留"
+        "历史兼容锚（#trial-tab-http/#trial-tab-sdk）须保留（docs 深链已随页下线）"
 
 
 def test_trial_js_real_gateway_contract():

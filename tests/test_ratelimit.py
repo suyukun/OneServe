@@ -16,8 +16,8 @@
   4. 同源钩子：admin_api 四个下发点都把登记 quota 传进网关；init_routes 冷启动按
      注册表重建 consumer（含禁用过滤）——登记值＝网关拦截值在两条路径上都成立；
   5. 门户/文档/契约如实：my_access.QUOTA_CALIBER.limitEnforced=True（P1-3 的如实
-     标注随 P1-5 更新）；my.html/my.js/docs.html 写明口径；gen_openapi rate_limit
-     enabled=True＋三档原因；
+     标注随 P1-5 更新）；my.html/my.js 写明口径（docs.html 口径面随 ux-polish 2026-11-02
+     迁 ARCHITECTURE.md）；gen_openapi rate_limit enabled=True＋三档原因；
   6. 真栈 e2e（tests/verify_ratelimit_e2e.py 存在性＋可导入；真栈结果落证据文件，
      宿主机无 docker 时不在此处起栈）。
 
@@ -40,7 +40,8 @@ from app import my_access as mya       # noqa: E402
 
 MY_HTML = (REPO / "portal" / "src" / "my.html").read_text(encoding="utf-8")
 MY_JS = (REPO / "portal" / "assets" / "my.js").read_text(encoding="utf-8")
-DOCS_HTML = (REPO / "portal" / "src" / "docs.html").read_text(encoding="utf-8")
+# ux-polish 2026-11-02：docs.html 下线，限流口径的文档面迁移到 ARCHITECTURE.md（§9 已知边界）
+ARCHITECTURE_MD = (REPO / "docs" / "opensource" / "ARCHITECTURE.md").read_text(encoding="utf-8")
 
 
 # ---------- 1. 网关限流插件渲染：阈值＝登记值 ----------
@@ -206,13 +207,13 @@ def test_portal_copy_reflects_enforcement():
     assert "gatewayEnforcedBy" in MY_JS
 
 
-def test_docs_center_documents_caliber():
-    """帮助中心写明口径：三档原因＋route×consumer＋同源。"""
-    assert 'id="docs-ratelimit"' in DOCS_HTML
+def test_architecture_documents_caliber():
+    """架构文档写明口径：三档原因＋AppKey×路由＋登记值＝拦截值（docs 下线后的迁移落点）。"""
+    assert "限流按登记配额生效" in ARCHITECTURE_MD, "ARCHITECTURE.md 缺限流口径条目"
     for reason in ("global", "endpoint", "concurrent"):
-        assert reason in DOCS_HTML
-    assert "X-RateLimit-Reason" in DOCS_HTML
-    assert "route×consumer" in DOCS_HTML or "调用方（AppKey）× 路由" in DOCS_HTML
+        assert reason in ARCHITECTURE_MD
+    assert "X-RateLimit-Reason" in ARCHITECTURE_MD
+    assert "调用方（AppKey）× 路由" in ARCHITECTURE_MD
 
 
 def test_contract_rate_limit_artifact_honest():

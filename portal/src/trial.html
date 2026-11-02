@@ -160,16 +160,17 @@
               <summary>原始 JSON</summary>
               <pre x-text="rawJson()"></pre>
             </details>
-            <!-- N1 页面动线补全（W-X4）：调用成功态「下一步」提示（纯静态指引，零业务逻辑） -->
+            <!-- N1 页面动线补全（W-X4）：调用成功态「下一步」提示（纯静态指引，零业务逻辑；
+                 ux-polish 2026-11-02：docs 下线，正式接入动线改指服务目录） -->
             <div class="field-hint" id="trial-next-steps">
-              下一步：<a href="docs.html#docs-step-key">申请正式凭证</a>（找平台管理员审批），或在<a href="my.html">我的接入</a>查看用量。
+              下一步：到<a href="catalog.html">服务目录</a>选定服务接入（正式凭证找平台管理员审批），或在<a href="my.html">我的接入</a>查看用量。
             </div>
           </div>
         </template>
       </div>
     </div>
 
-    <!-- 调用示例（curl 为主；Python 折叠收进二级）——锚 id 沿用旧页签名，docs.html 深链不变 -->
+    <!-- 调用示例（curl 为主；Python 折叠收进二级）——锚 id 沿用旧页签名（历史外链兼容；docs 深链已随 docs 页下线失效） -->
     <details class="call-example" id="trial-tab-http">
       <summary>调用示例（curl）</summary>
       <div class="code-block" id="trial-example-curl">

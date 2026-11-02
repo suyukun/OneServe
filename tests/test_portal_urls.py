@@ -41,14 +41,19 @@ REPO = Path(__file__).resolve().parents[1]
 NGINX_CONF = REPO / "configs" / "nginx" / "portal-nginx.conf"
 PORTAL = REPO / "portal"
 
-# 演示栈实测 404 的裸路径（修前 404 / 修后 200）；P1-7 合并后 contact 下线（301 → /docs），
-# 故不再列入 200 清单，改由独立用例断言其 301 行为；卡5 字段字典页下线，fields 同步移出；
-# ux-fix-batch 2026-10-29：apply（申请接入）页下线，随 fields 移出（无 301——内部入口，
-# nginx try_files 自然 404 兜底）。
-CLEAN_URLS = ["trial", "docs", "my", "audit", "ops", "catalog"]
+# 演示栈实测 404 的裸路径（修前 404 / 修后 200）；P1-7 合并后 contact 下线（曾 301 → /docs），
+# 卡5 字段字典页下线（fields 移出）；ux-fix-batch 2026-10-29：apply（申请接入）页下线；
+# ux-polish 2026-11-02：docs（帮助与支持）页下线——contact/apply/docs 全部 301 回首页，
+# 由 RETIRED_REDIRECTS 独立断言，不再列入 200 清单。
+CLEAN_URLS = ["trial", "my", "audit", "ops", "catalog"]
 
-# P1-7 合并：下线的 contact 独立页 → 301 到帮助与支持页 /docs
-RETIRED_REDIRECTS = {"/contact": "/docs", "/contact.html": "/docs"}
+# 下线页 301 收口（P1-7 contact／ux-fix-batch apply 曾 301 到 /docs；
+# ux-polish 2026-11-02：docs 本体下线，全组一律 301 → / 首页）
+RETIRED_REDIRECTS = {
+    "/contact": "/", "/contact.html": "/",
+    "/apply": "/", "/apply.html": "/",
+    "/docs": "/", "/docs.html": "/",
+}
 
 # Docker CLI 不在 PATH（本机事实）：先探全路径再退 PATH
 DOCKER_CANDIDATES = [
@@ -104,6 +109,30 @@ def test_comment_mentions_sitewide_clean_url():
     conf = _read_conf()
     head = conf[: conf.index("server {")]
     assert "全站" in head and "干净 URL" in head, "顶部职责注释未同步全站干净 URL"
+
+
+def test_retired_redirects_configured():
+    """配置级：contact/apply/docs 六个旧入口在 nginx 均有 301 → / 精确匹配（不 404 不落空）。"""
+    conf = _read_conf()
+    for retired in RETIRED_REDIRECTS:
+        assert ("location = " + retired) in conf, "缺下线页 301 精确匹配：" + retired
+
+
+def test_retired_pages_guard_apply_and_docs():
+    """【下线守卫】apply（ux-fix-batch 2026-10-29）与 docs（ux-polish 2026-11-02）不复活。
+
+    沿 apply 首版守卫口径扩展：页件三态（产物/源/按页 css）不存在＋构建注册表
+    （NAV_KEYS/PAGES）无对应键——防旧分支误合并或构建回退悄悄复活死页。
+    """
+    sys.path.insert(0, str(REPO / "scripts"))
+    import build_portal as bp  # noqa: E402
+
+    for rel in ("portal/apply.html", "portal/src/apply.html",
+                "portal/docs.html", "portal/src/docs.html", "portal/assets/docs.css"):
+        assert not (REPO / rel).exists(), "已下线页件复活：" + rel
+    assert "apply" not in bp.NAV_KEYS, "NAV_KEYS 残留 apply 键"
+    assert "docs" not in bp.NAV_KEYS, "NAV_KEYS 残留 docs 键"
+    assert "docs" not in bp.PAGES, "PAGES 残留 docs 注册"
 
 
 # ── 2. 真链路 E2E（隔离容器；docker 不可用则 skip） ──
@@ -215,7 +244,7 @@ def test_live_clean_urls_all_200():
             ref = (PORTAL / (slug + ".html")).read_bytes()
             assert body == ref, "/%s 未回退到 %s.html（内容不一致）" % (slug, slug)
 
-        # P1-7 合并：下线的 contact 两个入口 301 到 /docs（旧书签不 404）
+        # 下线页收口：contact/apply/docs 六入口 301 → /（旧书签不 404）
         for retired, target in RETIRED_REDIRECTS.items():
             code, body = _http_status_code(base + retired)
             assert code == 301, "%s 期望 301 实得 %s" % (retired, code)

@@ -142,17 +142,19 @@
     <div class="src-note" x-show="st('runtimeStatus') === 'ok'" x-text="endpoint('runtimeStatus')"></div>
   </section>
 
-  <!-- P0-10/P0-11 引导条：从「看看有什么」到「正式用／出事找谁」的下一步（不阻断试用） -->
+  <!-- P0-10/P0-11 引导条：从「看看有什么」到「正式用／出事找谁」的下一步（不阻断试用）。
+       ux-polish（2026-11-02）：docs 页下线，两入口改指服务目录（选服务按详情接入）
+       与运行视图/我的接入（自查反查）——申请授权仍联系平台运营组（纯文字，无站内页） -->
   <section class="card span-24" id="guide-bar" aria-label="下一步引导">
     <div class="body">
       <span class="seg">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-        要正式接入：联系 <a href="docs.html#docs-channels" id="guide-onboard-link">平台运营组</a>（申请授权＋凭证发放一条线看懂）
+        要正式接入：到 <a href="catalog.html" id="guide-onboard-link">服务目录</a>选定服务，按 API 详情页接入（申请授权联系平台运营组）
       </span>
       <span class="divider"></span>
       <span class="seg">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-        查不到数或要报障：到 <a href="docs.html#docs-channels" id="guide-contact-link">帮助与支持</a>（联系人／SLA 时限／三步自查引导）
+        查不到数或要报障：先看 <a href="ops.html" id="guide-contact-link">运行视图</a>平台状态，再按追踪号到<a href="my.html">我的接入</a>反查调用
       </span>
     </div>
   </section>

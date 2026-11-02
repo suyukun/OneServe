@@ -9,14 +9,16 @@
      即用户可见文案）。正字＝AppKey；异体（appkey/APPKEY/ApiKey/apiKey/API key/
      API-key…）一律 0。豁免＝代码/API 真源字面：ONESERVE_APPKEY 环境变量、
      appkeys.py 等文件名（含路径）、/v1/**/appkeys API 路径、小写 apikey
-     （HTTP 请求头名，docs 术语表口径——「随请求头 apikey 携带」）。
+     （HTTP 请求头名，术语表口径——「随请求头 apikey 携带」；术语表现居
+     docs/opensource/ARCHITECTURE.md §10，docs 页已随 ux-polish 2026-11-02 下线）。
   2. W-X2：凭证语境「试用」清零（调试台白名单）——可见文本中「试用」仅允许以
      「试用台」（接口调试台旧名指称）形式存在；「试用 URL」「试用凭证」等一律 0；
      「体验凭证」同族异体一并清零。任务规定括注「测试用，正式凭证另行审批」
      自带「测试用」字样，先按原句摘除再断言（防误伤规定文案）。
-  3. 防回潮（正向锚）：关键入口首现括注在位——docs 快速起步／trial 占位符／
+  3. 防回潮（正向锚）：关键入口首现括注在位——trial 占位符／
      my 凭证提示／admin 发放页口径句均含「沙箱凭证」＋「测试用，正式凭证另行审批」；
      portal/admin/appkeys.html 镜像同步（构建产物）。
+     （docs 快速起步锚随 docs 页 ux-polish 2026-11-02 下线移出清单。）
   注：JS 内文案（凭据文件「调试台 URL：」等）不在本静态扫描面（验收口径为 html）；
   由 admin/appkeys.js 真源＋test_appkeys_admin 镜像契约（js cmp）守。
 运行：python3 -m pytest tests/test_terminology.py（或 python3 直跑，断言一致）。
@@ -137,7 +139,7 @@ def test_wx2_trial_term_only_in_debug_console_context():
 
 FIRST_MENTION_ANCHORS = (
     # (页面, 承载位置说明, 断言片段)
-    ("portal/docs.html", "快速起步第 1 步", "沙箱凭证（测试用，正式凭证另行审批"),
+    # portal/docs.html 锚随 docs 页 ux-polish 2026-11-02 下线移出
     ("portal/trial.html", "AppKey 输入框占位符", "填你的沙箱凭证（测试用，正式凭证另行审批"),
     ("portal/my.html", "凭证提示 tooltip", "沙箱凭证，测试用，正式凭证另行审批"),
     ("admin/appkeys.html", "发放页口径句", "本页签发均为沙箱凭证（测试用，正式凭证另行审批）"),
@@ -154,7 +156,7 @@ def test_positive_anchors_sandbox_credential_first_mentions():
 
 
 def test_positive_anchors_key_pages_carry_sandbox_term():
-    for rel in ("portal/docs.html", "portal/trial.html", "portal/my.html",
+    for rel in ("portal/trial.html", "portal/my.html",
                 "admin/appkeys.html", "portal/admin/appkeys.html"):
         joined = "".join(t for _, t in _visible(rel))
         assert "沙箱凭证" in joined, f"{rel} 缺「沙箱凭证」正字文案（术语统一回潮？）"

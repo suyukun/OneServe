@@ -119,11 +119,12 @@
       </section>
 
       <!-- N1 页面动线补全（W-X4）：无凭证语境引导——出参表下方「如何获得调用凭证」→
-           平台运营组／帮助快起步（纯静态指引，零业务逻辑；链接随构建改写 ../ 前缀；
-           ux-fix-batch 2026-10-29：申请接入页下线，入口改指 docs#docs-channels） -->
+           AppKey 发放页／接口调试台（纯静态指引，零业务逻辑；链接随构建改写 ../ 前缀；
+           ux-fix-batch 2026-10-29：申请接入页下线；ux-polish 2026-11-02：docs 页下线，
+           引导改指发放页领沙箱凭证＋调试台发首次调用） -->
       <section class="card detail-card" id="detail-cred-guide" aria-label="如何获得调用凭证">
         <div class="card-head"><h2 class="card-title">如何获得调用凭证？</h2></div>
-        <div class="field-hint">调用本服务需在请求头 apikey 携带 AppKey（见上方「基本信息 · 认证方式」）。还没有凭证？<a href="docs.html#docs-channels">联系平台运营组开通</a>（正式凭证找平台管理员审批）；如何领沙箱凭证、怎么发调用，见<a href="docs.html">帮助与支持 · 5 分钟上手</a>。</div>
+        <div class="field-hint">调用本服务需在请求头 apikey 携带 AppKey（见上方「基本信息 · 认证方式」）。还没有凭证？到<a href="admin/appkeys.html">AppKey 发放页</a>领一把沙箱凭证（正式凭证找平台管理员审批）；领到后去<a href="trial.html">接口调试台</a>即可发出第一次真实调用。</div>
       </section>
 
       <!-- ④ 错误码＋解决方案（网关 401 与服务层码同表，来源分列）；
@@ -143,9 +144,12 @@
                   <td x-text="e.solution"></td>
                   <td x-text="e.source === 'gateway' ? '网关' : '服务层'"></td>
                   <td class="detail-err-acts">
-                    <template x-if="errActionApply(e)"><a class="err-act" href="docs.html#docs-channels">联系运营组开通</a></template>
+                    <!-- ux-polish 2026-11-02：原「联系运营组开通」（docs 锚）拆分——凭证类→发放页领/重签；
+                         授权类→授权全景自查（开通仍找平台运营组，按「解决方案」列） -->
+                    <template x-if="errActionKey(e)"><a class="err-act" href="admin/appkeys.html">领/重签凭证</a></template>
+                    <template x-if="errActionGrant(e)"><a class="err-act" href="grants.html">查授权全景</a></template>
                     <template x-if="errActionQuota(e)"><a class="err-act" href="my.html">查看配额</a></template>
-                    <span class="field-hint" x-show="!errActionApply(e) && !errActionQuota(e)">按「解决方案」处理</span>
+                    <span class="field-hint" x-show="!errActionKey(e) && !errActionGrant(e) && !errActionQuota(e)">按「解决方案」处理</span>
                   </td>
                 </tr>
               </template>

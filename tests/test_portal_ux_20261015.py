@@ -6,15 +6,17 @@
   #42-① /errors 渲染两源冲突定案：CDP 实测渲染＝完整错误码中心（截图侧误报），
          产物守卫＝errors 页特征在位＋审计页元素不在（防回归到所述误渲染形态）；
   #42-② 目录卡「查看详情」CTA 提级为明显按钮（去 aria-hidden＋按钮化样式）；
-  #42-③ docs 术语表折叠置顶（details 默认收起＋深链自动展开脚本＋位置先于 5 分钟上手）；
-  #44  apply 占位回填（已被 ux-fix-batch 2026-10-29 取代：apply 页整页下线，
-       联系入口全站改指 docs#docs-channels）；
-  #46  错误码到动作闭环：详情页 401/429/配额类行内「联系运营组开通／查看配额」（零新接口）＋
+  #42-③ docs 术语表折叠置顶（历史卡；docs 页随 ux-polish 2026-11-02 整页下线，
+        术语表迁 docs/opensource/ARCHITECTURE.md §10，守卫随迁断言迁移落点）；
+  #44  apply 占位回填（已被 ux-fix-batch 2026-10-29 取代：apply 页整页下线；
+        下线守卫现居 tests/test_portal_urls.py 配置级用例）；
+  #46  错误码到动作闭环：详情页 401/429/配额类行内「领/重签凭证／查授权全景／查看配额」
+       （零新接口；ux-polish 2026-11-02：原「联系运营组开通」docs 锚随 docs 下线拆分）＋
        errors 页服务级/系统级码段规则块；
   #47  trial 试用告知条（计费/配额/数据来源）＋「试用 vs 生产」差异表（纯静态）；
   #58  my 配额水电表图例（蓝条＝已用占比/留白＝剩余）＋ grants 配额上限/今日已用两列
        （kid join /v1/admin/appkeys/usage 匿名只读，端点已有，纯前端）；
-  #59  docs 首屏「快速接入四步」卡（申请授权→领凭证→在线调试→接入生产）。
+  #59  docs 首屏「快速接入四步」卡（历史卡；随 docs 页下线退役，路径由 README Quick start 承接）。
 
 运行：python3 -m pytest tests/test_portal_ux_20261015.py（或 python3 直跑，断言一致）。
 """
@@ -35,7 +37,8 @@ if not (PORTAL / "errors.html").is_file():
                    check=True, capture_output=True)
 
 CATALOG_SRC = (SRC / "catalog.html").read_text(encoding="utf-8")
-DOCS_SRC = (SRC / "docs.html").read_text(encoding="utf-8")
+# ux-polish 2026-11-02：docs 页三件已 git rm，DOCS_SRC 常量随之退役（勿回填）
+ARCHITECTURE_MD = (REPO / "docs" / "opensource" / "ARCHITECTURE.md").read_text(encoding="utf-8")
 ERRORS_SRC = (SRC / "errors.html").read_text(encoding="utf-8")
 ERRORS_BUILT = (PORTAL / "errors.html").read_text(encoding="utf-8")
 DETAIL_SRC = (SRC / "detail.html").read_text(encoding="utf-8")
@@ -74,70 +77,57 @@ def test_catalog_cta_upgraded_to_prominent_button():
     assert "查看详情 →" in CATALOG_SRC, "CTA 文案漂移（test_build_portal 同款断言依赖此文案）"
 
 
-# ── #42-③ docs 术语表折叠置顶 ──
+# ── #42-③/#59 docs 页内容随 ux-polish 2026-11-02 整页下线：
+#    术语表七条迁 ARCHITECTURE.md §10「术语」，限流口径迁 §9「已知边界」；
+#    快速接入四步/5 分钟上手不迁（README Quick start 承接）。守卫改为迁移落点断言 ──
 
-def test_docs_glossary_folded_and_on_top():
-    assert 'id="docs-glossary-fold"' in DOCS_SRC, "术语表缺折叠容器"
-    m = re.search(r'<details class="docs-fold" id="docs-glossary-fold"([^>]*)>', DOCS_SRC)
-    assert m, "折叠容器结构漂移"
-    assert "open" not in m.group(1), "术语表默认未收起（应默认折叠）"
-    assert DOCS_SRC.index('id="docs-glossary"') < DOCS_SRC.index('id="docs-quickstart"'), \
-        "术语表未置顶（应先于 5 分钟上手）"
-    assert "fold.open = true" in DOCS_SRC, "深链打开自动展开脚本缺失"
-    for term in ("docs-term-gateway", "docs-term-appkey", "docs-term-key",
-                 "docs-term-normalize", "docs-term-fieldauth", "docs-term-degrade",
-                 "docs-term-demo"):
-        assert f'id="{term}"' in DOCS_SRC, "术语表词条丢失：" + term
-    # 原位置（span-16 独立卡）不再有第二份术语表
-    assert DOCS_SRC.count('id="docs-glossary"') == 1, "术语表区块重复"
-    fold_css = (PORTAL / "assets" / "docs.css").read_text(encoding="utf-8")
-    assert ".docs-fold" in fold_css, "docs.css 缺折叠样式"
+def test_docs_glossary_migrated_to_architecture():
+    """术语表七条在 ARCHITECTURE.md §10 全数在位（docs 页下线后的唯一落点）。"""
+    assert "## 10. 术语" in ARCHITECTURE_MD, "ARCHITECTURE.md 缺「## 10. 术语」节"
+    for term in ("网关（APISIX）", "AppKey 与 secret", "查询键", "上游供数口径",
+                 "字段级授权", "降级", "演示数据"):
+        assert term in ARCHITECTURE_MD, "术语迁移缺词条：" + term
 
 
-# ── #59 docs 快速接入四步卡 ──
-
-def test_docs_quickpath_card_first_screen():
-    assert 'id="docs-quickpath"' in DOCS_SRC, "缺快速接入四步卡"
-    assert DOCS_SRC.index('id="docs-quickpath"') < DOCS_SRC.index('id="docs-glossary"'), \
-        "四步卡不在首屏第一卡位"
-    for step in ("docs-qp-step-apply", "docs-qp-step-key", "docs-qp-step-trial", "docs-qp-step-prod"):
-        assert f'id="{step}"' in DOCS_SRC, "四步缺步骤：" + step
-    for label in ("第 1 步 · 申请授权", "第 2 步 · 领取凭证（AppKey）",
-                  "第 3 步 · 在线调试", "第 4 步 · 接入生产"):
-        assert label in DOCS_SRC, "四步缺文案：" + label
-    # 每步都有跳转链接
-    for link_id in ("docs-link-qp-contact", "docs-link-qp-appkeys",
-                    "docs-link-qp-trial", "docs-link-qp-catalog"):
-        assert f'id="{link_id}"' in DOCS_SRC, "四步缺跳转链接：" + link_id
-    assert "联系<b>平台运营组</b>申请授权" in DOCS_SRC, "第 1 步缺联系对象"
-    assert "docs-quickpath" in bp.PAGES["docs"]["required_ids"], "docs-quickpath 未入构建注册表"
+def test_docs_ratelimit_caliber_migrated_to_architecture():
+    """限流与配额口径核心事实并入 ARCHITECTURE.md「已知边界」（docs-ratelimit 区迁移落点）。"""
+    assert "限流按登记配额生效" in ARCHITECTURE_MD, "已知边界缺限流口径条目"
+    for kw in ("quota_daily", "quota_qps", "X-RateLimit-Reason", "global", "endpoint", "concurrent"):
+        assert kw in ARCHITECTURE_MD, "限流口径缺关键事实：" + kw
 
 
-# ── #44 apply 占位回填 → ux-fix-batch 2026-10-29：apply 页整页下线，守卫移交
-#    test_docs_help_center::test_apply_page_retired_entry_repoints_to_docs（无空缺，不补占位）──
+# ── #44 apply 占位回填 → ux-fix-batch 2026-10-29：apply 页整页下线；
+#    原守卫居 test_docs_help_center（随该套件退役），apply＋docs 下线守卫统一移居
+#    tests/test_portal_urls.py 配置级用 test_retired_pages_guard_apply_and_docs ──
 
 
 # ── #46 错误码到动作闭环 ──
 
 def test_detail_error_inline_actions():
     assert "下一步" in DETAIL_SRC, "详情页错误表缺「下一步」列"
-    assert 'errActionApply(e)' in DETAIL_SRC and 'errActionQuota(e)' in DETAIL_SRC, \
-        "详情页错误行缺行动按钮绑定"
-    # 静态 href 随构建改写（详情壳在 catalog/ 子目录须 ../ 前缀；ux-fix-batch：授权类动作
-    # 改指 docs.html#docs-channels——apply 页已下线）
-    assert '<a class="err-act" href="docs.html#docs-channels">联系运营组开通</a>' in DETAIL_SRC, "缺联系运营组开通按钮"
+    assert 'errActionKey(e)' in DETAIL_SRC and 'errActionGrant(e)' in DETAIL_SRC \
+        and 'errActionQuota(e)' in DETAIL_SRC, "详情页错误行缺行动按钮绑定"
+    # 静态 href 随构建改写（详情壳在 catalog/ 子目录须 ../ 前缀；ux-polish 2026-11-02：
+    # 原「联系运营组开通」docs 锚随 docs 页下线拆分——凭证类→发放页、授权类→授权全景）
+    assert '<a class="err-act" href="admin/appkeys.html">领/重签凭证</a>' in DETAIL_SRC, "缺领/重签凭证按钮"
+    assert '<a class="err-act" href="grants.html">查授权全景</a>' in DETAIL_SRC, "缺查授权全景按钮"
     assert '<a class="err-act" href="my.html">查看配额</a>' in DETAIL_SRC, "缺查看配额按钮"
-    assert "errActionApply" in DETAIL_JS and "errActionQuota" in DETAIL_JS, "detail.js 缺分类函数"
-    # 分类口径：401/403/授权凭证码→联系运营组；429/quota_*/rate_limited→my
-    assert "401" in DETAIL_JS and "403" in DETAIL_JS and "404" not in DETAIL_JS.split("errActionApply")[1].split("errActionQuota")[0], \
-        "授权类分类口径漂移"
-    assert "service_not_granted" in DETAIL_JS and "fields_not_granted" in DETAIL_JS, "缺授权类机读码"
+    assert "docs.html" not in DETAIL_SRC, "详情源仍链已下线的 docs 页"
+    assert "errActionKey" in DETAIL_JS and "errActionGrant" in DETAIL_JS \
+        and "errActionQuota" in DETAIL_JS, "detail.js 缺分类函数"
+    # 分类口径：401/credential_*→key；403/unknown_tenant/*_not_granted→grant；429/quota_*/rate_limited→my
+    key_body = DETAIL_JS.split("errActionKey")[1].split("errActionGrant")[0]
+    grant_body = DETAIL_JS.split("errActionGrant")[1].split("errActionQuota")[0]
+    assert "401" in key_body and "403" not in key_body, "凭证类分类口径漂移"
+    assert "403" in grant_body and "401" not in grant_body, "授权类分类口径漂移"
+    assert "service_not_granted" in grant_body and "fields_not_granted" in grant_body, "缺授权类机读码"
     assert "'quota_'" in DETAIL_JS and "rate_limited" in DETAIL_JS, "缺配额类机读码"
-    # 产物侧：详情壳改写生效（../docs.html / ../my.html 出现在错误行动作里）
+    # 产物侧：详情壳改写生效（../admin/ ../grants.html ../my.html 出现在错误行动作里）
     shells = sorted((PORTAL / "catalog").glob("*.html"))
     assert shells, "详情壳缺失（先跑 build_portal）"
     shell = shells[0].read_text(encoding="utf-8")
-    assert 'href="../docs.html#docs-channels">联系运营组开通' in shell, "详情壳错误行动作未随子目录改写"
+    assert 'href="../admin/appkeys.html">领/重签凭证' in shell, "详情壳凭证动作未随子目录改写"
+    assert 'href="../grants.html">查授权全景' in shell, "详情壳授权动作未随子目录改写"
     assert 'href="../my.html">查看配额' in shell, "详情壳配额动作未随子目录改写"
 
 
@@ -145,8 +135,9 @@ def test_errors_page_code_ranges_block():
     assert 'id="errors-code-ranges"' in ERRORS_SRC, "errors 页缺码段规则块"
     for kw in ("系统级", "服务级", "auth_failed", "kv_read_failed", "job_state_inconsistent"):
         assert kw in ERRORS_SRC, "码段规则块缺关键词：" + kw
-    assert 'href="docs.html#docs-channels"' in ERRORS_SRC and 'href="my.html"' in ERRORS_SRC, \
-        "码段规则块缺「联系平台运营组／查看配额」跳转"
+    assert 'href="admin/appkeys.html"' in ERRORS_SRC and 'href="my.html"' in ERRORS_SRC, \
+        "码段规则块缺「AppKey 发放页／查看配额」跳转"
+    assert 'docs.html' not in ERRORS_SRC, "errors 源仍链已下线的 docs 页"
     assert "errors-code-ranges" in bp.PAGES["errors"]["required_ids"], "码段规则块未入注册表"
     assert 'id="errors-code-ranges"' in ERRORS_BUILT, "产物缺码段规则块"
 

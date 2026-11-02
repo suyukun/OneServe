@@ -14,12 +14,12 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 <!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
      Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
      → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
-<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=675e6565225c">
-<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=675e6565225c">
-<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=675e6565225c">
-<link rel="stylesheet" href="assets/tokens.css?v=675e6565225c">
-<link rel="stylesheet" href="assets/portal.css?v=675e6565225c">
-<link rel="stylesheet" href="assets/trial.css?v=675e6565225c"><!-- P-2 试用台（仅引用既有令牌） -->
+<link rel="stylesheet" href="assets/vendor/bootstrap.min.css?v=566d0450180c">
+<link rel="stylesheet" href="assets/vendor/tabler.min.css?v=566d0450180c">
+<link rel="stylesheet" href="assets/vendor/bootstrap-icons.min.css?v=566d0450180c">
+<link rel="stylesheet" href="assets/tokens.css?v=566d0450180c">
+<link rel="stylesheet" href="assets/portal.css?v=566d0450180c">
+<link rel="stylesheet" href="assets/trial.css?v=566d0450180c"><!-- P-2 试用台（仅引用既有令牌） -->
 
 <!-- EXTRA_JS：按页注入的组件脚本位（P0-7 my.js；defer 保序，注册先于 Alpine 启动） -->
 <!-- alpinejs@3.14.9 自托管 · SHA256 3ed1eed252488921df65e363d6715deb04d7f92aaedb9e52199fdf73cb1e0ad3 -->
@@ -34,17 +34,17 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
      及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数，旧缓存 URL 自然失效。
      本注释刻意保留未版本化 src 字样（构建期不受版本参数改写），作为加载序门禁的
      产物级检索锚点，勿删。 -->
-<script defer src="site-gate.js?v=675e6565225c"></script>
-<script defer src="data-format.js?v=675e6565225c"></script>
-<script defer src="api.js?v=675e6565225c"></script>
-<script defer src="assets/app.js?v=675e6565225c"></script>
-<script defer src="assets/trial.js?v=675e6565225c"></script>
+<script defer src="site-gate.js?v=566d0450180c"></script>
+<script defer src="data-format.js?v=566d0450180c"></script>
+<script defer src="api.js?v=566d0450180c"></script>
+<script defer src="assets/app.js?v=566d0450180c"></script>
+<script defer src="assets/trial.js?v=566d0450180c"></script>
 
-<script defer src="assets/pages.js?v=675e6565225c"></script>
-<script defer src="assets/detail.js?v=675e6565225c"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
-<script defer src="assets/vendor/bootstrap.bundle.min.js?v=675e6565225c"></script>
-<script defer src="assets/vendor/tabler.min.js?v=675e6565225c"></script>
-<script defer src="assets/alpine.min.js?v=675e6565225c"></script>
+<script defer src="assets/pages.js?v=566d0450180c"></script>
+<script defer src="assets/detail.js?v=566d0450180c"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="assets/vendor/bootstrap.bundle.min.js?v=566d0450180c"></script>
+<script defer src="assets/vendor/tabler.min.js?v=566d0450180c"></script>
+<script defer src="assets/alpine.min.js?v=566d0450180c"></script>
 </head>
 <body class="os-layout">
 <!-- ══ 侧导航（partials · active 态由 build_portal.py 构建期注入 @@A_*@@/@@C_*@@ 占位符，不用前端判断路径） ══ -->
@@ -65,17 +65,22 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
         <!-- 卡5 2026-09-30：字段字典导航项随 297 宽表字典体系下线移除；表级 schema 元数据（卡2/卡3）就位后以新形态重建 -->
         <li><a class="os-nav-link is-active" aria-current="page" href="trial.html"><i class="bi bi-terminal" aria-hidden="true"></i><span class="os-nav-text">接口调试</span></a></li>
         <li><a class="os-nav-link" href="my.html" title="我的接入：凭证 / 配额 / 调用记录（按凭证查询）"><i class="bi bi-plug" aria-hidden="true"></i><span class="os-nav-text">我的接入</span></a></li>
-        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权，
-             此前唯一入口在 operator+ 运营台壳内（有权无门）；锚到 my.html 用量统计块 -->
-        <li><a class="os-nav-link" href="my.html#my-metering" title="用量统计：近 7 日调用计量聚合（全角色可见）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
-        <!-- apply（申请接入）导航项随 ux-fix-batch（2026-10-29 维护者验收）下线：入口改指 docs#docs-channels -->
+        <!-- 权限方案 v1.1 裁决#4（2026-10-16）：viewer 计量入口——域7 计量查看全角色有权。
+             ux-polish（2026-11-02）：入口从 my.html#my-metering（登录期 viewer 旧设计）改直链
+             报表中心用量总览页（无登录下全公开）；my 页内嵌计量块保留不删 -->
+        <li><a class="os-nav-link" href="reports/overview.html" title="用量统计：窗口调用量 / 成功率 / 活跃调用方 / 热门服务＋近 7 日趋势（全公开）"><i class="bi bi-graph-up" aria-hidden="true"></i><span class="os-nav-text">用量统计</span></a></li>
+        <!-- apply（申请接入）导航项随 ux-fix-batch（2026-10-29 维护者验收）下线；
+             docs（帮助与支持）导航项随 ux-polish（2026-11-02 维护者判定整页删除）下线——
+             新手路径＝项目 README Quick start，站内自查＝错误码中心/我的接入 -->
       </ul>
     </div>
     <div class="os-nav-group">
       <div class="os-nav-label">运维与支持</div>
       <ul class="os-nav-list">
         <li><a class="os-nav-link" href="ops.html" title="运行视图驾驶舱（P-3 交付）"><i class="bi bi-activity" aria-hidden="true"></i><span class="os-nav-text">运行视图</span><!-- 品牌红 ② --></a></li>
-<li><a class="os-nav-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i><span class="os-nav-text">帮助与支持</span></a></li>
+<!-- 【已删·碑注】docs（帮助与支持）导航项随 ux-polish（2026-11-02）整页下线移除；
+     其 active/current 占位与 NAV_KEYS docs 键同步退役（build_portal 同批，占位字面量
+     不留——残留占位符门禁会逮）。 -->
         <li><a class="os-nav-link" href="errors.html" title="错误码中心：网关＋服务层单张错误码表（P1-2）"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="os-nav-text">错误码中心</span></a></li>
       </ul>
     </div>
@@ -133,11 +138,12 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 
 <div class="os-main">
 <!-- ══ 顶栏（partials）：面包屑构建期注入 <ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">接口调试</li></ol>（admin 页=系统路径两段）。
-     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释 ══ -->
+     碑注：全站环境条 2026-09-29 已源头删除，详见 scripts/build_portal.py 注释。
+     碑注：顶栏「帮助与支持」问号图标随 docs 页下线移除（ux-polish 2026-11-02），
+     新手路径＝README Quick start；站内自查＝错误码中心/我的接入。 ══ -->
 <header class="os-topbar" id="app-topbar">
   <nav class="os-crumb" aria-label="面包屑"><ol class="os-crumb-list"><li><a href="index.html">首页</a></li><li aria-current="page">接口调试</li></ol></nav>
   <span class="os-topbar-spacer"></span>
-  <a class="os-topbar-icon" href="docs.html" title="帮助与支持"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
 </header>
 
 <main class="os-content" id="app-content">
@@ -303,16 +309,17 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
               <summary>原始 JSON</summary>
               <pre x-text="rawJson()"></pre>
             </details>
-            <!-- N1 页面动线补全（W-X4）：调用成功态「下一步」提示（纯静态指引，零业务逻辑） -->
+            <!-- N1 页面动线补全（W-X4）：调用成功态「下一步」提示（纯静态指引，零业务逻辑；
+                 ux-polish 2026-11-02：docs 下线，正式接入动线改指服务目录） -->
             <div class="field-hint" id="trial-next-steps">
-              下一步：<a href="docs.html#docs-step-key">申请正式凭证</a>（找平台管理员审批），或在<a href="my.html">我的接入</a>查看用量。
+              下一步：到<a href="catalog.html">服务目录</a>选定服务接入（正式凭证找平台管理员审批），或在<a href="my.html">我的接入</a>查看用量。
             </div>
           </div>
         </template>
       </div>
     </div>
 
-    <!-- 调用示例（curl 为主；Python 折叠收进二级）——锚 id 沿用旧页签名，docs.html 深链不变 -->
+    <!-- 调用示例（curl 为主；Python 折叠收进二级）——锚 id 沿用旧页签名（历史外链兼容；docs 深链已随 docs 页下线失效） -->
     <details class="call-example" id="trial-tab-http">
       <summary>调用示例（curl）</summary>
       <div class="code-block" id="trial-example-curl">

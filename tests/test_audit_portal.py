@@ -92,7 +92,7 @@ def test_required_blocks_present():
 
 
 def test_per_page_assets_not_leaked():
-    for other in ("index.html", "my.html", "docs.html", "ops.html"):
+    for other in ("index.html", "my.html", "ops.html"):   # docs.html 随 ux-polish 2026-11-02 下线移出
         html = (PORTAL / other).read_text(encoding="utf-8")
         assert "assets/audit.css" not in html and "assets/audit.js" not in html,             other + " 被注入审计页资产"
 

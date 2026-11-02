@@ -32,18 +32,26 @@
       retryLoad: function () { this.load(); },
 
       /* ── #46 错误码到动作（2026-10-15）：401/429/配额类错误行内跳转的静态分类。
-       * 依据＝错误信封同源 sidecar 的 code/http_status（零新接口、零后端改动）：
-       *   授权类（401/403、授权/凭证机读码）→ 联系运营组开通（docs.html#docs-channels；
-       *   ux-fix-batch 2026-10-29：apply 页下线，出链随迁）；
+       * 依据＝错误信封同源 sidecar 的 code/http_status（零新接口、零后端改动）。
+       * ux-polish（2026-11-02）：原单一「联系运营组开通」（docs 锚）随 docs 页下线拆分——
+       *   凭证类（401、credential_* 机读码）→ 领/重签凭证（admin/appkeys.html）；
+       *   授权类（403、unknown_tenant、*_not_granted）→ 查授权全景（grants.html；
+       *   开通仍按「解决方案」列找平台运营组——授权登记无站内自助页）；
        *   限流/配额类（429、quota_* 机读码）→ 查看配额（my.html）。
        * 其余码不挂按钮——按「解决方案」列处理，不造无处可去的假动作。 ── */
-      errActionApply: function (e) {
+      errActionKey: function (e) {
         if (!e) return false;
         var code = String(e.code || '');
-        return e.http_status === 401 || e.http_status === 403 ||
-          code === 'unknown_tenant' || code === 'service_not_granted' ||
-          code === 'fields_not_granted' || code === 'credential_expired' ||
+        return e.http_status === 401 ||
+          code === 'credential_expired' ||
           code === 'credential_rotated_expired' || code === 'credential_disabled';
+      },
+      errActionGrant: function (e) {
+        if (!e) return false;
+        var code = String(e.code || '');
+        return e.http_status === 403 ||
+          code === 'unknown_tenant' || code === 'service_not_granted' ||
+          code === 'fields_not_granted';
       },
       errActionQuota: function (e) {
         if (!e) return false;

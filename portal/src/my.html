@@ -144,7 +144,7 @@
                       <div><dt>能调的服务</dt>
                         <dd><template x-for="g in c.grants" :key="g.service"><span class="my-grant-chip" x-text="g.service + '（' + g.fieldsCount + ' 个字段）'"></span></template></dd></div>
                     </dl>
-                    <div class="field-hint" x-show="c.status === 'expired'">已过有效期，请到 AppKey 发放页重新签发，或<a href="docs.html#docs-channels">联系平台运营组</a>开通正式凭证（找平台管理员审批）；调用方式可先到<a href="trial.html">接口调试台</a>查看。</div>
+                    <div class="field-hint" x-show="c.status === 'expired'">已过有效期，请到 AppKey 发放页重新签发（正式凭证找平台管理员审批）；调用方式可先到<a href="trial.html">接口调试台</a>查看。</div>
                     <div class="field-hint" x-show="c.status === 'disabled'">这把凭证已被停用，恢复请联系平台运营。</div>
                     <div class="field-hint" x-show="c.rotation && c.rotation.expired">这把凭证已被轮换，重叠期已结束并自动失效，请改用轮换后的新凭证。</div>
                   </div>
@@ -152,7 +152,7 @@
               </div>
             </template>
             <div class="empty-tags" x-show="!credentials.length">没有查询到这把凭证</div>
-            <div class="src-note" x-show="!credentials.length">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；沙箱凭证在 AppKey 发放页自助签发。还没有自己的凭证？<a href="docs.html#docs-channels">联系平台运营组</a>，或先到<a href="trial.html">接口调试台</a>体验。</div>
+            <div class="src-note" x-show="!credentials.length">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；还没有自己的凭证？到<a href="admin/appkeys.html">AppKey 发放页</a>自助签发一把沙箱凭证，或先到<a href="trial.html">接口调试台</a>体验。</div>
           </div>
         </template>
         <template x-if="credState === 'idle'">
@@ -233,7 +233,7 @@
         <template x-if="quotaState === 'ok' && !quotaFound">
           <div class="card-body">
             <div class="empty-tags">没有查询到这把凭证的配额</div>
-            <div class="src-note">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；配额随凭证登记，未登记的凭证没有配额可查。需要配额？<a href="docs.html#docs-channels">联系平台运营组</a>完成授权登记，或先到<a href="trial.html">接口调试台</a>体验。</div>
+            <div class="src-note">请核对输入的完整凭证（以 sb_ 或 ak_ 开头）；配额随凭证登记，未登记的凭证没有配额可查。需要配额？完成授权登记后随凭证下发（找平台管理员审批），或先到<a href="trial.html">接口调试台</a>体验。</div>
           </div>
         </template>
 

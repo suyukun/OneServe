@@ -5,7 +5,7 @@
     <div class="page-pretitle">错误码中心</div>
     <h1 class="page-title">统一错误码表（网关 ＋ 服务层）</h1>
     <div class="os-page-actions">
-      <a class="os-chip is-link" href="docs.html" title="帮助与支持：术语表／5 分钟上手／限流与 SLA／联系方式与值班（P1-7，P0-11 已并入）"><i class="bi bi-life-preserver" aria-hidden="true"></i>出错了找谁</a>
+      <!-- ux-polish（2026-11-02）：「出错了找谁」chip 随 docs 页下线删除（本页即自查终点：错误码＋解决方案；反查走右侧我的调用日志） -->
       <a class="os-chip is-link" href="my.html"><i class="bi bi-plug" aria-hidden="true"></i>我的调用日志</a>
     </div>
   </div>
@@ -40,7 +40,7 @@
         <dt>服务级（结果行／任务级码）</dt>
         <dd>请求本身成功（HTTP 200），是查询结果里单个键或单个任务出了状况：<code>kv_read_failed</code>（结果行）逐键看行内 <code>error</code> 字段；<code>kv_unavailable</code>、<code>job_state_inconsistent</code>（任务级）在批量任务记录里看。本表 HTTP 列显示「—」的即这一段（行内标注「结果行／任务级机读码，非 HTTP 信封」）。</dd>
       </dl>
-      <p class="field-hint">对号入座：凭证/授权类（401/403）→ <a href="docs.html#docs-channels">联系平台运营组</a>；限流/配额类（429）→ <a href="my.html">查看配额</a>。也可用上方「网关／服务层」筛选只看一段。</p>
+      <p class="field-hint">对号入座：凭证/授权类（401/403）→ <a href="admin/appkeys.html">AppKey 发放页</a>领/重签凭证（授权开通找平台运营组）；限流/配额类（429）→ <a href="my.html">查看配额</a>。也可用上方「网关／服务层」筛选只看一段。</p>
     </div>
   </section>
 

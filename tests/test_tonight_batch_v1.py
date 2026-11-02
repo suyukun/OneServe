@@ -12,8 +12,9 @@
            load.js probeTimeStr/probedAt），截图对比归视觉复评（不入机检）。
   P2c-1   monitor 面包屑统一为全站管理页模式「管理 › 异常监控」
            （两段纯文本、无首页回链、无自绘三段/环境 chip 残留）。
-  P2c-2   docs.html「5 分钟上手」三步间补真实链接（链接真实性断言在
-           tests/test_docs_help_center.py test_quickstart_*；此处守产物在位）。
+  P2c-2   docs.html「5 分钟上手」三步间补真实链接（【已退役·碑注】docs 页随
+           ux-polish 2026-11-02 整页下线，对应机检 test_docs_quickstart_next_links_present
+           与 test_docs_help_center 同批移除）。
   P2c-3   空状态文案 8 处对齐「一句话现状——一句指引」模式
            （样板＝版本页「还没有任何版本空间 / 去 数据装载…」）。
 
@@ -97,17 +98,8 @@ def test_monitor_crumb_unified_admin_pattern():
     assert "首页</a>" not in html, "monitor 残留首页回链（管理页模式无首页级）"
 
 
-# ── P2c-2：docs 三步「下一步」链接在位（真实性断言在 test_docs_help_center） ──
-
-def test_docs_quickstart_next_links_present():
-    """docs.html 产物含三步间 next 链接三枚（step1→trial、step2→audit、step3→appkeys）。"""
-    html = _read(PORTAL / "docs.html")
-    for anchor, href in (("docs-link-step1-next", "trial.html#trial-tab-http"),
-                         ("docs-link-step2-next", "audit.html"),
-                         ("docs-link-step3-next", "admin/appkeys.html")):
-        assert f'id="{anchor}"' in html, f"docs.html 缺步骤间链接 {anchor}"
-        target = PORTAL / href.partition("#")[0]
-        assert target.is_file(), f"{anchor} 目标死链：{href}"
+# ── P2c-2：【已退役·碑注】docs 三步「下一步」链接机检随 docs 页下线移除
+#    （ux-polish 2026-11-02；下线守卫见 tests/test_portal_urls.py） ──
 
 
 # ── P2c-3：空状态文案「现状——指引」模式（8 处） ──
