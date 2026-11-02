@@ -137,7 +137,7 @@ if [ "$PY_RC" -eq 0 ]; then ok "put/get 往返验证绿"; else bad "put/get 往�
 
 # 5) TASK-M2-3 端到端：服务容器经 /v1/hbase/query 查 HBase（探针脚本扩展判据）
 # 链路：put 演示数据（rowkey=SM3）→ 起 service（镜像在则用，缺则现场 build）→
-#       curl /v1/hbase/query（key=<SM3>，鉴权走授权矩阵 demo_bank 条目）→
+#       curl /v1/hbase/query（key=<SM3>，鉴权走授权矩阵 demo_merchant 条目）→
 #       断言 200＋found＋白名单字段集＋脱敏档位（原值/越权字段零出现）。
 say "M2-3 e2e：经 demo_hbase_query 服务查 HBase ..."
 E2E_RC=0

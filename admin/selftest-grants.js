@@ -140,8 +140,8 @@
 
     /* 4. 详情：普通租户可读可写；kind 徽标区分；凭证级摘要表在位 */
     await assert('detail-normal', '打开普通租户详情：授权行渲染＋整路由徽标＋凭证摘要', async function () {
-      var bankRow = document.querySelector('[data-testid="tenant-row-demo_bank"] button');
-      if (!bankRow) throw new Error('缺 demo_bank 行');
+      var bankRow = document.querySelector('[data-testid="tenant-row-demo_merchant"] button');
+      if (!bankRow) throw new Error('缺 demo_merchant 行');
       bankRow.click();
       await tick();
       if (txt('probe-view') !== 'detail') throw new Error('未进入详情视图');
@@ -203,7 +203,7 @@
 
     /* 7. 验收 §7-5③：整路由代理行无字段勾选区（含编辑态）；字段服务行有勾选 */
     await assert('proxy-no-field-checkboxes', '整路由代理行：无字段勾选区（编辑态亦无）；字段服务行有勾选', async function () {
-      var bankRow = document.querySelector('[data-testid="tenant-row-demo_bank"] button');
+      var bankRow = document.querySelector('[data-testid="tenant-row-demo_merchant"] button');
       bankRow.click();
       await tick();
       var proxyRow = row('proxy');

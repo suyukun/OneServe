@@ -215,7 +215,7 @@ def test_forward_passthrough_and_audit_shape(tmp_path):
                                status=status, body=body, trace_id=trace_id))
 
         async def ok_grant(caller, sid):
-            return {"tenant": "demo_bank"}
+            return {"tenant": "demo_merchant"}
 
         from fastapi import FastAPI, Request
         from fastapi.testclient import TestClient

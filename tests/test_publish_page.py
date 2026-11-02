@@ -445,7 +445,7 @@ def test_published_detail_is_api_doc_layout():
 
 def test_published_detail_pure_functions():
     """AC-14c：详情聚合纯函数（node 直调 PUBSVC）——出参表名/类型/中文释义形状、
-    授权一行文案、凭证 kid∪租户双口径联查（demo_bank 修复）、curl 带 apikey＋示例键。"""
+    授权一行文案、凭证 kid∪租户双口径联查（demo_merchant 修复）、curl 带 apikey＋示例键。"""
     pubd_require = "require(" + json.dumps(str(PUBD_JS)) + ");\n"
     out = _node_json(pubd_require + """
 const P = globalThis.PUBSVC;
@@ -454,13 +454,13 @@ const curl = P.curlOfService('http://127.0.0.1:8000', '/v1/svc/usr-basic-info',
                              'a87ae39b27b7f83c2328e8bf4850a36bf1380032c252a1b2120d0d65f03d10d4');
 const curlNoKey = P.curlOfService('http://x', '/v1/svc/a', '');
 const creds = P.credsOfService(
-  [{kid: '', callerId: 'demo_bank'}, {kid: 'k2', callerId: 'partner-demo'}, {kid: 'k9', callerId: 'other'}],
-  ['k2'], ['demo_bank', 'partner-demo']).map(function (k) { return k.callerId; });
+  [{kid: '', callerId: 'demo_merchant'}, {kid: 'k2', callerId: 'partner-demo'}, {kid: 'k9', callerId: 'other'}],
+  ['k2'], ['demo_merchant', 'partner-demo']).map(function (k) { return k.callerId; });
 console.log(JSON.stringify({
   of: of,
   curlHead: curl.split(String.fromCharCode(10))[0], curlKey: curl.indexOf('a87ae39b27b7f83c') >= 0,
   curlApikey: curl.indexOf("apikey: <调用凭证>") >= 0, curlNoKey: curlNoKey.indexOf('<用户标识>') >= 0,
-  auth: [P.authTextOf([{tenant: 'demo_bank'}, {tenant: 'partner-demo'}], 3),
+  auth: [P.authTextOf([{tenant: 'demo_merchant'}, {tenant: 'partner-demo'}], 3),
          P.authTextOf([], 0), P.authTextOf([{tenant: 'a'}], null)],
   creds: creds,
   example: P.exampleKeyOf('usr_basic_info').slice(0, 8)
@@ -472,10 +472,10 @@ console.log(JSON.stringify({
     assert out["curlHead"].startswith("curl -X POST 'http://127.0.0.1:8000/v1/svc/usr-basic-info'"), "curl 首行须为真实地址"
     assert out["curlApikey"] and out["curlKey"], "curl 须带 apikey 头＋实测示例键"
     assert out["curlNoKey"], "无实测键的表用 <用户标识> 占位（不编造示例键）"
-    assert out["auth"][0] == "授权租户：demo_bank、partner-demo · 关联凭证 3 个", "授权一行口径"
+    assert out["auth"][0] == "授权租户：demo_merchant、partner-demo · 关联凭证 3 个", "授权一行口径"
     assert out["auth"][1] == "暂无授权", "无授权时一行「暂无授权」"
     assert "凭证数暂不可读" in out["auth"][2], "凭证列表不可读须如实标注，不冒充零"
-    assert out["creds"] == ["demo_bank", "partner-demo"], "凭证联查须 kid∪租户口径（demo_bank 无 kid 也不漏）"
+    assert out["creds"] == ["demo_merchant", "partner-demo"], "凭证联查须 kid∪租户口径（demo_merchant 无 kid 也不漏）"
     assert out["example"] == "a87ae39b", "usr_basic_info 实测示例键在位"
 
 

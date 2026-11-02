@@ -40,7 +40,7 @@
                   tenant(type=sandbox, oa_ticket_open 空)。
   field_space     七域种子（schema_drift.FIELD_SPACES 同源）；wide297 drift_mode=enforce
                   ＋dict_csv_ref 引用位，其余 not_applicable。
-  trial template  沙箱演示集（demo_bank×TRIAL_SOURCE 服务）平移种子 sync/trial_template.yaml
+  trial template  沙箱演示集（demo_merchant×TRIAL_SOURCE 服务）平移种子 sync/trial_template.yaml
                   （卡待核#3 已裁默认处置；本工具只生成种子不装载——模板消费归 1b-8/步 6）。
   台账            装载有实际变化才发一个 admin_event（source=migration）＋按实体
                   version_history 行（event_id FK 对偶，DDL 钉因果链）；无变化重跑
@@ -107,7 +107,7 @@ FIELD_SPACE_SEEDS = [
 ]
 
 # trial template 种子来源（appkeys.py TRIAL_SOURCE_TENANT/TRIAL_SOURCE_SERVICE 同源常量）
-TRIAL_SOURCE_TENANT = "demo_bank"
+TRIAL_SOURCE_TENANT = "demo_merchant"
 TRIAL_SOURCE_SERVICE = "v1-svc-usr-asset-tag"
 
 EXIT_OK, EXIT_MISMATCH, EXIT_DIRTY = 0, 2, 2

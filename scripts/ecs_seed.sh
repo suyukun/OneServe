@@ -93,7 +93,7 @@ $COMPOSE exec -T redis redis-cli RPUSH portal:announcements \
     '{"tag":"维护","title":"9 月 22 日 02:00-04:00 同步窗口例行维护，期间点查不受影响","time":"2026-09-15T09:00:00+08:00"}' >/dev/null
 
 # ---------- 4. 演示手机号（保证试用台一输即中：投影字段 ≥4 的种子用户） ----------
-log "⑧ 挑演示手机号（demo_bank 白名单投影字段 ≥4，试用台「网页查询」输入即出标签）"
+log "⑧ 挑演示手机号（demo_merchant 白名单投影字段 ≥4，试用台「网页查询」输入即出标签）"
 PHONES_JSON=$($COMPOSE exec -T -e SYNC_REDIS_URL="$REDIS_IN_NET" service python - <<'PYEOF'
 import json, sys, yaml
 sys.path.insert(0, "/sync")
@@ -103,7 +103,7 @@ from common import data_key, get_live, redis_conn
 matrix = yaml.safe_load(open("/app/auth_matrix.yaml", encoding="utf-8"))["matrix"]
 wl = set()
 for row in matrix:
-    if row.get("tenant") == "demo_bank":
+    if row.get("tenant") == "demo_merchant":
         for g in row.get("grants", []):
             if g.get("service") == "user_tag_query":
                 wl = set(g["fields"])

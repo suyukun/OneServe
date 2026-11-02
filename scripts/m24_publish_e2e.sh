@@ -115,18 +115,18 @@ $DOCKER_BIN build -q -t "$IMG" ./service >/dev/null
 ok "镜像 ${IMG} 就绪（本卡代码构建）"
 
 cp -R service "$TMP/service_dir"
-# 授权矩阵：给新服务登记 demo_bank 白名单（真源仍是文件，非内存注入）
+# 授权矩阵：给新服务登记 demo_merchant 白名单（真源仍是文件，非内存注入）
 python3 - "$TMP/service_dir/auth_matrix.yaml" <<'PYEOF'
 import sys, yaml
 p = sys.argv[1]
 doc = yaml.safe_load(open(p, encoding="utf-8"))
 for row in doc["matrix"]:
-    if row.get("tenant") == "demo_bank":
+    if row.get("tenant") == "demo_merchant":
         row["grants"].append({"service": "v1-svc-m24-demo",
                               "fields": ["ac_active_sts_01", "mk_touch_sts_02"]})
 yaml.safe_dump(doc, open(p, "w", encoding="utf-8"), allow_unicode=True, sort_keys=False)
 PYEOF
-ok "隔离配置就绪（service 目录副本；demo_bank 已登记新服务白名单）"
+ok "隔离配置就绪（service 目录副本；demo_merchant 已登记新服务白名单）"
 
 $DOCKER_BIN rm -f oneserve-m24-redis oneserve-m24-service >/dev/null 2>&1 || true
 $DOCKER_BIN run -d --name oneserve-m24-redis --network oneserve-net \

@@ -209,7 +209,7 @@ def test_trace_lookup_empty_states():
 
 def _job_hash(jid, status, **extra):
     """任务 hash 假体（值皆 str，同 Redis 口径）；extra 覆盖缺省字段。"""
-    row = {"job_id": jid, "tenant": "demo_bank", "scope": "list", "status": status,
+    row = {"job_id": jid, "tenant": "demo_merchant", "scope": "list", "status": status,
            "total": "100", "processed": "50", "created_at": "2026-09-23T06:00:00+00:00",
            "keys_sha256": "k" * 64, "fields": "[]"}
     row.update(extra)

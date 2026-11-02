@@ -8,8 +8,8 @@
  *   GET /v1/admin/load/schema        字段中文名（按 loadSource 表+版本联查；缺＝回退英文名）
  *   GET /v1/portal/grants/panorama   授权租户（serviceId 匹配，appkey 掩码）
  *   GET /v1/admin/appkeys            关联凭证（P3 弹窗卡改口径：kid ∪ 租户双联——
- *                                     矩阵 demo_bank 行不带 kid，仅 kid 联 join 会漏
- *                                     demo_bank 已签发凭证；租户口径按 callerId 补齐）
+ *                                     矩阵 demo_merchant 行不带 kid，仅 kid 联 join 会漏
+ *                                     demo_merchant 已签发凭证；租户口径按 callerId 补齐）
  * 加载序：publish-hbase-adapter.js（契约层）→ 本文件 → alpine.min.js（硬规矩）。
  * 诚信线：各源失败＝如实降级（显示已知部分＋缺失说明），不编造租户/凭证/中文名。
  *
@@ -85,7 +85,7 @@
     return order.sort().map(function (t) { return by[t]; });
   }
   /* 凭证列表联查（P3 弹窗卡双口径）：kid 命中（矩阵行带凭证绑定，如 partner-demo）
-   * ∪ callerId∈本服务租户（矩阵 demo_bank 行不带 kid，其已签发凭证按租户口径关联）。 */
+   * ∪ callerId∈本服务租户（矩阵 demo_merchant 行不带 kid，其已签发凭证按租户口径关联）。 */
   function credsOfService(appkeys, kids, tenants) {
     var want = kids || [];
     var tn = (tenants || []).map(function (x) { return String(x || ''); });

@@ -146,7 +146,7 @@ for i in $(seq 1 30); do
 done
 [ "$code" = 200 ] || die "服务面 30s 未就绪（healthz=${code}，日志见 $WORK/uvicorn.log）"
 ok "最小服务面就绪（uvicorn 127.0.0.1:$PORT_SVC ＋ 一次性 redis :${PORT_REDIS}）"
-AK=$(python3 -c "import yaml; d=yaml.safe_load(open('service/registry/appkeys.yaml')); print(next(k['appkey'] for k in d['keys'] if k.get('tenant')=='demo_bank' and k.get('status','active')=='active'))")
+AK=$(python3 -c "import yaml; d=yaml.safe_load(open('service/registry/appkeys.yaml')); print(next(k['appkey'] for k in d['keys'] if k.get('tenant')=='demo_merchant' and k.get('status','active')=='active'))")
 docker exec oneserve-drill-redis redis-cli SET tags:usr_asset_tag:latest v1 >/dev/null
 docker exec oneserve-drill-redis redis-cli SET 'tags:usr_asset_tag:v1:13000000001' '{"aum_band":"A","dep_bal_band":"B"}' >/dev/null
 docker exec oneserve-drill-redis redis-cli HSET sync:ver:usr_asset_tag:v1 data_as_of "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >/dev/null
@@ -185,7 +185,7 @@ pub_code=$(curl -s -o "$EV/judge2-publish-frozen.json" -w '%{http_code}' -X POST
   http://127.0.0.1:$PORT_SVC/v1/admin/publish -H 'Content-Type: application/json' -d '{
   "serviceName":"drill-frozen","routePath":"/v1/svc/drill-frozen","fieldSpace":"news",
   "fields":[{"name":"aum_band","cf":"cf","type":"string","cnName":"演练冻结态发布"}],
-  "env":"prod","instance":"demo-bank","status":"draft","datasource":"redis",
+  "env":"prod","instance":"demo-merchant","status":"draft","datasource":"redis",
   "oaTicket":"DRILL-FROZEN-001","operator":"drill"}')
 grep -q WRITE_FROZEN "$EV/judge2-publish-frozen.json" || die "发布拒绝体无 WRITE_FROZEN"
 [ "$pub_code" = 503 ] || die "发布拒绝码非 503（${pub_code}）"
@@ -237,7 +237,7 @@ thaw_code=$(curl -s -o "$EV/judge3-thaw-publish.json" -w '%{http_code}' -X POST 
   http://127.0.0.1:$PORT_SVC/v1/admin/publish -H 'Content-Type: application/json' -d '{
   "serviceName":"drill-smoke","routePath":"/v1/svc/drill-smoke","fieldSpace":"news",
   "fields":[{"name":"aum_band","cf":"cf","type":"string","cnName":"演练解冻试写"}],
-  "env":"prod","instance":"demo-bank","status":"draft","datasource":"redis",
+  "env":"prod","instance":"demo-merchant","status":"draft","datasource":"redis",
   "oaTicket":"DRILL-THAW-001","operator":"drill-thaw"}')
 [ "$thaw_code" = 200 ] || die "解冻试写非 200（${thaw_code}）"
 ok "解冻＝试写一笔（冻结为派生态，无独立开关）：POST /v1/admin/publish → 200"

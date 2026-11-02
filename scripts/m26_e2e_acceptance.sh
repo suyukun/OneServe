@@ -139,18 +139,18 @@ export M26_BATCH_DIR="$TMP/batch-results"
 mkdir -p "$M26_AUDIT_DIR" "$M26_RETENTION_DIR" "$M26_BATCH_DIR"
 cp -R service "$M26_SERVICE_DIR"
 
-# 授权矩阵：给本卡新服务登记 demo_bank 白名单（改副本，不碰仓库真文件）
+# 授权矩阵：给本卡新服务登记 demo_merchant 白名单（改副本，不碰仓库真文件）
 $PY - "$M26_SERVICE_DIR/auth_matrix.yaml" "$SID" <<'PYEOF'
 import sys, yaml
 from pathlib import Path
 p = Path(sys.argv[1]); sid = sys.argv[2]
 doc = yaml.safe_load(p.read_text(encoding="utf-8"))
 for row in doc["matrix"]:
-    if row.get("tenant") == "demo_bank":
+    if row.get("tenant") == "demo_merchant":
         row["grants"].append({"service": sid, "endpoint": "/v1/query/" + sid,
                               "fields": ["ac_active_sts_01", "mk_touch_sts_02"]})
 p.write_text(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False), encoding="utf-8")
-print("  · 授权矩阵副本：demo_bank 已登记 %s 白名单" % sid)
+print("  · 授权矩阵副本：demo_merchant 已登记 %s 白名单" % sid)
 PYEOF
 ok "service 目录副本就绪（运行期写副本；仓库真配置零改动）"
 

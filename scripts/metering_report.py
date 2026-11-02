@@ -9,7 +9,7 @@
   - 维度＝租户×服务（×日 / ×月），计数＝审计条目数（不区分成败，全量计入）；
   - appkey→租户、endpoint→服务 的映射取自唯一权威授权矩阵
     service/auth_matrix.yaml（task-008 起管理面读写同一文件，
-    003 的 demo_bank 与新登记条目同源）；
+    003 的 demo_merchant 与新登记条目同源）；
   - 矩阵里查不到的 caller/endpoint：以原值直接作为维度名继续计数并在
     stderr 警告——保证「汇总行 == 审计总条数」恒成立（AC-2 对账口径）；
   - 日期/月份取自审计 ts（UTC ISO8601）前 10 / 前 7 个字符。

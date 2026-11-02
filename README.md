@@ -61,7 +61,7 @@ curl -s -X POST http://localhost:8000/v1/query/v1-svc-usr-basic-info \
 | 租户 | AppKey | 试试 |
 |---|---|---|
 | `partner-demo` | `uat-c49d18ab72e03f55` | `v1-svc-usr-basic-info`，key 用 `demo-partner-0001`（即上面的 curl） |
-| `demo_bank` | `uat-7f3a9c21e5b84d06` | 资产标签类服务（SM3 查询键） |
+| `demo_merchant` | `uat-7f3a9c21e5b84d06` | 资产标签类服务（SM3 查询键） |
 | `demo-1020` | `uat-58b0d2e7a9c14613` | `v1-svc-usr-asset-tag1020` |
 
 <details>
@@ -102,7 +102,7 @@ Built-in demo credentials (all committed demo values):
 | Tenant | AppKey | Try it with |
 |---|---|---|
 | `partner-demo` | `uat-c49d18ab72e03f55` | `v1-svc-usr-basic-info`, key `demo-partner-0001` (the curl above) |
-| `demo_bank` | `uat-7f3a9c21e5b84d06` | asset-tag services (SM3 query keys) |
+| `demo_merchant` | `uat-7f3a9c21e5b84d06` | asset-tag services (SM3 query keys) |
 | `demo-1020` | `uat-58b0d2e7a9c14613` | `v1-svc-usr-asset-tag1020` |
 
 </details>
@@ -263,7 +263,7 @@ docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/servic
 | Type-A KV 点查 + 每租户字段白名单 | `service/app/kv_executor.py`、`service/services.yaml` | 版本化键空间（`tags:<ns>:latest` 别名 + 数据键）；查询键 SM3 哈希 |
 | 网关 AppKey 认证 + 限流 | `docker-compose.yml`（APISIX）、`service/app/ratelimit.py` | key-auth consumer 从凭证注册表同步；按 key 限 QPS/每日配额 |
 | 凭证生命周期（沙箱 / 正式 / 轮换） | `service/app/appkeys.py`、`service/registry/appkeys.yaml.example` | 限时 `sb_` 试用 key、`ak_` 正式 key（OA 工单）、带重叠窗口的轮换；密钥只存 sha256 摘要 |
-| 授权矩阵（OA 授予的租户与字段） | `service/auth_matrix.yaml` | 注册表优先、矩阵兜底；演示租户：`demo_bank`、`partner-demo`、`demo-1020` |
+| 授权矩阵（OA 授予的租户与字段） | `service/auth_matrix.yaml` | 注册表优先、矩阵兜底；演示租户：`demo_merchant`、`partner-demo`、`demo-1020` |
 | 服务发布 + Admin API | `service/app/admin_api.py`、`admin/` | 发布/下线服务、授权、上游；每次写操作都落 admin 事件台账 |
 | Portal 门户 + 服务目录 | `portal/` | 多页门户、服务目录/详情页、管理台（公开、免登录） |
 | 无登录模式（ADR-0029） | `docs/opensource/ADR-0029-开源版无登录模式.md` | 去掉人的登录：门户/管理台开箱即用；机器调用方仍走 AppKey 凭证体系（`/v1/admin/*` 也不例外） |
@@ -283,7 +283,7 @@ docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/servic
 | Type-A KV point query with per-tenant field whitelist | `service/app/kv_executor.py`, `service/services.yaml` | Versioned keyspace (`tags:<ns>:latest` alias + data keys); SM3-hashed query keys |
 | Gateway AppKey auth + rate limiting | `docker-compose.yml` (APISIX), `service/app/ratelimit.py` | key-auth consumers synced from the credential registry; per-key QPS/daily quotas |
 | Credential lifecycle (sandbox / formal / rotation) | `service/app/appkeys.py`, `service/registry/appkeys.yaml.example` | Time-boxed `sb_` trial keys, `ak_` formal keys (OA ticket), rotation with overlap window; secrets stored only as sha256 digests |
-| Auth matrix (OA-granted tenants & fields) | `service/auth_matrix.yaml` | Registry-first auth with matrix fallback; demo tenants: `demo_bank`, `partner-demo`, `demo-1020` |
+| Auth matrix (OA-granted tenants & fields) | `service/auth_matrix.yaml` | Registry-first auth with matrix fallback; demo tenants: `demo_merchant`, `partner-demo`, `demo-1020` |
 | Service publishing & admin API | `service/app/admin_api.py`, `admin/` | Publish/unpublish services, grants, upstreams; every write lands in an admin event ledger |
 | Portal + catalog | `portal/` | Multi-page portal, service catalog/detail pages, admin console (public, no login) |
 | No-login mode (ADR-0029) | `docs/opensource/ADR-0029-开源版无登录模式.md` | Human login removed: portal/admin console open out of the box; machine callers still authenticate via the AppKey credential system (`/v1/admin/*` included) |

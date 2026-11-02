@@ -112,7 +112,7 @@ done
 HBASE_LOGS=$($DOCKER_BIN logs oneserve-e2e-service 2>&1 | grep -c "HBase 连接池就绪" || true)
 [ "$HBASE_LOGS" -ge 1 ] && ok "启动日志含「HBase 连接池就绪」（hbase 型服务在场才建池）" || bad "未见 HBase 连接池日志"
 
-# 5) 经服务查 HBase（正式口径：调用方传 SM3 键；鉴权走授权矩阵 demo_bank 条目）
+# 5) 经服务查 HBase（正式口径：调用方传 SM3 键；鉴权走授权矩阵 demo_merchant 条目）
 KEY=$(python3 -c "import sys; sys.path.insert(0, 'service'); from app.kv_executor import sm3_hex; print(sm3_hex('13800138000'))")
 BODY=$(curl -sS -X POST http://127.0.0.1:18000/v1/hbase/query \
   -H "apikey: oneserve-dev-appkey-001" -H "Content-Type: application/json" \

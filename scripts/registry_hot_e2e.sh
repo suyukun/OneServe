@@ -151,8 +151,8 @@ for i in $(seq 1 30); do
     # 授权登记走既有配置面：控制台签发凭证（P0-4 admin API，显式授权新服务，零代码）
     ISSUE=$(curl -s -X POST "$PORTAL/v1/admin/appkeys" \
       -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" -d '{
-        "tenant": "demo_bank", "app_name": "m235-hot-reload-e2e",
-        "key_type": "sandbox", "caller_name": "demo_bank",
+        "tenant": "demo_merchant", "app_name": "m235-hot-reload-e2e",
+        "key_type": "sandbox", "caller_name": "demo_merchant",
         "oa_ticket": "OA-PENDING-M235",
         "grants": [{"service": "demo_dynamic_query",
                     "fields": ["ac_active_sts_01", "mk_touch_sts_02"]}]}')

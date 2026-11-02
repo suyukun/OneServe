@@ -112,7 +112,7 @@
     /* 2. ID 格式提醒（TENANT_ID_RE 同源） */
     await assert('id-hint', '租户 ID 格式提醒：合法空／非法提示', async function () {
       if (T8.tenantIdFormatHint('') !== '') throw new Error('空串应无提示（必填口径拦截）');
-      if (T8.tenantIdFormatHint('demo_bank') !== '') throw new Error('demo_bank 应合法（容下划线）');
+      if (T8.tenantIdFormatHint('demo_merchant') !== '') throw new Error('demo_merchant 应合法（容下划线）');
       if (T8.tenantIdFormatHint('Bad ID') === '') throw new Error('大写/空格应提示');
       if (T8.tenantIdFormatHint('-abc') === '') throw new Error('首字符连字符应提示');
       return 'ID 格式提醒口径在位';

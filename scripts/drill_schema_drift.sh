@@ -164,7 +164,7 @@ async def main():
     r = aioredis.from_url(os.environ["SYNC_REDIS_URL"], decode_responses=True)
     services = kvx.load_services(); matrix = kvx.load_auth_matrix()
     svc = services["v1-svc-usr-basic-info"]
-    grant = kvx.tenant_grant(matrix, "v1-svc-usr-basic-info", tenant="demo_bank")
+    grant = kvx.tenant_grant(matrix, "v1-svc-usr-basic-info", tenant="demo_merchant")
     raw = await r.get(sd.drift_state_key("v1-svc-usr-basic-info"))
     print("  真实执行前读到状态键：%s" % raw)
     assert sd.is_quarantined(sd.decode_state(raw)), "执行前真 Redis 状态键应为 quarantined"
@@ -236,7 +236,7 @@ async def main():
     r = aioredis.from_url(os.environ["SYNC_REDIS_URL"], decode_responses=True)
     services = kvx.load_services(); matrix = kvx.load_auth_matrix()
     svc = services["v1-svc-usr-basic-info"]
-    grant = kvx.tenant_grant(matrix, "v1-svc-usr-basic-info", tenant="demo_bank")
+    grant = kvx.tenant_grant(matrix, "v1-svc-usr-basic-info", tenant="demo_merchant")
     raw = await r.get(sd.drift_state_key("v1-svc-usr-basic-info"))
     assert sd.decode_state(raw)["state"] == sd.STATE_OK, raw
     out = await kvx.execute(RedisStore(r), svc, grant, KEY)

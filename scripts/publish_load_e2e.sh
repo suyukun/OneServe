@@ -212,7 +212,7 @@ cp -R service "$TMP/service_dir"
 ok "隔离配置：注册表副本起步（携带存量条目不影响本卡独立表空间验证）"
 # 授权矩阵：新服务白名单登记（真源是文件）
 # 2026-09-29 全下线清理把 auth_matrix.yaml 也清成 matrix: []（e4f42b1）——种入脚本
-# 原先只在已有 demo_bank 行上追加 grant，空矩阵下空转 → ⑦ 真调 403 unknown_tenant。
+# 原先只在已有 demo_merchant 行上追加 grant，空矩阵下空转 → ⑦ 真调 403 unknown_tenant。
 # 改为自足种入：缺行则补整行（历史行形状：tenant/appkey/oa_ticket/grants）。
 $PY - "$TMP/service_dir/auth_matrix.yaml" "$SID" <<'PYEOF'
 import sys, yaml
@@ -221,30 +221,30 @@ p = Path(sys.argv[1]); sid = sys.argv[2]
 doc = yaml.safe_load(p.read_text(encoding="utf-8"))
 grant = {"service": sid, "endpoint": "/v1/query/" + sid,
          "fields": ["ac_active_sts_01", "mk_touch_sts_02"]}
-row = next((r for r in doc.get("matrix") or [] if r.get("tenant") == "demo_bank"), None)
+row = next((r for r in doc.get("matrix") or [] if r.get("tenant") == "demo_merchant"), None)
 if row is None:
     doc.setdefault("matrix", []).append({
-        "tenant": "demo_bank", "appkey": "oneserve-dev-appkey-001",
+        "tenant": "demo_merchant", "appkey": "oneserve-dev-appkey-001",
         "oa_ticket": "OA-E2E-PUBLOAD", "grants": [grant]})
     how = "空矩阵起步，补建整行"
 else:
     row.setdefault("grants", []).append(grant)
     how = "存量行追加 grant"
 p.write_text(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False), encoding="utf-8")
-print("  ✓ 授权矩阵：demo_bank 已登记 " + sid + " 白名单（" + how + "）")
+print("  ✓ 授权矩阵：demo_merchant 已登记 " + sid + " 白名单（" + how + "）")
 PYEOF
-# 真调用 AppKey＝矩阵里 demo_bank 行的真实 appkey（B1 重建后是签发凭证 sb_*；
+# 真调用 AppKey＝矩阵里 demo_merchant 行的真实 appkey（B1 重建后是签发凭证 sb_*；
 # 旧演示键 oneserve-dev-appkey-001 已随 9-29 全下线删除，直调会被判 unknown_tenant；
 # 「空矩阵起步补建整行」分支自带演示键，此取值两分支通用）。
 E2E_APPKEY=$($PY - "$TMP/service_dir/auth_matrix.yaml" <<'PYEOF2'
 import sys, yaml
 doc = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
-row = next(r for r in doc.get("matrix") or [] if r.get("tenant") == "demo_bank")
+row = next(r for r in doc.get("matrix") or [] if r.get("tenant") == "demo_merchant")
 print(row.get("appkey", ""))
 PYEOF2
 )
-[ -n "$E2E_APPKEY" ] && ok "真调用 AppKey 就位（demo_bank 行真实凭证 ${E2E_APPKEY:0:8}…）" \
-  || { bad "取不到 demo_bank 的 appkey（矩阵行缺凭证）"; exit 1; }
+[ -n "$E2E_APPKEY" ] && ok "真调用 AppKey 就位（demo_merchant 行真实凭证 ${E2E_APPKEY:0:8}…）" \
+  || { bad "取不到 demo_merchant 的 appkey（矩阵行缺凭证）"; exit 1; }
 # P1-4 口径：鉴权先查签发凭证注册表（appkeys.yaml），命中才回落授权矩阵——
 # 须把本卡新服务 grant 同时种进 service 副本的 appkeys.yaml（真调用凭证所在处），
 # 否则 ⑦ 真调 403 service_not_granted（矩阵有种、凭证注册表没有＝不走回落）。
