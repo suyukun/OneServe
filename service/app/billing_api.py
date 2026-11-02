@@ -46,6 +46,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 import os
 import subprocess
 import time
@@ -62,8 +63,12 @@ from app.admin_api import _admin_gate, _audit_admin_action   # 同闸同挂点�
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+logger = logging.getLogger("oneserve.service")
+
 # ── 页面文案唯一来源（§3.8 边界与降级，随响应下行）──
-MSG_DB_DOWN = "账单库（pg）暂不可达：账单真源在 pg usage schema（不受 META_WRITER 管辖，无 yaml 回落）——稍后重试或联系平台值班。"
+MSG_DB_DOWN = ("月账单依赖元数据库（可选组件），当前环境未接入或账单库（pg）暂不可达："
+               "账单真源在 pg usage schema（不受 META_WRITER 管辖，无 yaml 回落）——"
+               "本页为优雅降级非故障，稍后重试或联系平台值班。")
 MSG_EMPTY = "暂无账期（出账走命令行，见上方引导卡；三硬前置未过会拒并说明原因）。"
 CALIBER = ("双快照口径：逐行用量快照（usage_daily 四键月聚合整值）＋成交单价快照"
            "（出账时点，价目后续改动不改历史账，ADR-0024 决定第 4 条）；"
@@ -103,8 +108,19 @@ class BillingPsql:
         self.env = {**os.environ, "PGPASSWORD": pw} if pw else None
 
     def sql(self, script: str) -> str:
-        p = subprocess.run(self.base, input=script.encode("utf-8"), capture_output=True,
-                           timeout=self.timeout_s, env=self.env, cwd=str(REPO_ROOT))
+        try:
+            p = subprocess.run(self.base, input=script.encode("utf-8"), capture_output=True,
+                               timeout=self.timeout_s, env=self.env, cwd=str(REPO_ROOT))
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            # 通道级失败与 rc≠0 同归 BillingDbError（端点区既有 503 bill_db_unavailable
+            # 降级接住，绝不 500；open-source 收口批）：开源/未接入环境常态＝容器内无
+            # docker CLI／psql 二进制（FileNotFoundError ⊂ OSError 连接类失败一并覆盖），
+            # TimeoutExpired＝通道超时。库未接入≠故障，降级注明口径。
+            logger.warning("billing psql 通道不可用（%s: %s）：月账单依赖元数据库，"
+                           "当前环境未接入——优雅降级 503", type(exc).__name__, exc)
+            raise BillingDbError(
+                "psql 通道不可用（%s: %s）：月账单依赖元数据库，当前环境未接入——"
+                "此为优雅降级非故障。" % (type(exc).__name__, exc)) from exc
         if p.returncode != 0:
             raise BillingDbError("psql rc=%d：%s" % (p.returncode,
                                                      p.stderr.decode("utf-8", "replace")[-800:]))

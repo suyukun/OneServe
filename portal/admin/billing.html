@@ -14,12 +14,12 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 <!-- vendor 底座（全部本地托管，逐件 sha256 见 assets/vendor/SHA256SUMS）：
      Bootstrap 5.3.8（data-bs-theme=dark 深色基线）→ Tabler 1.5.1（组件层，后载覆盖）
      → bootstrap-icons 1.13.1（图标字体，css 内相对引用 fonts/ 保持原结构） -->
-<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=566d0450180c">
-<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=566d0450180c">
-<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=566d0450180c">
-<link rel="stylesheet" href="../assets/tokens.css?v=566d0450180c">
-<link rel="stylesheet" href="../assets/portal.css?v=566d0450180c">
-<link rel="stylesheet" href="../assets/trial.css?v=566d0450180c"><!-- P-2 试用台（仅引用既有令牌） -->
+<link rel="stylesheet" href="../assets/vendor/bootstrap.min.css?v=fcd4355eb770">
+<link rel="stylesheet" href="../assets/vendor/tabler.min.css?v=fcd4355eb770">
+<link rel="stylesheet" href="../assets/vendor/bootstrap-icons.min.css?v=fcd4355eb770">
+<link rel="stylesheet" href="../assets/tokens.css?v=fcd4355eb770">
+<link rel="stylesheet" href="../assets/portal.css?v=fcd4355eb770">
+<link rel="stylesheet" href="../assets/trial.css?v=fcd4355eb770"><!-- P-2 试用台（仅引用既有令牌） -->
 <style>
   /* ── 独立简化深色样式（同 admin/grants 页惯例；不依赖组件库） ── */
   :root {
@@ -122,16 +122,16 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
      及壳内全部本地 .js/.css 引用追加 ?v=<内容指纹> 版本参数，旧缓存 URL 自然失效。
      本注释刻意保留未版本化 src 字样（构建期不受版本参数改写），作为加载序门禁的
      产物级检索锚点，勿删。 -->
-<script defer src="../site-gate.js?v=566d0450180c"></script>
-<script defer src="../data-format.js?v=566d0450180c"></script>
-<script defer src="../api.js?v=566d0450180c"></script>
-<script defer src="../assets/app.js?v=566d0450180c"></script>
-<script defer src="../assets/trial.js?v=566d0450180c"></script>
+<script defer src="../site-gate.js?v=fcd4355eb770"></script>
+<script defer src="../data-format.js?v=fcd4355eb770"></script>
+<script defer src="../api.js?v=fcd4355eb770"></script>
+<script defer src="../assets/app.js?v=fcd4355eb770"></script>
+<script defer src="../assets/trial.js?v=fcd4355eb770"></script>
 
-<script defer src="../assets/pages.js?v=566d0450180c"></script>
-<script defer src="../assets/detail.js?v=566d0450180c"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
-<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=566d0450180c"></script>
-<script defer src="../assets/vendor/tabler.min.js?v=566d0450180c"></script>
+<script defer src="../assets/pages.js?v=fcd4355eb770"></script>
+<script defer src="../assets/detail.js?v=fcd4355eb770"></script><!-- P0-2 API 详情页组件（仅 catalog/ 服务壳激活） -->
+<script defer src="../assets/vendor/bootstrap.bundle.min.js?v=fcd4355eb770"></script>
+<script defer src="../assets/vendor/tabler.min.js?v=fcd4355eb770"></script>
 
 </head>
 <body class="os-layout" x-data="billingAdmin()" x-init="boot()">
@@ -445,7 +445,7 @@ window.onerror=function(m,s,l,c){var b=document.getElementById('js-canary')||doc
 </footer>
 
 </div>
-<script defer src="admin-gate.js?v=566d0450180c"></script>
+<script defer src="admin-gate.js?v=fcd4355eb770"></script>
 <script>
 function billingAdmin() {
   return {
@@ -508,7 +508,7 @@ function billingAdmin() {
         if (d.status === 'empty' && d.message) this.stateMessage = d.message;
       } catch (e) {
         this.items = []; this.total = 0; this.summary = null;
-        this.stateMessage = e.status === 503 ? '账单库（pg）暂不可达：账单真源在 pg usage schema（无 yaml 回落）——稍后重试或联系平台值班。' : e.message;
+        this.stateMessage = e.status === 503 ? '月账单依赖元数据库（可选组件），当前环境未接入或账单库（pg）暂不可达（无 yaml 回落）——本页为优雅降级，稍后重试或联系平台值班。' : e.message;
       } finally { this.busy = false; }
     },
 
@@ -587,6 +587,6 @@ function billingAdmin() {
   };
 }
 </script>
-<script defer src="../assets/alpine.min.js?v=566d0450180c"></script>
+<script defer src="../assets/alpine.min.js?v=fcd4355eb770"></script>
 </body>
 </html>

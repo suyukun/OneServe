@@ -394,5 +394,18 @@ def test_db_down_degraded_503(stack, client, monkeypatch):
     assert r.status_code == 503 and r.json()["error"] == E.BILL_DB_UNAVAILABLE
 
 
+def test_channel_missing_degraded_503(client, monkeypatch):
+    """⑤b 通道二进制缺席（开源/未接入环境常态：容器内无 docker CLI）＝通道级
+    FileNotFoundError 亦降级 503（bill_db_unavailable），绝不 500——收口批实测
+    GET periods 曾因 docker 缺席裸抛 500，本用例锁死该路径（零 docker 依赖可跑）。"""
+    monkeypatch.setenv("BILLING_PSQL_BASE", "/nonexistent-billing-probe/psql -U x -d x")
+    r = client.get("/v1/admin/billing/periods")
+    assert r.status_code == 503 and r.json()["error"] == E.BILL_DB_UNAVAILABLE, r.text[:200]
+    assert "未接入" in r.json()["message"] and "无 yaml 回落" in r.json()["message"], r.text[:200]
+    r = client.post("/v1/admin/billing/periods/%s/confirm" % PERIOD_MAIN,
+                    json={"oa_ticket": "OA-X"})
+    assert r.status_code == 503 and r.json()["error"] == E.BILL_DB_UNAVAILABLE
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

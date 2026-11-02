@@ -95,6 +95,10 @@ bash scripts/run_gates.sh
 python -m pytest -q
 ```
 
+For the CI-equivalent commands, the measured baseline, and which test
+families depend on artifacts outside this tree (they skip gracefully,
+no manual deselect needed), see [TESTING.md](TESTING.md).
+
 A pull request is not ready for review until:
 
 - [ ] `bash scripts/run_gates.sh` passes with no failures.

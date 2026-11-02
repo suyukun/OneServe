@@ -385,7 +385,7 @@ function billingAdmin() {
         if (d.status === 'empty' && d.message) this.stateMessage = d.message;
       } catch (e) {
         this.items = []; this.total = 0; this.summary = null;
-        this.stateMessage = e.status === 503 ? '账单库（pg）暂不可达：账单真源在 pg usage schema（无 yaml 回落）——稍后重试或联系平台值班。' : e.message;
+        this.stateMessage = e.status === 503 ? '月账单依赖元数据库（可选组件），当前环境未接入或账单库（pg）暂不可达（无 yaml 回落）——本页为优雅降级，稍后重试或联系平台值班。' : e.message;
       } finally { this.busy = false; }
     },
 
