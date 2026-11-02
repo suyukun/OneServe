@@ -25,12 +25,12 @@
   网关 key-auth/限流/网关侧审计语义零变化。
 - **开源物料**：`LICENSE`（Apache-2.0）、`NOTICE`（依赖与镜像许可清单）、
   `CONTRIBUTING.md`、`SECURITY.md`、本 `CHANGELOG.md`。
-- **决策记录草稿**：KV 镜像由 Redis 替换为 Valkey（`docs/opensource/ADR-0028-Valkey替换.md`）；
-  开源版无登录模式（`docs/opensource/ADR-0029-开源版无登录模式.md`）。
+- **决策记录草稿**：KV 镜像由 Redis 替换为 Valkey（决策记录内部存档）；
+  开源版无登录模式（决策记录内部存档）。
 
 ### Changed
 
-- **无登录模式（ADR-0029，维护者 2026-10-28 拍板）**：开源版彻底拆除人机登录——
+- **无登录模式（维护者 2026-10-28 拍板）**：开源版彻底拆除人机登录——
   打开门户就是首页，管理台公开可访、无任何人机登录/账号概念（开箱即用演示优先）。
   参考栈由 9 容器收口为 6 容器（etcd/apisix/redis/service/batch-worker/portal，
   统一登录三服务与配套卷/探针/路由全数退役）；`.env.example` 与 compose 的登录链
@@ -51,7 +51,7 @@
 
 ### Removed
 
-- **登录尸体模块清理（v0.1.1，ADR-0029 §7 兑现）**：删除 `service/app/auth_oidc.py`/
+- **登录尸体模块清理（v0.1.1，无登录模式决策 §7 兑现）**：删除 `service/app/auth_oidc.py`/
   `auth_native.py`/`admin_accounts.py`/`audit_casdoor_puller.py`、`service/users.yaml`
   及对应测试套件（test_auth_oidc/test_auth_native/test_accounts_admin/
   test_audit_login_consume）；admin 写闸 `require_login`/W4 角色裁决挂点与
@@ -74,8 +74,8 @@
 | 里程碑 | 状态 | 说明 |
 |---|---|---|
 | 一键开箱（demo 档默认＋演示数据自动灌） | 已实施 | 三步起栈全功能可用；full 档（6 服务）经 `--profile full`/`up.sh` |
-| 无登录模式（ADR-0029，去人机登录） | 已实施 | 登录链路整体拆除（页面/端点/编排/凭证键）；模块尸体已于 v0.1.1 兑现清理 |
-| 开源准备 | 进行中 | 物料已起草；依赖许可逐包机器复核、敏感词自检、镜像许可替换（ADR-0028）待完成 |
+| 无登录模式（去人机登录） | 已实施 | 登录链路整体拆除（页面/端点/编排/凭证键）；模块尸体已于 v0.1.1 兑现清理 |
+| 开源准备 | 进行中 | 物料已起草；依赖许可逐包机器复核、敏感词自检、镜像许可替换待完成 |
 | 首次公开发布 | 未开始 | 判据：第三方可独立复现 quickstart |
 
 ## [0.1.0] - 待定 (TBD)

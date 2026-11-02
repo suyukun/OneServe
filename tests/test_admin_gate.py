@@ -4,7 +4,7 @@
 
 决策史（拆一次建一次都有留痕）：管理令牌闸三段史（2026-09-23 拆→2026-10-09 恢复→
 2026-10-14 再拆，ADR-0010）→ OIDC 登录闭环（2026-10-14~15，ADR-0010 硬前提兑现）→
-【无登录模式 ADR-0029，维护者 2026-10-28 拍板】开源版彻底拆除人机登录：admin-gate.js
+【无登录模式决策，维护者 2026-10-28 拍板】开源版彻底拆除人机登录：admin-gate.js
 整文件替换为最小空壳——保留文件名（各管理页 HTML 有 script 引用，避免逐页删标签），
 不做任何拦截/跳转/令牌校验；AppKey 凭证体系仍在 /v1/admin/* 生效（机器鉴权不回退）。
 历史形态见 git 史。
@@ -69,8 +69,8 @@ def test_sidebar_admin_entries_resolve():
         assert f'href="{href}"' in sidebar, f"侧栏缺入口 {href}"
         target = REPO / "portal" / href
         assert target.is_file(), f"侧栏死链：{href} 目标不存在"
-    # 无登录模式（ADR-0029）：账号管理项与「仅 admin 可见」解锁属性不得回潮
-    assert "accounts.html" not in sidebar, "侧栏不得残留账号管理入口（ADR-0029 已拆）"
+    # 无登录模式（无登录模式决策）：账号管理项与「仅 admin 可见」解锁属性不得回潮
+    assert "accounts.html" not in sidebar, "侧栏不得残留账号管理入口（无登录模式决策 已拆）"
     assert "data-os-admin-only" not in sidebar, "侧栏不得残留按角色解锁属性（无登录模式）"
 
 
@@ -85,7 +85,7 @@ def test_admin_pages_crumb_backlink():
             f"{name} 面包屑缺当前页标识/页名"
 
 
-# ── 2. admin-gate.js＝无登录模式空壳（ADR-0029） ──
+# ── 2. admin-gate.js＝无登录模式空壳（无登录模式决策） ──
 
 GATE_IDS = ("admin-token-input", "admin-token-save", "gate-banner",
             "gate-banner-text", "token-error", "dev-token-hint")
@@ -114,7 +114,7 @@ def test_gate_script_loads_before_page_js():
 
 
 def test_admin_gate_is_no_login_shell():
-    """ADR-0029：admin-gate.js 为无登录模式空壳——零拦截零跳转零令牌语义。
+    """无登录模式决策：admin-gate.js 为无登录模式空壳——零拦截零跳转零令牌语义。
 
     静态口径（剥注释后判代码）：不含登录页常量/跳转函数/fetch 包装器/OIDC 键名；
     保留最小导出面（页面 js 消费契约：adminHeaders 恒空对象、verifyToken 恒 ok、
@@ -131,7 +131,7 @@ def test_admin_gate_is_no_login_shell():
     assert "TOKEN_KEY" in js and "VERIFY_URL" in js, "令牌常量保留（导出面契约）"
     assert "escapeHtml: escapeHtml," in raw, "须导出 escapeHtml（selftest 渲染基线）"
     # 无登录模式声明注释在案（决策可追溯）
-    assert "无登录模式" in raw and "ADR-0029" in raw, "空壳须带无登录模式碑注"
+    assert "无登录模式" in raw and "无登录模式决策" in raw, "空壳须带无登录模式碑注"
 
 
 _SHELL_HARNESS = """
@@ -190,7 +190,7 @@ def test_admin_gate_shell_behavior():
 
 
 def test_no_login_page_references_in_admin_pages():
-    """管理源页与产物零登录页引用：login.html/auth-callback.html 已随 ADR-0029 删除。"""
+    """管理源页与产物零登录页引用：login.html/auth-callback.html 已随 无登录模式决策 删除。"""
     for p in sorted(ADMIN_SRC.rglob("*.html")) + sorted(ADMIN_OUT.rglob("*.html")):
         html = _read(p)
         assert "login.html" not in html, f"{p.relative_to(REPO)} 残留 login.html 引用"
@@ -212,7 +212,7 @@ def test_page_js_no_token_gate_and_no_token_header():
 
 
 def test_backend_admin_gate_skeleton_kept():
-    """后端闸挂点骨架保留（恒放行态；v0.1.1 清尸体后口径，ADR-0029 §7 兑现）：
+    """后端闸挂点骨架保留（恒放行态；v0.1.1 清尸体后口径，无登录模式决策 §7 兑现）：
     _admin_gate 挂点与 router 级依赖仍在（防漏挂设计不回退）；写方法 require_login/
     角色裁决挂点已随 auth_oidc.py 清理摘除（活引用归零，碑注文字除外）；
     errors.UNAUTHORIZED 契约保留。"""
@@ -220,7 +220,7 @@ def test_backend_admin_gate_skeleton_kept():
     assert "def _admin_gate" in py, "admin_api 须保留闸挂点骨架"
     assert "dependencies=[Depends(_admin_gate)]" in py, "router 挂点须保留（防漏挂设计）"
     assert "from app import auth_oidc" not in py and "await auth_oidc." not in py, \
-        "auth_oidc 活引用残留（v0.1.1 已随登录清理删除，ADR-0029 §7；碑注文字除外）"
+        "auth_oidc 活引用残留（v0.1.1 已随登录清理删除，无登录模式决策 §7；碑注文字除外）"
     mon = _read(REPO / "service" / "app" / "monitor_api.py")
     assert "from app.admin_api import _admin_gate" in mon and "Depends(_admin_gate)" in mon, \
         "monitor 三端点须与 admin API 同一挂点"

@@ -437,7 +437,7 @@ def test_tenants_routes_ast_and_role_guard():
     """五端点注册齐全（§1.4）；新增端点漏挂＝红。
 
     （原 ROUTE_MIN_ROLE 五行断言随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，
-    ADR-0029 §7。）"""
+    无登录模式决策 §7。）"""
     import ast as _ast
     src = (REPO / "service" / "app" / "tenants_api.py").read_text(encoding="utf-8")
     tree = _ast.parse(src)

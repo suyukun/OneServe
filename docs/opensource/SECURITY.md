@@ -81,7 +81,7 @@ was exposed, rotate it first, then report.
 This project is a general-purpose data service platform. It is not a
 compliance control for any regulated industry.
 
-Per `docs/opensource/ADR-0029-开源版无登录模式.md`, this distribution ships with
+This distribution ships with
 **no human login**: the portal and admin console are public by design, and the
 trust boundary for who may reach them is the deployer's network layer (intranet,
 security groups, or a fronting reverse proxy with access control). Machine

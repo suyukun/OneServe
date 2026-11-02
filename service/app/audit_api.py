@@ -24,7 +24,7 @@ from app import my_access as mya
 
 # 【v0.1.1 清理】W4 角色闸休眠挂点（矩阵域6「审计查看」operator 地板，原
 # Depends(auth_oidc.require_role(...))）已随 auth_oidc.py 删除摘除——off 态恒
-# 放行，行为零变化（ADR-0029 §7 兑现）。
+# 放行，行为零变化（无登录模式决策 §7 兑现）。
 router = APIRouter()
 
 

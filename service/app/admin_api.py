@@ -119,7 +119,7 @@ async def _admin_gate(request: Request) -> None:
     校验作**双保险**（墙失效时不裸奔），并按 ROUTE_MIN_ROLE 权限矩阵做角色
     裁决（写路由 min_role 漏标由清单测试拦截；不足 403 role_forbidden）。
     AUTH_OIDC_MODE=off 时全放行（宿主机单测/裸跑口径，语义同恒放行期）。
-    第六段（2026-10-29·v0.1.1 清尸体，ADR-0029 §7 兑现）：第四/五段的写方法
+    第六段（2026-10-29·v0.1.1 清尸体，无登录模式决策 §7 兑现）：第四/五段的写方法
     require_login 与 W4 角色裁决挂点随 auth_oidc.py 删除一并摘除，本闸回归
     纯恒放行（挂点骨架保留，防漏挂设计不回退）。
     前三段史（拆→恢复→再拆）见 ADR-0010；X-Admin-Token 恢复形态见 git bcf34f8。

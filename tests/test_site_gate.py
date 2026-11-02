@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""site-gate.js 空壳守卫套件（无登录模式 ADR-0029，tests/test_site_gate.py）。
+"""site-gate.js 空壳守卫套件（无登录模式决策，tests/test_site_gate.py）。
 
 历史沿革：W2 整站登录守卫（2026-10-15 设计稿 A2/A3/A4：401 驱动＋本地 exp 预判＋
 无感刷新＋admin 导航解锁）随无登录模式（维护者 2026-10-28 拍板）整体拆除；本文件
@@ -94,7 +94,7 @@ globalThis.document = {
 
 
 def test_site_gate_is_no_login_shell():
-    """ADR-0029：site-gate.js 为空壳——零跳转、零请求、零 token 读写、零 DOM 操作、
+    """无登录模式决策：site-gate.js 为空壳——零跳转、零请求、零 token 读写、零 DOM 操作、
     不包装 fetch（全局 fetch 保持原样）、不再导出 SiteGate 行为面。"""
     out = _run_node(_SHELL_HARNESS, GATE)
     assert out["navigated"] == "", "空壳不得发生任何跳转"
@@ -113,7 +113,7 @@ def test_site_gate_static_no_login_machinery():
                    "oneserve-oidc-token", "oneserve-auth-return", "revealAdminOnly",
                    "isAdmin", "tryRefresh", "XMLHttpRequest"):
         assert absent not in js, f"site-gate.js 空壳不得含登录机制代码：{absent}"
-    assert "无登录模式" in raw and "ADR-0029" in raw, "空壳须带无登录模式碑注"
+    assert "无登录模式" in raw and "无登录模式决策" in raw, "空壳须带无登录模式碑注"
 
 
 # ── 2. 加载序门禁（产物级复断言） ──
@@ -155,7 +155,7 @@ def test_selftest_pages_gate_wired():
                        default=-1)
         assert first_js < 0 or pos_gate < first_js, f"{rel} site-gate.js 须先于页面脚本装载"
         assert "login.html" not in html and "auth-callback" not in html, \
-            f"{rel} 残留登录页引用（ADR-0029 已拆）"
+            f"{rel} 残留登录页引用（无登录模式决策 已拆）"
 
 
 # ── 3. api.js mock 降级行为（非 auth 失败照旧降级） ──

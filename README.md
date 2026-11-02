@@ -38,7 +38,7 @@ open http://localhost:8000
 
 > **国内网络提示**：Docker Hub 直连拉取可能超时——请先配置镜像加速（如 `docker.m.daocloud.io`），或手动拉取 compose 引用的镜像后再起栈。
 
-就这么多。首次运行会构建服务镜像（约 1-2 分钟；之后再启动只要几秒）。页面打开后，下面这些全部零手工步骤、无需登录即可用（无登录模式，见 [ADR-0029](docs/opensource/ADR-0029-开源版无登录模式.md)）：
+就这么多。首次运行会构建服务镜像（约 1-2 分钟；之后再启动只要几秒）。页面打开后，下面这些全部零手工步骤、无需登录即可用（无登录模式）：
 
 - **Portal 门户**：http://localhost:8000 —— 首页 KPI、服务目录、API 详情、接口调试 (Trial)、文档、公告。
 - **Admin 管理台**：http://localhost:8000/admin/ —— 发布、appkeys、授权、租户、监控、压测、版本、计费、上游，公开、免登录。
@@ -79,7 +79,7 @@ open http://localhost:8000
 
 > **Mainland China network note**: Docker Hub pulls may time out — configure a registry mirror (e.g. `docker.m.daocloud.io`) first, or pull the images referenced by compose manually before `up`.
 
-That is the whole setup. The first run builds the service image (~1-2 minutes; later starts take seconds). When the page opens, **everything below works with zero manual steps and no login** (no-login mode, [ADR-0029](docs/opensource/ADR-0029-开源版无登录模式.md)):
+That is the whole setup. The first run builds the service image (~1-2 minutes; later starts take seconds). When the page opens, **everything below works with zero manual steps and no login** (no-login mode):
 
 - **Portal** at http://localhost:8000 — home KPIs, service catalog, API details, trial console (接口调试), docs, announcements.
 - **Admin console** at http://localhost:8000/admin/ — publish, appkeys, grants, tenants, monitor, load, versions, billing, upstreams: public, no login.
@@ -150,7 +150,7 @@ bash scripts/up.sh          # cp .env.example .env (first run) -> docker compose
 
 | 入口 | URL | 说明 |
 |---|---|---|
-| Portal + Admin 管理台 | http://localhost:8000 | 公开、免登录（ADR-0029）：打开门户就是首页，管理台直接可用 |
+| Portal + Admin 管理台 | http://localhost:8000 | 公开、免登录：打开门户就是首页，管理台直接可用 |
 | 网关（机器数据面） | http://localhost:9080 | `/v1/query/*`、`/v1/tags/query`、`/v1/batch/*`、`/proxy/*` —— AppKey 认证，无登录 |
 
 <details>
@@ -210,7 +210,7 @@ Brings up all 6 containers: `etcd`, `redis`, `apisix`, `service`, `batch-worker`
 
 | Entry | URL | Notes |
 |---|---|---|
-| Portal + admin console | http://localhost:8000 | Public, no login (ADR-0029): open the portal and you are on the home page; the admin console is directly usable |
+| Portal + admin console | http://localhost:8000 | Public, no login: open the portal and you are on the home page; the admin console is directly usable |
 | Gateway (machine data plane) | http://localhost:9080 | `/v1/query/*`, `/v1/tags/query`, `/v1/batch/*`, `/proxy/*` — AppKey self-auth, no login |
 
 **Manual setup (without Docker)** — the old two-terminal quickstart, for developing against a local Redis
@@ -266,7 +266,6 @@ docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/servic
 | 授权矩阵（OA 授予的租户与字段） | `service/auth_matrix.yaml` | 注册表优先、矩阵兜底；演示租户：`demo_merchant`、`partner-demo`、`demo-1020` |
 | 服务发布 + Admin API | `service/app/admin_api.py`、`admin/` | 发布/下线服务、授权、上游；每次写操作都落 admin 事件台账 |
 | Portal 门户 + 服务目录 | `portal/` | 多页门户、服务目录/详情页、管理台（公开、免登录） |
-| 无登录模式（ADR-0029） | `docs/opensource/ADR-0029-开源版无登录模式.md` | 去掉人的登录：门户/管理台开箱即用；机器调用方仍走 AppKey 凭证体系（`/v1/admin/*` 也不例外） |
 | 审计管道 + 用量计量 | `service/app/audit.py`、`scripts/audit_consumer.py`、`service/app/metering.py` | JSONL / Kafka / 双写；按调用方 × 服务 × 天聚合，所有视图里 AppKey 一律打码 |
 | 元数据库镜像（PostgreSQL） | `migrations/`、`scripts/meta_migrate.py`、`scripts/meta_reconcile.py` | YAML 注册表灌入元数据库；三方对账 + 快照导出 |
 | 批量交付 | `service/app/batch_api.py`、`service/app/batch_worker.py` | 异步批量查询，带配额、快照和结果文件 |
@@ -286,7 +285,6 @@ docker buildx build --platform linux/arm64 -f Dockerfile.prod -t oneserve/servic
 | Auth matrix (OA-granted tenants & fields) | `service/auth_matrix.yaml` | Registry-first auth with matrix fallback; demo tenants: `demo_merchant`, `partner-demo`, `demo-1020` |
 | Service publishing & admin API | `service/app/admin_api.py`, `admin/` | Publish/unpublish services, grants, upstreams; every write lands in an admin event ledger |
 | Portal + catalog | `portal/` | Multi-page portal, service catalog/detail pages, admin console (public, no login) |
-| No-login mode (ADR-0029) | `docs/opensource/ADR-0029-开源版无登录模式.md` | Human login removed: portal/admin console open out of the box; machine callers still authenticate via the AppKey credential system (`/v1/admin/*` included) |
 | Audit pipeline + usage metering | `service/app/audit.py`, `scripts/audit_consumer.py`, `service/app/metering.py` | JSONL / Kafka / dual sinks; per-caller x per-service x per-day aggregation, masked appkeys in every view |
 | Meta database twin (PostgreSQL) | `migrations/`, `scripts/meta_migrate.py`, `scripts/meta_reconcile.py` | YAML registries loaded into a meta DB; three-way reconcile + snapshot export |
 | Batch delivery | `service/app/batch_api.py`, `service/app/batch_worker.py` | Asynchronous bulk queries with quota, snapshots and result files |

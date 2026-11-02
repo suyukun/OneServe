@@ -16,7 +16,7 @@
 #      专属卷 oneserve-prod-*、宿主口 20080（网关）/20000（门户），dev 与 m26 一律不碰。
 #   ③ 网络别名 oneserve-etcd/-redis/-apisix/-service：dev compose
 #      与 configs/ 里硬编码的容器名 DNS 在本栈网络内解析到 prod 容器——init_routes 上游
-#      节点名、网关统计钩子、nginx resolver 一字不改（原统一登录两别名已随 ADR-0029 移除）。
+#      节点名、网关统计钩子、nginx resolver 一字不改（原统一登录两别名已随无登录模式决策移除）。
 # 环境变量沿用根 .env（与 dev 同源）。部署地址参数化（2026-10-20 ECS 快验批）：
 #   PROD_BIND_IP          宿主端口绑定地址，缺省 127.0.0.1（回环安全）；ECS 外部访问设 0.0.0.0。
 #   PROD_PUBLIC_ORIGIN    浏览器可达部署地址（默认 http://localhost:8000；无登录模式下仅作站点对外地址参考）。
@@ -104,7 +104,7 @@ services:
         aliases:
           - oneserve-redis             # service 的 REDIS_URL + 网关统计钩子连接名
 
-  # ---------- 【无登录模式 ADR-0029·已删】统一登录三服务 prod 覆盖块随登录拆除移除 ----------
+  # ---------- 【无登录模式决策·已删】统一登录三服务 prod 覆盖块随登录拆除移除 ----------
   # （casdoor-db / casdoor / casdoor-init＋网络别名 oneserve-casdoor*；历史形态见 git 史）。
 
   # ---------- 薄服务层：FastAPI（源码进镜像，零 bind） ----------

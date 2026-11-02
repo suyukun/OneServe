@@ -16,7 +16,7 @@
      · 沙箱租户只读 → 409；
      · 两段式停用流：缺 confirm 拒（400）、带 confirm 落 revoked、可再启用；
   3. 无登录放行（TestClient 裸请求直达业务校验；原 on 态角色矩阵用例随 v0.1.1
-     登录清理退役，ADR-0029 §7）；
+     登录清理退役，无登录模式决策 §7）；
   4. OA 口径防回潮：零 OA 对接代码（grep 同款断言：无 oa api / requests/httpx）。
 
 运行：python3 -m pytest tests/test_grants_admin.py -q（宿主机依赖 fastapi/httpx 的
@@ -354,10 +354,10 @@ def _grants_app(tmp_path):
 
 @pytest.mark.skipif(not _HAS_FASTAPI, reason="依赖缺席：fastapi/httpx")
 def test_write_passthrough_no_login(tmp_path):
-    """无登录模式恒放行：裸请求直达业务校验（ADR-0029；v0.1.1 起）。
+    """无登录模式恒放行：裸请求直达业务校验（无登录模式决策；v0.1.1 起）。
 
     原 on 态角色矩阵用例（无令牌 401／viewer 403 role_forbidden／admin 200，
-    RS256/JWKS 桩）随 v0.1.1 登录清理退役（ADR-0029 §7）；保留放行反断言防回潮。
+    RS256/JWKS 桩）随 v0.1.1 登录清理退役（无登录模式决策 §7）；保留放行反断言防回潮。
     """
     client = TestClient(_grants_app(tmp_path))
     r = client.post("/v1/admin/grants", json={"action": "upsert"})

@@ -202,7 +202,7 @@ def test_ast_contract_guard_routes():
     """AST 契约守卫：七路由清单不漂移（设计 4 条＋命中预演/覆盖率/选择器 3 条只读）。
 
     （原 ROUTE_MIN_ROLE 地板断言随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，
-    ADR-0029 §7。）"""
+    无登录模式决策 §7。）"""
     rows = _enumerate_pricing_routes()
     assert len(rows) == 7, f"端点族应恰 7 条（设计 4 条＋命中预演/覆盖率/选择器 3 条只读）：{rows!r}"
 
@@ -210,7 +210,7 @@ def test_ast_contract_guard_routes():
 def test_ast_contract_guard_gate_and_engine_anchor():
     """守卫续：router 级挂 _admin_gate＋引擎匹配键锚点＋归一同源复用锚点（收口批）。
 
-    （原挂闸模块清单守卫随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，ADR-0029 §7。）"""
+    （原挂闸模块清单守卫随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，无登录模式决策 §7。）"""
     src = (REPO / "service" / "app" / "pricing_api.py").read_text(encoding="utf-8")
     assert "router = APIRouter(dependencies=[Depends(_admin_gate)])" in src, "router 级挂 _admin_gate"
     engine_src = (REPO / "scripts" / "billing_run.py").read_text(encoding="utf-8")
@@ -613,4 +613,4 @@ def _dt_dec(s):
 
 
 # （原 test_role_matrix_viewer_operator_admin——§2.10-7 域9 on 态角色矩阵——随
-#   v0.1.1 登录清理退役，ADR-0029 §7；价目写入覆盖由上方 CRUD/验证负例各用例承担。）
+#   v0.1.1 登录清理退役，无登录模式决策 §7；价目写入覆盖由上方 CRUD/验证负例各用例承担。）

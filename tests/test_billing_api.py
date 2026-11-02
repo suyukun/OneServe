@@ -205,7 +205,7 @@ def test_ast_contract_routes_gate_matrix_and_readonly():
     """端点六条＝§3.5 清单＋挂闸字面量＋无出账触发＋页面线框。
 
     （原 ROUTE_MIN_ROLE 六行断言随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，
-    ADR-0029 §7。）"""
+    无登录模式决策 §7。）"""
     src = (REPO / "service" / "app" / "billing_api.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     routes = set()
@@ -321,7 +321,7 @@ def test_zero_yuan_e2e_confirm_register_csv(stack, client):
     assert ("bill_export", "ok") in pairs and ("bill_confirm", "denied") in pairs, pairs
 
 
-# ── ③ 确认＋欠费标记展示（§3.10-6；原 on 态角色矩阵随 v0.1.1 登录清理退役，ADR-0029 §7） ──
+# ── ③ 确认＋欠费标记展示（§3.10-6；原 on 态角色矩阵随 v0.1.1 登录清理退役，无登录模式决策 §7） ──
 
 @pytest.mark.skipif(not _HAS_FASTAPI, reason="依赖缺席：fastapi/httpx")
 def test_confirm_and_overdue_mark_readonly_display(stack):
@@ -329,7 +329,7 @@ def test_confirm_and_overdue_mark_readonly_display(stack):
     overdue 徽标位翻转；端点枚举①已守卫无标记端点）。
 
     原 on 态角色矩阵用例（无令牌 401／viewer 读导出 200、confirm 403 role_forbidden／
-    admin confirm 200，RS256/JWKS 桩）随 v0.1.1 登录清理退役（ADR-0029 §7）；
+    admin confirm 200，RS256/JWKS 桩）随 v0.1.1 登录清理退役（无登录模式决策 §7）；
     确认与欠费标记展示覆盖保留（无登录态＝原 admin/viewer 通路并一）。
     """
     client = TestClient(_app())

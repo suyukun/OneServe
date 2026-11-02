@@ -10,7 +10,7 @@
 `ERROR collecting tests/conftest.py`，整轮 pytest 非零退出，不会被任何 skip 兜住：
   · redis  —— service/app/main.py 顶层裸 import redis.asyncio（缺它 11 个文件收集中断）
   · yaml   —— services.yaml / auth_matrix.yaml 解析（tests+service 共 20 个文件顶层裸 import）
-（bcrypt/jwt 曾为登录套件 fail-loud 守卫；登录模块已随 v0.1.1 清理删除，ADR-0029 §7。）
+（bcrypt/jwt 曾为登录套件 fail-loud 守卫；登录模块已随 v0.1.1 清理删除，无登录模式决策 §7。）
 
 边界：只做 import 断言，不注入 fixture、不改任何测试行为、不接管 skip 逻辑。
 依赖清单版本＝requirements-dev.txt（固化版，Python 3.13 实测基线）。

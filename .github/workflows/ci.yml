@@ -150,7 +150,7 @@ jobs:
             sleep 0.25
           done
           docker exec oneserve-ci-redis redis-cli ping | grep -q PONG
-          # service 环境变量对齐自测脚本：网关指向不可达占位（无登录模式 ADR-0029 起
+          # service 环境变量对齐自测脚本：网关指向不可达占位（无登录模式决策 起
           # 登录相关开关已随代码缺省移除）
           # （APISIX_ADMIN_KEY 是显式占位值 ci-placeholder，仅用于进程启动，非真实凭证）。
           docker run -d --name oneserve-ci-service --network oneserve-ci-net \

@@ -8,7 +8,7 @@
 //      ＋ compose.metadata.yml（元数据库叠加栈，2026-10-21 起纳入——1b 批已实施，保持图=真相）。
 //      不入对账：compose.m26-iso.yml、compose.sync.yml（一次性起撤临时栈，deployment.c4 头注已声明）。
 //   3. 容器名→service 名映射（kebab 差异）：batchWorker→batch-worker、
-//      metadataDb→metadata-db，其余 1:1（原统一登录两映射已随 ADR-0029 移除）。
+//      metadataDb→metadata-db，其余 1:1（原统一登录两映射已随 无登录模式决策 移除）。
 //   4. 双向比对：
 //      图有 compose 无 ＝ 疑似过期图（模型该删）；
 //      compose 有 图无 ＝ 疑似漏画（模型该补；一次性 init job 亦计入，如实暴露）。

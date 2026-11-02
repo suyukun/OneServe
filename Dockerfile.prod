@@ -40,7 +40,7 @@ COPY scripts/meta_migrate.py /app/scripts/meta_migrate.py
 COPY --chown=10001:10001 loadtest/ /app/loadtest/
 # 网关初始化脚本（dev 为 ro 挂载 /init，prod 进镜像同路径）
 COPY configs/apisix/ /init/
-# 【无登录模式 ADR-0029·已删】原统一登录 bootstrap 脚本（configs/casdoor →
+# 【无登录模式决策·已删】原统一登录 bootstrap 脚本（configs/casdoor →
 # /opt/casdoor-init）随登录拆除移除；历史形态见 git 史。
 
 # 非 root 运行：运行态写区归 oneserve（/app 签发写回/console 写区 + /data 三卷挂点）

@@ -53,12 +53,12 @@ from app import proxy_hub                  # B 型代理中枢（2026-10-15 自�
 from app import stats as live_stats
 from app import admin_api   # P0-4：凭证发放/热加载端点（/v1/admin/*）；2026-10-09 闸异常类
 from app.admin_api import router as admin_router   # /v1/admin/*：凭证发放/禁用/热加载/装载/发布
-# 【无登录模式 ADR-0029·已摘接线】开源版拆除人机登录（维护者 2026-10-28 拍板）：
+# 【无登录模式决策·已摘接线】开源版拆除人机登录（维护者 2026-10-28 拍板）：
 # · auth_router（/v1/admin/auth/* 登录闭环）不再挂载；
 # · admin_accounts_router（/v1/admin/accounts/*，Casdoor 管理 API 代理）不再挂载；
 # · Casdoor 登录审计消费（audit_casdoor_puller）线程不再启动；
 # · auth_oidc.py / auth_native.py / admin_accounts.py / audit_casdoor_puller.py /
-#   users.yaml 已随 v0.1.1 清理删除（ADR-0029 §7 兑现，2026-10-29）；admin 写闸里的
+#   users.yaml 已随 v0.1.1 清理删除（无登录模式决策 §7 兑现，2026-10-29）；admin 写闸里的
 #   require_login / adjudicate_route_role 挂点同步摘除（恒放行不变）；历史接线见 git 史。
 from app.audit import AuditWriter, make_entry
 from app.my_api import router as my_router     # P0-7：我的接入自助端点（/v1/portal/my/*）
@@ -186,7 +186,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _app.state.hbase_client = hbase_client   # M2-4：admin 数据源发现（AC-4）取用
     _app.state.hbase_connection = hbase_connection  # 卡1：诊断文案取当前生效 host:port/auth_mode
     _app.state.audit = audit                  # M15-1：批量端点经 app.state 取审计写入器
-    # 【无登录模式 ADR-0029·已摘】native 首启种子（ONESERVE_SEED_ADMIN_* 建 admin 账号）
+    # 【无登录模式决策·已摘】native 首启种子（ONESERVE_SEED_ADMIN_* 建 admin 账号）
     # 与 Casdoor 登录审计消费线程随登录拆除一并退役（历史接线见 git 史；users.yaml
     # 已随 v0.1.1 清理删除，无任何路径再写入）。
     _app.state.started_monotonic = time.monotonic()   # P1-6：大盘「服务」组件 uptime 真值起点
@@ -269,12 +269,12 @@ app.add_exception_handler(RequestValidationError, _validation_exc_handler)
 # HTTPException 信封格式）。2026-10-09 恢复期接入；2026-10-14 闸恒放行后不再触发，
 # handler 注册保留供恢复闸期原样复用（ADR-0010）。
 app.add_exception_handler(admin_api.AdminGateDenied, _admin_gate_denied_handler)
-# ── 登录闸休眠 handler 骨架（ADR-0029；休眠是既定架构决策，非尸体） ──────────
+# ── 登录闸休眠 handler 骨架（无登录模式决策；休眠是既定架构决策，非尸体） ──────────
 # 无登录模式下零触发：异常类与信封构造原在 auth_oidc.py（v0.1.1 已清），现就地
 # 休眠登记于此；错误码 auth_required/role_forbidden 文案中心仍同源 errors.py。
 # 历史形态（JWKS 验签/角色矩阵/登录闭环端点）见 git 史。
 class AuthRequiredError(Exception):
-    """管理写操作未登录/令牌无效（休眠：无登录模式 ADR-0029 下零触发）。"""
+    """管理写操作未登录/令牌无效（休眠：无登录模式决策 下零触发）。"""
 
     def __init__(self, reason: str = "missing_token"):
         self.reason = reason
@@ -282,7 +282,7 @@ class AuthRequiredError(Exception):
 
 
 class RoleForbiddenError(Exception):
-    """已登录但角色不足（休眠：无登录模式 ADR-0029 下零触发）。"""
+    """已登录但角色不足（休眠：无登录模式决策 下零触发）。"""
 
     def __init__(self, min_role: str, actual: str):
         self.min_role = min_role
@@ -364,7 +364,7 @@ app.state.auth_matrix = []
 app.state.appkeys_path = APPKEYS_PATH
 app.state.auth_matrix_path = kvx.AUTH_MATRIX_YAML   # 1b-8 授权管理写面（grants 端点落盘路径；lifespan 起按快照优先重定向）
 app.include_router(portal_router)   # /v1/portal/*：门户 KPI/目录/新鲜度/公告（只读，nginx 同源反代）
-# 【无登录模式 ADR-0029·已摘挂载】登录闭环与账号管理代理不再挂载（文件保留，v0.1.1 清尸体）：
+# 【无登录模式决策·已摘挂载】登录闭环与账号管理代理不再挂载（文件保留，v0.1.1 清尸体）：
 # app.include_router(auth_router)          # /v1/admin/auth/*：登录闭环（config 发现/login/callback/refresh）
 # app.include_router(admin_accounts_router)  # /v1/admin/accounts/*：账号管理代理（Casdoor 管理 API 五件）
 app.include_router(batch_router)    # /v1/batch/jobs*：批量查询异步任务（M15-1 提交/状态；AC-1/2/4）
@@ -413,7 +413,7 @@ def _caller_grant(caller: str, service_id: str) -> dict:
     return kvx.tenant_grant(auth_matrix, service_id, appkey=caller)
 
 
-# 【无登录模式 ADR-0029·已摘】W1 站点墙中间件（ADR-0015 整站登录墙的后端数据闸，
+# 【无登录模式决策·已摘】W1 站点墙中间件（ADR-0015 整站登录墙的后端数据闸，
 # AUTH_OIDC_MODE=on 时墙域 401 auth_required）随登录拆除整体退役：全放行、零拦截，
 # 打开门户/管理台即用。分域清单与验签逻辑随 auth_oidc.py 于 v0.1.1 清理删除；
 # admin 写闸里的 require_login/adjudicate_route_role 挂点同步摘除（恒放行不变）。

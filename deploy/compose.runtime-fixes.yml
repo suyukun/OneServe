@@ -5,7 +5,7 @@
 #   ① Kylin V10 + docker 18.09 默认 seccomp profile 误杀新 glibc 镜像的线程创建
 #      （现象 can't start new thread）——service/batch-worker
 #      两容器需 seccomp=unconfined 才能起（与镜像内代码无关，纯引擎 profile 过旧；
-#      原第三容器 casdoor-init 已随无登录模式 ADR-0029 退役）。
+#      原第三容器 casdoor-init 已随无登录模式决策 退役）。
 #   ② apisix 镜像 /usr/local/apisix/conf 属主是 uid 1001，而镜像默认用户 636 无权读挂载
 #      进来的 config.prod.yaml——需 user: "1001:0"。
 # 解除条件（docker 升级后回收本文件）：

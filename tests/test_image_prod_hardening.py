@@ -4,11 +4,11 @@
 1a 批 d8e08e0「服务镜像生产化」登记遗留五项中可静态机检的四项在此固化：
   ① 第三方基镜像配置收编完整性——两个主 compose 的全部 bind 挂载源均为仓内相对
      路径且在仓内存在（不留仓外手工步骤，重建即可复现）＋第三方镜像自定义配置
-     文件清单齐备（apisix/nginx；原统一登录配置已随无登录模式 ADR-0029 移除）；
+     文件清单齐备（apisix/nginx；原统一登录配置已随无登录模式决策 移除）；
   ② portal 非 root——portal/Dockerfile.prod 用 nginx-unprivileged 基镜像（uid 101）
      ＋高位监听口 8080/8443（免特权免 setcap），dev/prod/m26 三处端口映射同步；
   ③ OIDC 旧口径清零——19000 旧口径不回潮（auth_oidc.py 及其测试已随 v0.1.1
-     登录清理删除，ADR-0029 §7；无登录模式起 compose 不再注入登录域名键）；
+     登录清理删除，无登录模式决策 §7；无登录模式起 compose 不再注入登录域名键）；
   ④ sync 工具链载体——prod 栈 service 挂载宿主 ./sync（物料包 update.sh 现状
      ＝git 工作副本随包走，不进镜像）。
 （词条⑤ config twin 同步单独机检：tests/test_config_twin.py）
@@ -60,7 +60,7 @@ def test_thirdparty_custom_configs_present():
     ]
     missing = [p for p in required if not (REPO / p).exists()]
     assert not missing, f"第三方配置收编缺件：{missing}"
-    # 无登录模式（ADR-0029）：统一登录配置目录已随容器退役删除，不得回潮
+    # 无登录模式（无登录模式决策）：统一登录配置目录已随容器退役删除，不得回潮
     assert not (REPO / "configs" / "casdoor").exists(), "configs/casdoor 应随无登录模式移除"
 
 
@@ -98,7 +98,7 @@ def test_portal_port_maps_synced_all_stacks():
 
 def test_no_19000_legacy_caliber():
     """OIDC 旧口径清零：19000 旧口径不回潮（auth_oidc.py 已随 v0.1.1 登录清理
-    删除；原「保留模块代码缺省＝测试签发同源」断言同批退役，ADR-0029 §7）。"""
+    删除；原「保留模块代码缺省＝测试签发同源」断言同批退役，无登录模式决策 §7）。"""
     # 全 tests/ 目录（.py）扫 19000 旧口径的两类耦合形态（token 签发 iss 字面量＋
     # OIDC_ISSUER 缺省读取）——凡自造 token 的测试文件一律同源对齐（8000 口径）。
     stale = []

@@ -9,7 +9,7 @@
   - svc 维度：services/serviceDim 真实值（补丁实证）；掩码纪律（完整 appkey 不出端点）；
   - 筛选/排序/搜索：租户、登记状态、q 前缀（登记名/原串/掩码串，出口仍掩码）、排序白名单；
   - 趋势：caller/service 双维＋Top10＋其余聚合（svc×日矩阵）；
-  - （角色矩阵守卫随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，ADR-0029 §7）。
+  - （角色矩阵守卫随 tests/test_auth_oidc.py 于 v0.1.1 登录清理退役，无登录模式决策 §7）。
 
 Kafka/Redis 未起时全部测试仍绿（mock 覆盖所有外部依赖，同 test_audit_consumer 口径）。
 """

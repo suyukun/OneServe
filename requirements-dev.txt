@@ -6,7 +6,7 @@
 # 纪律：跑全量前必核——先 pip install -r requirements-dev.txt，再逐项过 tests/evidence/环境指纹_20261015.md 的「全量前置检查清单」；
 #       任何一项缺席都可能触发「环境性假绿」（缺包 → 角色闸/JWT 断言 print+return 静默跳过，全量照样绿）。详见指纹回执 §事故复盘。
 # 依据：AST 扫描 tests/*.py + service/app/*.py 全部 import ＋ 宿主 pip freeze ＋ 全量运行 sys.modules 实测。
-# （PyJWT/cryptography 原为登录套件 fail-loud 守卫依赖；套件已随 v0.1.1 登录清理退役，ADR-0029 §7。）
+# （PyJWT/cryptography 原为登录套件 fail-loud 守卫依赖；套件已随 v0.1.1 登录清理退役，无登录模式决策 §7。）
 
 pytest==9.1.1            # 测试运行器本体
 fastapi==0.162.0         # service/app 多数模块顶层裸 import（缺席→收集中断，响）；TestClient 层断言依赖（R3 对齐 lock）

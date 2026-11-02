@@ -4,7 +4,7 @@
 
 被测对象：service/app/monitor.py containers_view（纯编排，探活原语来自 app/healthz）
 ＋ compose 日志滚动契约。纯逻辑直测：monkeypatch healthz 探活原语（零真实网络）。
-（原统一登录两容器探针与 probe_http_get 已随无登录模式 ADR-0029 退役，见 git 史。）
+（原统一登录两容器探针与 probe_http_get 已随无登录模式决策 退役，见 git 史。）
 
 覆盖：
   ① 出参形状：七行全量（六常驻＋可选 hbase）、字段齐全、顺序稳定；
@@ -98,7 +98,7 @@ def test_compose_log_rotation_contract():
     assert 'max-size: "10m"' in src and 'max-file: "3"' in src
     referenced = src.count("logging: *log-rotation")
     # 6 个服务全接（etcd/apisix/redis/service/batch-worker/portal；无登录模式
-    # ADR-0029 起统一登录三服务已移除）；prod 形态经 compose merge 继承本配置
+    # 无登录模式决策 起统一登录三服务已移除）；prod 形态经 compose merge 继承本配置
     assert referenced == 6, f"logging 引用数应为 6（6 服务）：{referenced}"
 
 

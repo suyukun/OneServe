@@ -88,7 +88,7 @@ services:
       - oneserve-net
     # 不发布宿主机端口（仅网内）
 
-  # ---------- 【无登录模式 ADR-0029·已删】统一登录三服务随登录拆除移除 ----------
+  # ---------- 【无登录模式决策·已删】统一登录三服务随登录拆除移除 ----------
   # （casdoor-db / casdoor / casdoor-init＋两卷 oneserve-casdoor*；历史形态见 git 史）。
   # 开源版无人机登录：门户/管理台公开可访，机器调用方走网关 AppKey 鉴权。
 
@@ -114,7 +114,7 @@ services:
       # 审计管线三模（2026-10-15 #76，ADR-0017）：local=现状 JSONL；kafka=仅 Kafka；dual=双写对账。
       # Kafka 测试栈：compose.kafka.yml（独立 project），service 经宿主 9092 端口映射互达。
       - AUDIT_PIPELINE=${AUDIT_PIPELINE:-local}
-      # 【无登录模式 ADR-0029·已删】登录层审计消费（AUDIT_LOGIN_CONSUME/
+      # 【无登录模式决策·已删】登录层审计消费（AUDIT_LOGIN_CONSUME/
       # CASDOOR_ADMIN_PASSWORD 注入）随登录拆除移除；历史形态见 git 史。
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:9092}
       - KAFKA_AUDIT_TOPIC=${KAFKA_AUDIT_TOPIC:-oneserve-audit}
@@ -135,7 +135,7 @@ services:
       # 还原三行校验，形态见 commit bcf34f8）后取消下行注释即可。
       # - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:-admin321}  # P0-4：/v1/admin/* 写端点管理令牌（开发占位）
       - SB_TTL_DAYS=${SB_TTL_DAYS:-7}                  # P0-4：沙箱凭证 TTL（D8 同源：7 天起步可配）
-      # 【无登录模式 ADR-0029·已删】OIDC 登录闸与账号管理通道注入（AUTH_OIDC_MODE/
+      # 【无登录模式决策·已删】OIDC 登录闸与账号管理通道注入（AUTH_OIDC_MODE/
       # OIDC_*/ONESERVE_BOOTSTRAP_ADMIN_* 共 8 行）随登录拆除移除；历史形态见 git 史。
       - REGISTRY_POLL_INTERVAL_S=${REGISTRY_POLL_INTERVAL_S:-30}  # M2-3.5：services.yaml 热加载轮询间隔（60s 判据＝两拍间隔）
       # M2（架构口径 ADR-0005）：HBase＝冷存储数据源，供「页面选表→加载到 Redis」链路读取。

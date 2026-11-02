@@ -2,7 +2,7 @@
 """价目管理端点与服务层（管理功能群一期 B 节 · 设计 v1.1 §2 已拍板，按 §0 共用口径施工）。
 
 端点组（均 /v1/admin/pricing/*；router 级挂 admin_api._admin_gate——原写方法过
-auth_oidc.require_login，该挂点随 v0.1.1 登录清理摘除（ADR-0029 §7）；原
+auth_oidc.require_login，该挂点随 v0.1.1 登录清理摘除（无登录模式决策 §7）；原
 ROUTE_MIN_ROLE 域9 计费管理：读面 viewer 地板、写面 admin，矩阵同批退役）：
   GET  /v1/admin/pricing/items                     价目列表（分页 metering_api 先例＋展示态推算）
   GET  /v1/admin/pricing/items/{item_id}           价目详情（档位全览＋快照脚注）

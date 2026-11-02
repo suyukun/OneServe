@@ -208,7 +208,7 @@ python3 -m piplicenses --python /tmp/os-dev-venv/bin/python --from meta --format
 | `postgres:17-alpine` | 元数据库（可选） | PostgreSQL License |
 | `apache/apisix:3.18.0-debian` | API 网关 | Apache-2.0 |
 | `etcd` 3.5.x | 网关配置存储 | Apache-2.0 |
-| `valkey/valkey:8-alpine` | KV 热存储（ADR-0028 已实施，2026-10-28） | Valkey：BSD-3-Clause（Linux 基金会托管）。原 `redis:7-alpine` 已自 compose 移除，其 ≥7.4 的 RSALv2 / SSPLv1（非 OSI 批准）风险随替换消除，背景见第 5 节 |
+| `valkey/valkey:8-alpine` | KV 热存储（Valkey 替换已实施，2026-10-28） | Valkey：BSD-3-Clause（Linux 基金会托管）。原 `redis:7-alpine` 已自 compose 移除，其 ≥7.4 的 RSALv2 / SSPLv1（非 OSI 批准）风险随替换消除，背景见第 5 节 |
 | `apache/kafka:3.9.0` | 审计管线（可选） | Apache-2.0 |
 | HBase（可选冷存储实现） | 可选冷存储 | Apache-2.0 |
 | 本项目自建镜像（服务层、门户） | 本项目构建产物 | Apache-2.0 |
@@ -240,10 +240,9 @@ python3 -m piplicenses --python /tmp/os-dev-venv/bin/python --from meta --format
 改用 RSALv2 / SSPLv1 双许可（非 OSI 批准），落在该 tag 上会与本项目 Apache-2.0 的
 分发声明冲突。
 
-**2026-10-28 已实施**（ADR-0028 状态「已批准·已实施」）：compose 的 KV 服务行已改为
+**2026-10-28 已实施**：compose 的 KV 服务行已改为
 `valkey/valkey:8-alpine`（BSD-3-Clause，Linux 基金会托管），seed 自测通过；第 3 节
-镜像表已按现网状态记载。决策背景、影响与回退方案见
-`docs/opensource/ADR-0028-Valkey替换.md`。
+镜像表已按现网状态记载。决策背景、影响与回退方案见项目内部决策存档。
 
 同时，`bitnamilegacy` 命名空间下的 etcd 镜像已停止更新，拟同批换用 etcd 官方镜像；
 该项结论待施工时按多架构可用性实测确定，本文件不对具体 tag 作预先声明。

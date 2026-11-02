@@ -2,7 +2,7 @@
 """账单域端点（管理功能群一期 C 节·账单页＋CSV · 设计 v1.1 §3 已拍板，按 §0 共用口径施工）。
 
 端点组（均 /v1/admin/billing/*；router 级挂 admin_api._admin_gate——原写方法过
-auth_oidc.require_login，该挂点随 v0.1.1 登录清理摘除（ADR-0029 §7）；原
+auth_oidc.require_login，该挂点随 v0.1.1 登录清理摘除（无登录模式决策 §7）；原
 ROUTE_MIN_ROLE 域7 扩注：读/导出 viewer 地板、确认/补录 admin，矩阵同批退役）：
   GET  /v1/admin/billing/periods                        月账列表（四态＋三硬前置留痕三列，
                                                         分页 metering_api 先例＋指标卡 summary）

@@ -33,7 +33,7 @@ ETCD_PROBE_HOST = os.environ.get("ETCD_PROBE_HOST", "oneserve-etcd")
 ETCD_PROBE_PORT = int(os.environ.get("ETCD_PROBE_PORT", "2379"))
 # 常驻容器健康聚合探活目标（蓝图 1a 批·监控最小集 2026-10-20）：与 compose 容器名
 # 同源（dev/prod/m26 三形态网络别名一致），本机/异构部署可经 env 覆盖。
-# 无登录模式（ADR-0029）：原统一登录两容器的探针目标随 compose 收口移除（形态见 git 史）。
+# 无登录模式（无登录模式决策）：原统一登录两容器的探针目标随 compose 收口移除（形态见 git 史）。
 PORTAL_PROBE_HOST = os.environ.get("PORTAL_PROBE_HOST", "oneserve-portal")
 PORTAL_PROBE_PORT = int(os.environ.get("PORTAL_PROBE_PORT", "80"))
 
@@ -123,6 +123,6 @@ async def probe_redis(redis: Any) -> dict:
     except Exception as exc:  # noqa: BLE001 —— 探活失败如实报，不降级成「正常」
         return {"status": "error", "detail": f"PING 失败（{type(exc).__name__}: {exc}）"}
 
-# 【无登录模式 ADR-0029·已摘】probe_http_get（HTTP GET 轻探，原统一登录 IdP 发现
+# 【无登录模式决策·已摘】probe_http_get（HTTP GET 轻探，原统一登录 IdP 发现
 # 端点判据）随登录容器退役移除；历史实现见 git 史。
 

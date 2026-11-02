@@ -521,7 +521,7 @@ async def components_view(redis: Any, services: dict, *, version: str,
 # ══ 常驻容器健康聚合（蓝图 1a 批·监控最小集 2026-10-20） ══
 # 全部常驻容器一屏只读视图。探活原语单一来源＝healthz（TCP/PING/hbase 装配），
 # 本模块只做编排与出参形状（分层同 components_view）。无网络探针的容器如实 off 标注，
-# 不造状态。无登录模式（ADR-0029）：原统一登录两容器探针行随 compose 收口移除（形态见 git 史）。
+# 不造状态。无登录模式（无登录模式决策）：原统一登录两容器探针行随 compose 收口移除（形态见 git 史）。
 _CONTAINER_ROWS = (   # (容器名, 角色, 探针描述, 探活协程工厂名)——顺序＝页面呈现顺序
     # 一键开箱批（2026-10-28）：etcd/apisix/batch-worker 三件为 compose full 档组件
     # （profiles: [full]）——角色名如实标注，demo 档（默认 compose up）用户不误读。
