@@ -1,5 +1,7 @@
 # OneServe 页面功能导览
 
+> 图文版见 [README](../../README.md) 页面导览章节。
+
 > 本导览对应 v0.1.0 界面。页面名与组件标识均照仓内实际（`portal/src/`、`admin/`）；
 > 入口路径为门户站点（nginx）实际路由，API 为页面粗粒度依赖，细节以 `docs/opensource/ARCHITECTURE.md` 与各页源码为准。
 
