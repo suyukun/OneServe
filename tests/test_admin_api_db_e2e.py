@@ -243,11 +243,11 @@ def test_01_publish_domain_endpoint_writes_db(client, stack):
 def test_02_issue_domain_endpoint_writes_db(client, stack):
     """签发域：POST /v1/admin/appkeys → credential/grant 行＋网关假件下发＋台账。"""
     c0 = STATE["counts0"]
-    # demo_bank＝登记面恰 1 把（上限 2：正常＋轮转各一把；partner-demo 已满额拒发）。
+    # demo_merchant＝登记面恰 1 把（上限 2：正常＋轮转各一把；partner-demo 已满额拒发）。
     # 原内网版签发租户 demo-trial 系出仓剥离对象，fork 授权矩阵/demo 注册表中不存在，
     # 改用矩阵在册 demo 租户（meta.tenant 行在场是 credential 落库外键前提）
     r = client.post("/v1/admin/appkeys", json={
-        "tenant": "demo_bank", "app_name": "e2e签发探针", "key_type": "sandbox",
+        "tenant": "demo_merchant", "app_name": "e2e签发探针", "key_type": "sandbox",
         "caller_name": "e2e-probe", "quota_qps": 30, "quota_daily": 5000,
         "grants": [{"service": "v1-svc-usr-basic-info",
                     "endpoint": "/v1/svc/usr-basic-info",
@@ -271,7 +271,7 @@ def test_03_grants_domain_endpoint_writes_db(client, stack):
     c0 = STATE["counts0"]
     # 授权目标＝已登记代理（整路由授权 fields 空集合法——服务类须字段在册校验，
     # 注册表条目 fields 为投影声明面，1b-8 授权页对代理免字段清单）
-    # 授权租户＝partner-demo（demo_bank/demo-1020 存量数据凭证级⊆租户级本就违例，
+    # 授权租户＝partner-demo（demo_merchant/demo-1020 存量数据凭证级⊆租户级本就违例，
     # 全行不变量校验如实拦下——运行态脏数据归其卡，非本批范围；partner-demo 子集干净）
     r = client.post("/v1/admin/grants", json={
         "action": "upsert", "tenant": "partner-demo", "service": "proxy-ext-asset-tag-1020",
@@ -298,7 +298,7 @@ def test_03_grants_domain_endpoint_writes_db(client, stack):
     assert g.get("effective_from") == "2026-10-21" and g.get("effective_to") == "2027-10-21"
     assert "oa_ticket" not in g, "与租户级同值单号不应重复输出（往返省略口径）"
     assert drow.get("tenant_type") is None, "external 戳应省略（往返省略口径）"
-    assert next(x for x in mx if x.get("tenant") == "demo_bank").get("tenant_type") \
+    assert next(x for x in mx if x.get("tenant") == "demo_merchant").get("tenant_type") \
         == "internal", "tenant_type 戳未随快照还原（项2）"
 
 

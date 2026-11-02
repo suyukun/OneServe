@@ -36,7 +36,7 @@ from app.audit import AuditWriter, digest_sha256               # noqa: E402
 from synth_services import load_synth_services, synth_matrix, synth_services_dict  # noqa: E402  合成 fixture（全服务下线，见模块头注）
 SERVICES = load_synth_services()   # 线上 services.yaml 已清空（全下线）；机制测试用合成注册表
 MATRIX = synth_matrix()
-APPKEY = "oneserve-dev-appkey-001"            # demo_bank 网关凭证（auth_matrix.yaml）
+APPKEY = "oneserve-dev-appkey-001"            # demo_merchant 网关凭证（auth_matrix.yaml）
 KEYS = ["ab" * 32, "cd" * 32, "ef" * 32, "90" * 32, "12" * 32]
 VER = "20260922"
 AS_OF = "2026-09-22 00:00:00"
@@ -184,7 +184,7 @@ def test_daily_quota_exceeded_429_with_exact_retry_after():
     st = FakeQuotaRedis()
     quotas = {**QUOTAS, "max_daily_keys": 5}
     submit_ok(st, KEYS[:3], quotas=quotas)                   # 当日已计 3
-    dkey = batch.daily_quota_key("demo_bank", NOW)
+    dkey = batch.daily_quota_key("demo_merchant", NOW)
     assert st.strings[dkey] == "3"
     body, status = call(st, KEYS[1:4], quotas=quotas)        # 3+3 > 5
     assert status == 429 and body["error"] == batch.QUOTA_CODE_DAILY
@@ -207,22 +207,22 @@ def test_daily_quota_resets_next_day():
     assert status == 429 and body["error"] == batch.QUOTA_CODE_DAILY
     body, status = call(st, KEYS[:1], quotas=quotas, now=NOW + 86400)   # 次日
     assert status == 202, body
-    assert st.strings[batch.daily_quota_key("demo_bank", NOW + 86400)] == "1"
+    assert st.strings[batch.daily_quota_key("demo_merchant", NOW + 86400)] == "1"
 
 
 def test_daily_quota_key_uses_cn_business_day():
     """日键＝东八区业务日（与 stats.day_key 同口径）：UTC 2026-09-21 14:13→0921。"""
-    assert batch.daily_quota_key("demo_bank", NOW) == (
-        "oneserve:batch:quota:daily:demo_bank:20260921")
+    assert batch.daily_quota_key("demo_merchant", NOW) == (
+        "oneserve:batch:quota:daily:demo_merchant:20260921")
     # 东八区已过午夜（UTC+8=00:13 次日）→ 次日键
-    assert batch.daily_quota_key("demo_bank", NOW + 12 * 3600).endswith("20260922")
+    assert batch.daily_quota_key("demo_merchant", NOW + 12 * 3600).endswith("20260922")
 
 
 def test_daily_quota_counter_ttl_set():
     """计量键挂 48h TTL（隔日死键清理；清零口径在键名日期里，与 TTL 无关）。"""
     st = FakeQuotaRedis()
     submit_ok(st, KEYS[:1])
-    dkey = batch.daily_quota_key("demo_bank", NOW)
+    dkey = batch.daily_quota_key("demo_merchant", NOW)
     assert st.strings["__ttl__:" + dkey] == str(batch.DAILY_QUOTA_TTL_S)
 
 

@@ -32,7 +32,7 @@ from app import batch_worker as w                              # noqa: E402
 from synth_services import load_synth_services, synth_matrix, synth_services_dict  # noqa: E402  合成 fixture（全服务下线，见模块头注）
 SERVICES = load_synth_services()   # 线上 services.yaml 已清空（全下线）；机制测试用合成注册表
 MATRIX = synth_matrix()
-APPKEY = "oneserve-dev-appkey-001"            # demo_bank 网关凭证（auth_matrix.yaml）
+APPKEY = "oneserve-dev-appkey-001"            # demo_merchant 网关凭证（auth_matrix.yaml）
 KEYS = ["ab" * 32, "cd" * 32, "ef" * 32, "90" * 32]
 VER = "20260922"                              # 假线上版本（meta 指针值）
 VER2 = "20260923"                             # T+1 切换目标版本
@@ -448,7 +448,7 @@ def test_snapshot_submit_accepted_shape():
     assert status == 202
     assert body["scope"] == "snapshot" and body["total"] == 0
     assert body["keys_sha256"] == "" and body["queue_position"] == 1
-    grant = kvx.tenant_grant(MATRIX, batch.BATCH_SOURCE_SERVICE, tenant="demo_bank")
+    grant = kvx.tenant_grant(MATRIX, batch.BATCH_SOURCE_SERVICE, tenant="demo_merchant")
     assert body["fields"] == sorted(grant["fields"])
     view, _ = asyncio.run(batch.get_job(st, body["job_id"]))
     assert view["scope"] == "snapshot" and view["total"] == 0
@@ -497,7 +497,7 @@ def test_snapshot_keys_counted_into_daily_quota_on_materialize():
     st = FakeSnapshotRedis()
     seed_version(st, VER, AS_OF, row_count=3, keys=KEYS[:3])
     jid = submit_snapshot(st)
-    dkey = batch.daily_quota_key("demo_bank", time.time())
+    dkey = batch.daily_quota_key("demo_merchant", time.time())
     assert st.strings.get(dkey) in (None, "0")              # 提交时不计量
     with tempfile.TemporaryDirectory() as td:
         job = asyncio.run(w.process_job(st, SERVICES, MATRIX, jid, results_dir=td))

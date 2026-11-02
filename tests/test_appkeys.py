@@ -34,7 +34,7 @@ MATRIX = synth_matrix()
 REAL_SERVICES, REAL_LOAD_ERR = real_registry_state()   # 现实态（全下线→空表＋fail-loud 留痕）
 REAL_MATRIX, REAL_MATRIX_ERR = real_matrix_state()
 NOW = datetime(2026, 9, 22, 8, 0, tzinfo=timezone.utc)
-TRIAL_FIELDS = kvx.tenant_grant(MATRIX, "v1-svc-usr-asset-tag", tenant="demo_bank")["fields"]   # 试用真源（TRIAL_SOURCE_SERVICE）——合成矩阵口径
+TRIAL_FIELDS = kvx.tenant_grant(MATRIX, "v1-svc-usr-asset-tag", tenant="demo_merchant")["fields"]   # 试用真源（TRIAL_SOURCE_SERVICE）——合成矩阵口径
 
 
 def _issue(doc, **kw):
@@ -61,14 +61,14 @@ def test_gen_appkey_prefix_and_shape():
 # ---------- 签发：沙箱（sb_ 前缀＋默认试用授权＋TTL） ----------
 
 def test_issue_sandbox_trial_source_live_in_real_matrix():
-    """现实态守卫（2026-10-14 TRIAL_SOURCE_SERVICE 对齐现役 id）：真实矩阵 demo_bank 已批
+    """现实态守卫（2026-10-14 TRIAL_SOURCE_SERVICE 对齐现役 id）：真实矩阵 demo_merchant 已批
     v1-svc-usr-asset-tag → 沙箱试用签发恢复（原「全服务下线→409 冻结」态自然解除）。"""
     assert isinstance(REAL_SERVICES, dict)  # 现实态只断类型不断空
     assert not REAL_LOAD_ERR  # 空表合法态（容器须可空启动）
     assert not REAL_MATRIX_ERR  # 空矩阵合法态（无授权=如实 403/409）
     trial = kvx.tenant_grant(REAL_MATRIX, ak.TRIAL_SOURCE_SERVICE,
                              tenant=ak.TRIAL_SOURCE_TENANT)["fields"]
-    assert trial  # 试用真源白名单非空（现实态：demo_bank 已批现役服务）
+    assert trial  # 试用真源白名单非空（现实态：demo_merchant 已批现役服务）
     rec, _ = ak.issue_appkey({"keys": []}, REAL_MATRIX, REAL_SERVICES, tenant="partner-demo-1",
                              app_name="电商标签点查", key_type="sandbox", now=NOW)
     assert rec["appkey"].startswith(ak.SB_PREFIX)
@@ -77,7 +77,7 @@ def test_issue_sandbox_trial_source_live_in_real_matrix():
 
 
 def test_issue_sandbox_409_when_trial_source_missing():
-    """机制守卫：矩阵缺试用真源（demo_bank 未批 TRIAL_SOURCE_SERVICE）→ 签发如实
+    """机制守卫：矩阵缺试用真源（demo_merchant 未批 TRIAL_SOURCE_SERVICE）→ 签发如实
     409 TRIAL_SOURCE_MISSING（试用功能冻结，不为绿硬造服务）。"""
     stripped = [dict(r, grants=[g for g in r["grants"] if g["service"] != ak.TRIAL_SOURCE_SERVICE])
                 if r.get("tenant") == ak.TRIAL_SOURCE_TENANT else r for r in MATRIX]
@@ -90,7 +90,7 @@ def test_issue_sandbox_409_when_trial_source_missing():
 
 
 def test_issue_sandbox_unknown_tenant_gets_trial_grants_and_ttl():
-    """陌生租户沙箱（合成矩阵）：授权＝demo_bank 已批字段（平台试用口径）；有效期＝签发日+7 天（D8 可配）。"""
+    """陌生租户沙箱（合成矩阵）：授权＝demo_merchant 已批字段（平台试用口径）；有效期＝签发日+7 天（D8 可配）。"""
     rec, secret = _issue({"keys": []})
     assert rec["appkey"].startswith(ak.SB_PREFIX)
     assert rec["status"] == "active" and rec["key_type"] == "sandbox"
@@ -117,7 +117,7 @@ def test_issue_sandbox_explicit_expires_at_overrides_ttl():
 
 def test_issue_sandbox_known_tenant_inherits_matrix_grants():
     """已登记租户沙箱：继承矩阵全部授权（user/news/partner 三服务）。"""
-    rec, _ = _issue({"keys": []}, tenant="demo_bank")
+    rec, _ = _issue({"keys": []}, tenant="demo_merchant")
     granted = {g["service"] for g in rec["grants"]}
     assert granted == {"user_tag_query", "news_tag_query", "partner_proxy", "usr_basic_info_query",
                        "v1-svc-usr-asset-tag"}
@@ -128,7 +128,7 @@ def test_issue_sandbox_known_tenant_inherits_matrix_grants():
 def test_issue_formal_requires_oa_ticket():
     """正式凭证缺 OA 批件号 → 400 oa_ticket_required（ADR-0003：缺单号拒绝登记）。"""
     try:
-        _issue({"keys": []}, tenant="demo_bank", key_type="formal")
+        _issue({"keys": []}, tenant="demo_merchant", key_type="formal")
         raise AssertionError("应拒绝缺 OA 批件号的正式签发")
     except ak.AppkeyIssueError as exc:
         assert exc.status == 400 and exc.code == "oa_ticket_required"
@@ -145,11 +145,11 @@ def test_issue_formal_unknown_tenant_rejected():
 
 def test_issue_formal_ok_inherits_and_optional_expiry():
     """正式凭证（已登记租户＋OA 批件）：继承授权；有效期选填（YYYY-MM-DD 校验）。"""
-    rec, _ = _issue({"keys": []}, tenant="demo_bank", key_type="formal",
+    rec, _ = _issue({"keys": []}, tenant="demo_merchant", key_type="formal",
                     oa_ticket="OA-2026-000123", expires_at="2027-03-01")
     assert rec["appkey"].startswith(ak.AK_PREFIX) and rec["expires_at"] == "2027-03-01"
     try:
-        _issue({"keys": []}, tenant="demo_bank", key_type="formal",
+        _issue({"keys": []}, tenant="demo_merchant", key_type="formal",
                oa_ticket="OA-2026-000123", expires_at="2027/03/01")
         raise AssertionError("非法日期格式应拒绝")
     except ak.AppkeyIssueError as exc:

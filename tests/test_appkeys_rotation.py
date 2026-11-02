@@ -36,7 +36,7 @@ SERVICES = synth_services_dict()   # 全下线终态：合成 fixture（机制�
 MATRIX = synth_matrix()
 
 NOW = datetime(2026, 9, 22, 8, 0, tzinfo=timezone.utc)   # 轮换日 D0
-TRIAL_FIELDS = kvx.tenant_grant(MATRIX, "v1-svc-usr-asset-tag", tenant="demo_bank")["fields"]   # 试用真源（TRIAL_SOURCE_SERVICE）——合成矩阵口径
+TRIAL_FIELDS = kvx.tenant_grant(MATRIX, "v1-svc-usr-asset-tag", tenant="demo_merchant")["fields"]   # 试用真源（TRIAL_SOURCE_SERVICE）——合成矩阵口径
 
 
 def _issue(doc, **kw):
@@ -49,13 +49,13 @@ def _issue(doc, **kw):
 def _rotated():
     """构造「已轮换」注册表：旧 rec 进重叠期＋新 new_rec。返回 (doc, old, new, secret)。
 
-    基底用长有效期正式凭证（demo_bank＋OA 批件，有效期 2027-03-01）：若用默认沙箱
+    基底用长有效期正式凭证（demo_merchant＋OA 批件，有效期 2027-03-01）：若用默认沙箱
     （TTL 恰为 7 天），其自然到期日与重叠期到期日同为 D0+7，期满会先命中
     credential_expired，掩盖 credential_rotated_expired 的边界。长有效期基底让
     「重叠期先于自然有效期结束」，边界可被确定性钉死（与生产轮换正式凭证同形）。
     """
     doc = {"keys": []}
-    old, _ = _issue(doc, tenant="demo_bank", key_type="formal",
+    old, _ = _issue(doc, tenant="demo_merchant", key_type="formal",
                     oa_ticket="OA-2026-000123", expires_at="2027-03-01")
     doc["keys"].append(old)
     new, secret, old = ak.rotate_appkey(doc, MATRIX, SERVICES, old["appkey"], now=NOW)
@@ -84,7 +84,7 @@ def test_rotate_issues_new_and_marks_old_overlap():
     # 并行可用：两者的试用真源（TRIAL_SOURCE_SERVICE）授权都能解析（合成矩阵口径）
     g_old = ak.resolve_grant(doc["keys"], old["appkey"], ak.TRIAL_SOURCE_SERVICE, now=NOW)
     g_new = ak.resolve_grant(doc["keys"], new["appkey"], ak.TRIAL_SOURCE_SERVICE, now=NOW)
-    assert g_old["tenant"] == g_new["tenant"] == "demo_bank"
+    assert g_old["tenant"] == g_new["tenant"] == "demo_merchant"
     assert g_old["fields"] == g_new["fields"] == set(TRIAL_FIELDS)
 
 
@@ -153,7 +153,7 @@ def test_overlap_capped_at_natural_expiry_no_overpromise():
     """短效凭证轮换：重叠期封顶于自身 expires_at，不虚报可续天数（倒计时与判定一致）。"""
     due_day = (NOW + timedelta(days=2)).date().isoformat()
     doc = {"keys": []}
-    old, _ = _issue(doc, tenant="demo_bank", key_type="formal",
+    old, _ = _issue(doc, tenant="demo_merchant", key_type="formal",
                     oa_ticket="OA-2026-000123", expires_at=due_day)
     doc["keys"].append(old)
     new, _, old = ak.rotate_appkey(doc, MATRIX, SERVICES, old["appkey"], now=NOW)
@@ -217,7 +217,7 @@ def test_constant_configurable_via_env():
     try:
         mod = importlib.reload(ak)
         doc = {"keys": []}
-        old, _ = _issue(doc, tenant="demo_bank")   # 已登记租户；矩阵继承
+        old, _ = _issue(doc, tenant="demo_merchant")   # 已登记租户；矩阵继承
         doc["keys"].append(old)
         new, _, old = mod.rotate_appkey(doc, MATRIX, SERVICES, old["appkey"], now=NOW)
         doc["keys"].append(new)

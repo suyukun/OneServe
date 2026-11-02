@@ -64,7 +64,7 @@ SERVICE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MATRIX = SERVICE_DIR / "auth_matrix.yaml"
 
 # ---------- 格式正则（原 scripts/auth_admin.py 全量下沉，口径不变） ----------
-# 租户名容下划线（兼容 003 既有租户 demo_bank）
+# 租户名容下划线（兼容 003 既有租户 demo_merchant）
 TENANT_ID_RE = re.compile(r"^[a-z0-9]([a-z0-9_-]{0,62}[a-z0-9])?$")
 SERVICE_ID_RE = re.compile(r"^[a-z0-9]([a-z0-9_-]{0,62}[a-z0-9])?$")
 # appkey 宽格式：兼容 003 开发占位（oneserve-dev-appkey-001）与新生成（ak_/sb_+16hex）

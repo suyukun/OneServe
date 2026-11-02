@@ -106,7 +106,7 @@ def main():
     services = yaml.safe_load((REPO / "service" / "services.yaml").read_text(encoding="utf-8"))
     matrix = yaml.safe_load((REPO / "service" / "auth_matrix.yaml").read_text(encoding="utf-8"))
     svc = services["services"][0]
-    grant = next(t for t in matrix["matrix"] if t["tenant"] == "demo_bank")
+    grant = next(t for t in matrix["matrix"] if t["tenant"] == "demo_merchant")
     whitelist = set(next(g["fields"] for g in grant["grants"] if g["service"] == "user_tag_query"))
     rules = svc["response"]["desensitize"]
     masked = set(rules)
@@ -131,7 +131,7 @@ def main():
         check(resp.get("data_as_of") == DATA_AS_OF,
               f"data_as_of={resp.get('data_as_of')}（期望 {DATA_AS_OF}）", errors)
         check(resp.get("live_version") == DATA_DATE, f"live_version={resp.get('live_version')}", errors)
-        check(resp.get("tenant") == "demo_bank", "租户定位=demo_bank", errors)
+        check(resp.get("tenant") == "demo_merchant", "租户定位=demo_merchant", errors)
         # 红线：响应字段必须 ⊆ 白名单，且白名单外字段（用户确实有值）一个都不能出现
         leak = set(fields) - whitelist
         check(not leak, f"响应字段 ⊆ 授权白名单（越权字段零出现；越权={sorted(leak)}）", errors)

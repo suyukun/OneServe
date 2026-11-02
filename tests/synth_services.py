@@ -198,7 +198,7 @@ _SERVICES_YAML = """services:
     log_response_digest: sha256_of_desensitized_body
 """
 
-_MATRIX = [{'tenant': 'demo_bank', 'appkey': 'oneserve-dev-appkey-001', 'oa_ticket': 'OA-PENDING-TASK008', 'grants': [{'service': 'user_tag_query', 'endpoint': '/v1/tags/query', 'fields': ['ac_active_sts_01', 'ac_active_sts_02', 'ac_bussi_sts_01', 'ac_login_fct_01', 'ac_login_sts_02', 'ac_point_sts_05', 'ac_vist_sts_01', 'mk_touch_sts_02', 'if_acct_fct_24', 'if_bse_fct_04']}, {'service': 'v1-svc-usr-asset-tag', 'endpoint': '/v1/tags/query', 'fields': ['aum_band', 'dep_bal_band', 'wealth_hold_flag', 'fund_hold_flag', 'ins_hold_flag', 'loan_flag', 'mortgage_flag', 'credit_limit_band', 'overdue_cnt_band', 'active_m3_flag', 'dormant_m12_flag', 'login_cnt_band', 'pay_cnt_band', 'salary_in_flag', 'cross_sell_cnt_band', 'churn_risk_band', 'ltv_band', 'mk_response_band']}, {'service': 'news_tag_query', 'endpoint': '/v1/news/query', 'fields': ['tags']}, {'service': 'partner_proxy', 'endpoint': '/v1/proxy/partner', 'fields': ['passthrough']}, {'service': 'usr_basic_info_query', 'endpoint': '/v1/hbase/query', 'fields': ['gender_cd', 'age_band', 'city_code', 'cust_level', 'risk_level', 'vip_flag']}]}]
+_MATRIX = [{'tenant': 'demo_merchant', 'appkey': 'oneserve-dev-appkey-001', 'oa_ticket': 'OA-PENDING-TASK008', 'grants': [{'service': 'user_tag_query', 'endpoint': '/v1/tags/query', 'fields': ['ac_active_sts_01', 'ac_active_sts_02', 'ac_bussi_sts_01', 'ac_login_fct_01', 'ac_login_sts_02', 'ac_point_sts_05', 'ac_vist_sts_01', 'mk_touch_sts_02', 'if_acct_fct_24', 'if_bse_fct_04']}, {'service': 'v1-svc-usr-asset-tag', 'endpoint': '/v1/tags/query', 'fields': ['aum_band', 'dep_bal_band', 'wealth_hold_flag', 'fund_hold_flag', 'ins_hold_flag', 'loan_flag', 'mortgage_flag', 'credit_limit_band', 'overdue_cnt_band', 'active_m3_flag', 'dormant_m12_flag', 'login_cnt_band', 'pay_cnt_band', 'salary_in_flag', 'cross_sell_cnt_band', 'churn_risk_band', 'ltv_band', 'mk_response_band']}, {'service': 'news_tag_query', 'endpoint': '/v1/news/query', 'fields': ['tags']}, {'service': 'partner_proxy', 'endpoint': '/v1/proxy/partner', 'fields': ['passthrough']}, {'service': 'usr_basic_info_query', 'endpoint': '/v1/hbase/query', 'fields': ['gender_cd', 'age_band', 'city_code', 'cust_level', 'risk_level', 'vip_flag']}]}]
 
 
 def load_synth_services() -> dict:
@@ -215,7 +215,7 @@ def synth_services_dict() -> dict:
 
 
 def synth_matrix() -> list:
-    """合成授权矩阵（demo_bank：user/news/partner/usr_basic_info_query 四授权）。"""
+    """合成授权矩阵（demo_merchant：user/news/partner/usr_basic_info_query 四授权）。"""
     return yaml.safe_load(yaml.safe_dump(_MATRIX, allow_unicode=True))
 
 

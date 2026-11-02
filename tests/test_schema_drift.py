@@ -39,7 +39,7 @@ SERVICES = load_synth_services()          # 合成注册表（形状＝HEAD 真�
 MATRIX = synth_matrix()                   # 合成矩阵
 SERVICE_V2 = SERVICES["user_tag_query"]                       # 卡4：service_id 单键
 HBASE_SERVICE = SERVICES["usr_basic_info_query"]
-WHITELIST = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_bank")["fields"]
+WHITELIST = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_merchant")["fields"]
 
 
 def _load_reconcile():
@@ -261,7 +261,7 @@ def test_kv_hook_quarantined_raises_503():
     """kv 钩子：状态键 quarantined → TagQueryError(503, QUARANTINE_CODE)。"""
     store = _demo_store(_v2_drift_key(),
                         sd.encode_state(sd.make_quarantined(["ac_active_sts_01"])))
-    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_bank")
+    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_merchant")
     try:
         asyncio.run(kvx.execute(store, SERVICE_V2, grant, "ab" * 32))
     except kvx.TagQueryError as exc:
@@ -273,7 +273,7 @@ def test_kv_hook_quarantined_raises_503():
 
 def test_kv_hook_no_key_or_dirty_fail_open():
     """fail-open：无键 / 脏值 / 非隔离态一律放行（不因基础设施抖动误伤）。"""
-    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_bank")
+    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_merchant")
     for raw in (None, "not-json", "[1]", sd.encode_state(sd.make_ok())):
         store = _demo_store(_v2_drift_key(), raw)
         out = asyncio.run(kvx.execute(store, SERVICE_V2, grant, "ab" * 32))
@@ -282,7 +282,7 @@ def test_kv_hook_no_key_or_dirty_fail_open():
 
 def test_kv_hook_unregistered_fail_open_when_absent():
     """无漂移状态键（None）→ 不隔离：查询照常返回（fail-open 口径）。"""
-    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_bank")
+    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_merchant")
     out = asyncio.run(kvx.execute(_demo_store(), SERVICE_V2, grant, "ab" * 32))
     assert out["found"] is True and out["fields"]["ac_active_sts_01"] == "band_C"
 
@@ -291,7 +291,7 @@ def test_hbase_hook_quarantined_raises_503():
     """hbase 钩子：同一状态键口径 → TagQueryError(503, QUARANTINE_CODE)（AC-8-b 双通道）。"""
     key = sd.drift_state_key("usr_basic_info_query")
     store = FakeStore({key: sd.encode_state(sd.make_quarantined(["gender_cd"]))})
-    grant = {"tenant": "demo_bank", "oa_ticket": "x", "fields": {"gender_cd"}}
+    grant = {"tenant": "demo_merchant", "oa_ticket": "x", "fields": {"gender_cd"}}
     try:
         asyncio.run(hbsvc.execute(FakeHBaseClient(), HBASE_SERVICE, grant,
                                   "ab" * 32, store=store))
@@ -303,7 +303,7 @@ def test_hbase_hook_quarantined_raises_503():
 
 def test_hbase_hook_ok_passes_and_store_none_skips():
     """hbase 钩子：ok 态/未注入 store 均放行（既有直接调用方零改动）。"""
-    grant = {"tenant": "demo_bank", "oa_ticket": "x", "fields": {"ac_active_sts_01"}}
+    grant = {"tenant": "demo_merchant", "oa_ticket": "x", "fields": {"ac_active_sts_01"}}
     out = asyncio.run(hbsvc.execute(FakeHBaseClient(), HBASE_SERVICE, grant, "ab" * 32))
     assert out["found"] is True                                   # store=None 跳过闸
     key = sd.drift_state_key("demo_hbase_query")
@@ -319,7 +319,7 @@ def test_hbase_hook_ok_passes_and_store_none_skips():
 
 def test_added_column_not_leaked_in_response():
     """增列不泄露：新增列即便真有值，也不出现在任何响应体/投影结果里。"""
-    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_bank")
+    grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_merchant")
     out = asyncio.run(kvx.execute(_demo_store(), SERVICE_V2, grant, "ab" * 32))
     text = json.dumps(out, ensure_ascii=False)
     assert ADDED_PROBE not in text, "新增列名泄露进响应体（AC-8-b 红线）"
@@ -474,7 +474,7 @@ def test_end_to_end_delete_quarantine_then_recover():
         # 执行器读同一状态键 → 503 明确错误码
         store = _demo_store(_v2_drift_key(),
                             r.get(sd.drift_state_key("user_tag_query")))
-        grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_bank")
+        grant = kvx.tenant_grant(MATRIX, "user_tag_query", tenant="demo_merchant")
         try:
             asyncio.run(kvx.execute(store, SERVICE_V2, grant, "ab" * 32))
         except kvx.TagQueryError as exc:

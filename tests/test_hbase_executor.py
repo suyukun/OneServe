@@ -241,7 +241,7 @@ def test_make_pool_driver_missing_503():
 
 def _grant(fields):
     """授权条目（fields ⊆ 合成矩阵 usr_basic_info_query 白名单：usr_basic_info 12 列字典）。"""
-    return {"tenant": "demo_bank", "oa_ticket": "OA-PENDING-TASKM23", "fields": set(fields)}
+    return {"tenant": "demo_merchant", "oa_ticket": "OA-PENDING-TASKM23", "fields": set(fields)}
 
 
 class FakeHBaseClient:

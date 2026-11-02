@@ -13,7 +13,7 @@
 #    tests/test_meta_migrate.py 的夹具会读取该文件。）
 #
 # 演示口径：
-#   - 前三把＝service/auth_matrix.yaml 三个演示租户（demo_bank／
+#   - 前三把＝service/auth_matrix.yaml 三个演示租户（demo_merchant／
 #     partner-demo／demo-1020）的登记凭证，grants 与矩阵逐字一致
 #     （业务鉴权行为等价；meta 装载时与矩阵行做两源合并）；
 #   - 第四把＝「控制台签发」演示凭证（注册表自身口径的展示，
@@ -31,9 +31,9 @@ meta:
 keys:
 - appkey: uat-7f3a9c21e5b84d06
   secret_hash: sha256:a4ed22f346994bd56706a26b873374460b953ae6fca05a54b238b829528fc8fe
-  tenant: demo_bank
-  caller_name: demo-bank-console
-  app_name: demo_bank 演示凭证
+  tenant: demo_merchant
+  caller_name: demo-merchant-console
+  app_name: demo_merchant 演示凭证
   key_type: formal
   oa_ticket: OA-20260929-001
   tag_sets: []

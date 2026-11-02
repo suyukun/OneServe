@@ -247,12 +247,12 @@ def test_02_six_entity_writes_end_to_end(stack):
 
     # ③ 改授权（矩阵写径：grants_admin 双层校验原样发生＋grant 全删重插差量）
     data = yaml.safe_load(mx_path.read_text(encoding="utf-8"))
-    drow = next(r for r in data["matrix"] if r.get("tenant") == "demo_bank")
+    drow = next(r for r in data["matrix"] if r.get("tenant") == "demo_merchant")
     drow.setdefault("grants", []).append(
         {"service": "proxy-local-usr-asset-tag", "fields": []})   # 整路由授权（fields 空仅代理合法）
     mw.matrix_save(mx_path, data, operator="demo-test")
     assert _count("oneserve_meta", "grant",
-                  "scope = 'tenant' AND tenant_id = 'demo_bank'"
+                  "scope = 'tenant' AND tenant_id = 'demo_merchant'"
                   " AND proxy_id = 'proxy-local-usr-asset-tag'") >= 1
 
     # ④ 发布＋下线服务（publish/offline 两入口；视图＝副本演练产物原样返回）

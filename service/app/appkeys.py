@@ -12,7 +12,7 @@
   auth_matrix.yaml 仍是 OA 授权登记权威（auth_admin CLI 通道，本模块不改写它）；
   控制台签发的凭证及其授权绑定记在本注册表——业务调用鉴权先查本表（命中即用
   本表 grants，含 TTL/禁用判定），未命中回落授权矩阵（main._caller_grant 薄胶水）。
-  沙箱默认试用字段集＝矩阵演示租户 demo_bank 对 v1-svc-usr-asset-tag 的已批字段（零复制）；
+  沙箱默认试用字段集＝矩阵演示租户 demo_merchant 对 v1-svc-usr-asset-tag 的已批字段（零复制）；
   正式凭证只发给矩阵已登记租户（授权链起点必须是 OA 单，SPEC N7）。
 
 安全纪律（沿用 auth_admin.py / 既有口径）：
@@ -64,7 +64,7 @@ TENANT_ISSUE_LIMIT = int(os.environ.get("APPKEY_RL_TENANT_PER_HOUR", "5"))
 IP_ISSUE_LIMIT = int(os.environ.get("APPKEY_RL_IP_PER_HOUR", "10"))
 
 # 沙箱默认试用口径：矩阵演示租户对首个 A 型服务的已批字段（不复制字段名单进代码）
-TRIAL_SOURCE_TENANT = "demo_bank"
+TRIAL_SOURCE_TENANT = "demo_merchant"
 TRIAL_SOURCE_SERVICE = "v1-svc-usr-asset-tag"   # 2026-10-14 由 user_tag_query 更名对齐（旧 id 随注册表 id 格式变更失效）
 
 TENANT_ID_RE = re.compile(r"^[a-z0-9]([a-z0-9_-]{0,62}[a-z0-9])?$")
@@ -90,7 +90,7 @@ _HEADER_COMMENT = """\
 #       / tag_sets（业务域标注，展示用） / grants[]（本凭证可调服务×字段白名单）
 # 授权分工：OA 授权登记权威仍是 service/auth_matrix.yaml（auth_admin CLI）；
 #          本表只记控制台签发凭证。业务鉴权先查本表、未命中回落矩阵。
-# 沙箱默认试用字段集＝矩阵 demo_bank 对 v1-svc-usr-asset-tag 的已批字段（SB_TTL_DAYS 可配 TTL）。
+# 沙箱默认试用字段集＝矩阵 demo_merchant 对 v1-svc-usr-asset-tag 的已批字段（SB_TTL_DAYS 可配 TTL）。
 # ============================================================"""
 
 
@@ -170,7 +170,7 @@ def _inherit_grants(matrix: list[dict], tenant: str) -> list[dict] | None:
 
 
 def _trial_grants(matrix: list[dict]) -> list[dict]:
-    """沙箱默认试用口径：demo_bank 对 TRIAL_SOURCE_SERVICE 的已批字段。"""
+    """沙箱默认试用口径：demo_merchant 对 TRIAL_SOURCE_SERVICE 的已批字段。"""
     for row in matrix:
         if row.get("tenant") == TRIAL_SOURCE_TENANT:
             for g in row.get("grants", []):

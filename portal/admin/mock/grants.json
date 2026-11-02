@@ -2,8 +2,8 @@
   "note": "授权管理（1b-8）演示基线：后端不可达时降级读取，页面挂「演示数据」角标。本文件为演示副本，不含任何凭证明文；appkey 为掩码展示值。登记动作在演示模式下仅页面内存演示、如实标注。",
   "tenants": [
     {
-      "tenant": "demo_bank",
-      "displayName": "演示银行",
+      "tenant": "demo_merchant",
+      "displayName": "演示商户",
       "status": "active",
       "tenantType": "internal",
       "tenantTypeLabel": "内部",
@@ -36,9 +36,9 @@
     }
   ],
   "details": {
-    "demo_bank": {
-      "tenant": "demo_bank",
-      "displayName": "演示银行",
+    "demo_merchant": {
+      "tenant": "demo_merchant",
+      "displayName": "演示商户",
       "status": "active",
       "tenantType": "internal",
       "tenantTypeLabel": "内部",

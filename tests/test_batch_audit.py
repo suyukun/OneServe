@@ -38,7 +38,7 @@ from app.audit import AuditWriter, digest_sha256               # noqa: E402
 from synth_services import load_synth_services, synth_matrix, synth_services_dict  # noqa: E402  合成 fixture（全服务下线，见模块头注）
 SERVICES = load_synth_services()   # 线上 services.yaml 已清空（全下线）；机制测试用合成注册表
 MATRIX = synth_matrix()
-APPKEY = "oneserve-dev-appkey-001"            # demo_bank 网关凭证（auth_matrix.yaml）
+APPKEY = "oneserve-dev-appkey-001"            # demo_merchant 网关凭证（auth_matrix.yaml）
 KEYS = ["ab" * 32, "cd" * 32, "ef" * 32]
 VER = "20260922"
 AS_OF = "2026-09-22 00:00:00"
@@ -170,7 +170,7 @@ def test_task_audit_succeeded_one_entry_full_payload():
         assert e["trace_id"]                                # 终态自生成 trace
         # params 摘要全量对账：任务七要素＋双 sha256＋四计数（digest_sha256 同口径）
         expected = {
-            "job_id": jid, "tenant": "demo_bank", "caller": APPKEY,
+            "job_id": jid, "tenant": "demo_merchant", "caller": APPKEY,
             "status": "succeeded", "total": 3, "processed": 3, "found": 2,
             "missed": 1, "row_errors": 0,
             "keys_sha256": batch.keys_digest(KEYS),
@@ -214,7 +214,7 @@ def test_task_audit_failed_status_500_no_results_sha():
         e = entries[0]
         assert e["status"] == 500 and e["endpoint"] == batch.AUDIT_JOB_FINISH_ENDPOINT
         expected = {
-            "job_id": jid, "tenant": "demo_bank", "caller": APPKEY,
+            "job_id": jid, "tenant": "demo_merchant", "caller": APPKEY,
             "status": "failed", "total": 1, "processed": 0, "found": 0,
             "missed": 0, "row_errors": 0,
             "keys_sha256": batch.keys_digest(KEYS[:1]),
@@ -260,7 +260,7 @@ def test_task_audit_queued_cancel_via_endpoint_two_entries():
         assert task_e["endpoint"] == batch.AUDIT_JOB_FINISH_ENDPOINT
         assert task_e["status"] == 499 and task_e["caller"] == APPKEY
         expected = {
-            "job_id": jid, "tenant": "demo_bank", "caller": APPKEY,
+            "job_id": jid, "tenant": "demo_merchant", "caller": APPKEY,
             "status": "cancelled", "total": 1, "processed": 0, "found": 0,
             "missed": 0, "row_errors": 0,
             "keys_sha256": batch.keys_digest(KEYS[:1]),
@@ -289,7 +289,7 @@ def test_job_record_stores_caller_for_traceability():
     st = FakeAuditRedis()
     jid = submit(st, KEYS[:1])
     job = asyncio.run(batch.JobStore(st).get(jid))
-    assert job["caller"] == APPKEY and job["tenant"] == "demo_bank"
+    assert job["caller"] == APPKEY and job["tenant"] == "demo_merchant"
 
 
 # ---------- trace_id 贯通批量链路（AC-8 前半＋P0-5 注记落点） ----------

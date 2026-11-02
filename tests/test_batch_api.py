@@ -38,9 +38,9 @@ from app.audit import AuditWriter, digest_sha256  # noqa: E402
 from synth_services import load_synth_services, synth_matrix, synth_services_dict  # noqa: E402  合成 fixture（全服务下线，见模块头注）
 SERVICES = load_synth_services()   # 线上 services.yaml 已清空（全下线）；机制测试用合成注册表
 MATRIX = synth_matrix()
-GRANT = kvx.tenant_grant(MATRIX, batch.BATCH_SOURCE_SERVICE, tenant="demo_bank")   # 2026-10-15 随生产常量改指现役主标签服务（字面量已死，同 test_batch_worker 先例）
+GRANT = kvx.tenant_grant(MATRIX, batch.BATCH_SOURCE_SERVICE, tenant="demo_merchant")   # 2026-10-15 随生产常量改指现役主标签服务（字面量已死，同 test_batch_worker 先例）
 WHITELIST = GRANT["fields"]
-APPKEY = "oneserve-dev-appkey-001"          # demo_bank 网关凭证（auth_matrix.yaml）
+APPKEY = "oneserve-dev-appkey-001"          # demo_merchant 网关凭证（auth_matrix.yaml）
 KEYS = ["ab" * 32, "cd" * 32, "ef" * 32]    # 合法键（默认宽松模式：原 SM3 形态仍合法）
 
 
@@ -132,7 +132,7 @@ def test_submit_ok_registers_queued_job():
     assert status == 202
     normalized = [k.lower() for k in upper]
     assert body["status"] == "queued" and body["queue_position"] == 1
-    assert body["total"] == 3 and body["tenant"] == "demo_bank"
+    assert body["total"] == 3 and body["tenant"] == "demo_merchant"
     assert body["keys_sha256"] == hashlib.sha256(
         "\n".join(normalized).encode()).hexdigest()
     assert body["fields"] == sorted(WHITELIST)            # 缺省=全授权白名单

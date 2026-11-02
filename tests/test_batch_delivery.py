@@ -41,7 +41,7 @@ from app.audit import AuditWriter                              # noqa: E402
 from synth_services import load_synth_services, synth_matrix, synth_services_dict  # noqa: E402  合成 fixture（全服务下线，见模块头注）
 SERVICES = load_synth_services()   # 线上 services.yaml 已清空（全下线）；机制测试用合成注册表
 MATRIX = synth_matrix()
-APPKEY = "oneserve-dev-appkey-001"            # demo_bank 网关凭证（auth_matrix.yaml）
+APPKEY = "oneserve-dev-appkey-001"            # demo_merchant 网关凭证（auth_matrix.yaml）
 KEYS = ["ab" * 32, "cd" * 32, "ef" * 32, "90" * 32, "12" * 32]
 VER = "20260922"                              # 假线上版本（meta 指针值）
 AS_OF = "2026-09-22 00:00:00"

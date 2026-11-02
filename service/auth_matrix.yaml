@@ -13,7 +13,7 @@
 #         行内注释不保留——字段级说明写进头注释或提交说明）
 # ============================================================
 matrix:
-- tenant: demo_bank
+- tenant: demo_merchant
   tenant_type: internal   # 1b-8：类型登记（内部租户；沙箱 tenant_type=sandbox 单号豁免）
   appkey: "uat-7f3a9c21e5b84d06"
   oa_ticket: OA-20260929-001

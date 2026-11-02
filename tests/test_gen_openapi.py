@@ -235,7 +235,7 @@ def test_response_table_has_cn_and_honest_pending():
     c = _syn_contract()
     s = _detail(c, "user_tag_query")
     rows = s["response"]["auth_fields"]
-    assert len(rows) == 10          # auth_matrix.yaml 白名单条目数（demo_bank 真源）
+    assert len(rows) == 10          # auth_matrix.yaml 白名单条目数（demo_merchant 真源）
     assert all(r["cn"] and r["type"] for r in rows)
     assert any("待补" in r["cn"] for r in rows), "缺中文名的字段应如实标「待补」"
     masked = {r["name"] for r in rows if r["desensitize"]}

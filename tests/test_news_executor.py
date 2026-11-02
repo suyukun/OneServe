@@ -27,7 +27,7 @@ SERVICES = load_synth_services()   # 全下线终态：合成注册表（形状�
 MATRIX = synth_matrix()
 NEWS = SERVICES["news_tag_query"]
 PARTNER = SERVICES["partner_proxy"]
-NEWS_GRANT = kvx.tenant_grant(MATRIX, "news_tag_query", tenant="demo_bank")
+NEWS_GRANT = kvx.tenant_grant(MATRIX, "news_tag_query", tenant="demo_merchant")
 NEWS_WHITELIST = NEWS_GRANT["fields"]
 
 
@@ -84,7 +84,7 @@ def test_news_key_pattern():
 
 
 def test_auth_matrix_news_grant():
-    """授权矩阵：demo_bank 获资讯字段白名单（仅 tags；标题在库未授权＝投影红线料）。"""
+    """授权矩阵：demo_merchant 获资讯字段白名单（仅 tags；标题在库未授权＝投影红线料）。"""
     assert NEWS_WHITELIST == {"tags"}
     try:
         kvx.tenant_grant(MATRIX, "news_tag_query", tenant="no_such_tenant")
@@ -101,7 +101,7 @@ def test_news_execute_found_projection_red_line():
     assert out["fields"] == {"tags": ["黄金", "避险"]}
     assert "title" not in json.dumps(out["fields"]), "未授权字段 title 泄露（红线）"
     assert out["data_as_of"] == "2026-09-21" and out["live_version"] == "20260921"
-    assert out["tenant"] == "demo_bank"
+    assert out["tenant"] == "demo_merchant"
 
 
 def test_news_execute_not_found_and_not_ready():
@@ -135,7 +135,7 @@ def test_services_yaml_partner_shape():
     assert int(conf["retry"]) >= 0
     assert isinstance(PARTNER["retention"]["enabled"], bool)
     assert PARTNER["retention"]["dir"]
-    assert kvx.tenant_grant(MATRIX, "partner_proxy", tenant="demo_bank")["fields"]
+    assert kvx.tenant_grant(MATRIX, "partner_proxy", tenant="demo_merchant")["fields"]
 
 
 def main():

@@ -773,7 +773,7 @@ async def demo_query(request: Request) -> JSONResponse:
                     json.dumps({"phone": phone}), 400, 0, body, trace_id=trace_id)
         return JSONResponse(body, 400)
     try:
-        grant = kvx.tenant_grant(auth_matrix, "v1-svc-usr-asset-tag", tenant="demo_bank")
+        grant = kvx.tenant_grant(auth_matrix, "v1-svc-usr-asset-tag", tenant="demo_merchant")
     except kvx.TagQueryError as exc:
         body = errors.envelope(exc.code, exc.message)
         await _audit_call("demo-page", "service:/demo/query", audit_params,

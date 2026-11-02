@@ -28,7 +28,7 @@ from synth_services import (load_synth_services, synth_matrix, synth_services_di
 REAL_SERVICES, REAL_LOAD_ERR = real_registry_state()   # 现实态：全下线→空表 fail-loud（服务层红线）
 MATRIX, _MATRIX_ERR = real_matrix_state()      # 现实态：空矩阵 fail-loud
 SERVICE = synth_services_dict()["news_tag_query"]   # 合成 A 型样例（全下线终态）
-GRANT = kvx.tenant_grant(synth_matrix(), "news_tag_query", tenant="demo_bank")
+GRANT = kvx.tenant_grant(synth_matrix(), "news_tag_query", tenant="demo_merchant")
 WHITELIST = GRANT["fields"]
 RULES = SERVICE["response"].get("desensitize") or {}   # news 域无脱敏（明文资讯标签）
 BAND_RULE = {"type": "band_mask",                            # band_mask 机制红线用内联规则钉死（演示服务下线后真源不再配置脱敏）
@@ -96,9 +96,9 @@ def test_auth_matrix_shape():
     unknown_service（真实发生过：demo 下线时矩阵未同步）。
     """
     sm = _syn_matrix()
-    assert GRANT["tenant"] == "demo_bank"
+    assert GRANT["tenant"] == "demo_merchant"
     assert GRANT["oa_ticket"], "OA 单号占位缺失（task-008 回填）"
-    assert kvx.tenant_grant(sm, "news_tag_query", tenant="demo_bank")["fields"]
+    assert kvx.tenant_grant(sm, "news_tag_query", tenant="demo_merchant")["fields"]
     granted = {g["service"] for row in sm for g in row.get("grants", [])}
     assert granted <= set(synth_services_dict()), f"矩阵残留未注册服务：{sorted(granted)}"
     # 2026-09-30 现实态口径：注册表/矩阵空或非空均合法，守卫 fail-loud 加载＋矩阵授权不残留未注册服务
